@@ -1,8 +1,12 @@
-# gtsam-project-python
+# Art Skills
 
-Project template using GTSAM + Python wrapping
+A project to capture, perceive, and render artistic skills.
 
-## PREREQUISITES
+- Capture: really, motion capture, cameras, etc. LOW level.
+- Perceive: infer parameters from low-level input by optimization over a generative model of the strokes.
+- Render: possibly style-transfer, scale transfer to a an output device like a giant cable-robot, a super-duper Kuka, or ShodaFranka.
+
+## Instructions from template:
 
 - Python 3.6+ is required, since we support these versions.
 - To install the wrap package via `GTSAM`:
