@@ -31,7 +31,7 @@ class PerceivedParameters:
         """
 
     def num_segments(self):
-        """Return the number of segements the user had in mind."""
+        """Return the number of segments the user had in mind."""
 
 class ArtSkills:
     """Top-level class."""
@@ -77,7 +77,7 @@ class TestWholeEnchilada(GtsamTestCase):
         """Test perceive method."""
 
     def test_whole_enchilada(self):
-        """Capcture, perceive, and render."""
+        """Capture, perceive, and render."""
         skills = ArtSkills()
         trajectory_filename = ""
         captured_trajectory = skills.read_2D_trajectory(trajectory_filename)
