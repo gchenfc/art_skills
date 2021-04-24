@@ -1,3 +1,8 @@
+% This script processes the velocity profile generated in oFX and attempts
+% to fit it to a lognormal distribution for application of the XZERO alg.
+
+%% Read and process data:
+
 clc; clear all; close all;
 
 data = readtable('velocity.txt');
