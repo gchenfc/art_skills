@@ -1,1 +1,5 @@
+!cpp/
+cpp/*
+!cpp/Stroke_Capture/
 cpp/Stroke_Capture/*
+!cpp/Stroke_Capture/src/

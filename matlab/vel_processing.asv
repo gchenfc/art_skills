@@ -56,7 +56,7 @@ hold off
 legend('curve1', 'curve2', 'curve3', 'curve4');
 
 
-%% Fit Data
+%% Fit Data/Extract Parameters
 % We now need tmax, tinf1, tinf2...
 parmhat = cell(1,N); v_prof = cell(1,N); 
 mean = cell(1,N); stdv = cell(1,N); % sigma, mu
@@ -75,19 +75,6 @@ for i = 1:N
     end
     plot(v_prof{i})
 end
-
-%% Matlab fit using lognpdf
-figure(3) % Using MATLAB lognpdf to fit
-% Fitted distribution
-xt = 0.1:0.1:10;
-for i = 1:N
-    plot(xt,10*lognpdf(xt,parmhat{i}(1),parmhat{i}(2)))
-    hold on
-end
-hold off
-ylabel('weighted value'); xlabel('step');
-legend('curve1', 'curve2', 'curve3', 'curve4')
-%}
 
 %% Mathematical estimation of parameters
 syms T Tm T0 Tinf mu sigma D v_sym(T) k(T)
