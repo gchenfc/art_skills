@@ -16,14 +16,18 @@ import numpy as np
 #from gtsam.utils.test_case import GtsamTestCase
 
 
-class CapturedParameters:
+class GetParameters:
     """A class for recieving user input."""
 
-    def capture_points(self):
-        """Prompt the user for each parameter"""
-        T_pts = np.empty([1, 2])
+    def get_num_pts(self):
         num_pts = int(input("Enter the number of points: "))
+        #print(num_pts)
+        return(num_pts)
+
+    def get_points(self, num_pts):
+        """Prompt the user for target points, p_i (i = [0:num_pts])"""
         for i in range(num_pts):
+            #print("point", i, ":")
             pt_input = str(input("Enter a comma separated point 'x,y'"))
             pt_string = pt_input.split(',')
             pt_int = list(map(int, pt_string))
@@ -34,23 +38,45 @@ class CapturedParameters:
                 T_pts = np.vstack((T_pts, T_pts_n))
         return (T_pts)
 
+    def get_amplitudes(self, num_c):
+        """Prompt the user for amplitude, D"""
+        for i in range(num_c):
+            D = int(input("Enter the amplitude: "))
+            if i == 0:
+                Ds = np.array(D)
+            else:
+                Ds_n = np.array(D)
+                Ds = np.append(Ds, Ds_n)
+        return(Ds)      
+
+class GeneratedCurve:
+    """Parameter processing for generative approach."""
+
+    def find_theta(self, points):
+        """find th_i from the norm and orientation of the vector p_{i}-p_{i-1}"""
+
 
 class test_gen(unittest.TestCase):
     """Test generative approach to lognormal curves for art skills project."""
-    num_of_pts = '2' # number of points being input
+    num_of_pts = '3' # number of points being input, 2 points defines 1 curve
     string_of_pts_1 = '1,1' # first target point
     string_of_pts_2 = '5,5' # second target point
+    string_of_pts_3 = '9,9'
+    amplitude1 = '1' # amplitude of first curve
+    amplitude2 = '2' # amplitude of second curve
 
-    @patch('builtins.input', side_effect=[num_of_pts, string_of_pts_1, string_of_pts_2])
-    def test_capture(self, mock_input):
-        """Test the capture input approach for target points"""
-        cap = CapturedParameters()
-        result = cap.capture_points()
-        check1 = result[0,0]
-        np.testing.assert_equal(result, ([1,1],[5,5])) # Success! We can now capture points from user input
-        
-        """Test the capture input approach for target points"""
-
+    @patch('builtins.input', side_effect=[num_of_pts, string_of_pts_1, string_of_pts_2, string_of_pts_3, amplitude1, amplitude2])
+    def test_get_param(self, mock_input):
+        """Test the get input methods"""
+        param = GetParameters() # call class
+        pt_number = param.get_num_pts() # get number of points
+        curve_num = pt_number - 1 # number of curves
+        pt_array = param.get_points(pt_number) # get array of points
+        print('points', pt_array)
+        np.testing.assert_equal(pt_array, ([1,1],[5,5],[9,9])) # Test user-input point array (Success!)
+        D_array = param.get_amplitudes(curve_num) # get amplitudes
+        print('amplitudes', D_array)
+        np.testing.assert_equal(D_array, [1,2]) # Test user-input amplitude array (Success!)       
 
     def test_generate(self):
         """Test the processing and plotting method."""
@@ -67,9 +93,6 @@ if __name__ == "__main__":
     unittest.main()
 
 
-
-# class GeneratedCurve:
-#     """Parameter processing for generative approach."""
 
 # class ArtSkills:
 #     """Top-level class."""
