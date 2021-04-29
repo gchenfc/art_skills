@@ -13,16 +13,28 @@ Author: Juan-Diego Florez, Frank Dellaert, Sang-Won Leigh
 import unittest
 from unittest.mock import patch
 import numpy as np
+from numpy.linalg import norm
 #from gtsam.utils.test_case import GtsamTestCase
 
 
 class GetParameters:
     """A class for recieving user input."""
 
+    def get_step(self):
+        "Prompt user for the sample rate/timestep of discrete points"
+        t_step = float(input("Enter the number of points: "))
+        return(t_step)
+
     def get_num_pts(self):
+        """Prompt the user for the amount of target points"""
         num_pts = int(input("Enter the number of points: "))
         #print(num_pts)
         return(num_pts)
+
+    def get_num_curves(self, num_pts):
+        """Find the number of curves defined by the target points"""
+        num_curves = num_pts - 1 # number of curves
+        return(num_curves)
 
     def get_points(self, num_pts):
         """Prompt the user for target points, p_i (i = [0:num_pts])"""
@@ -49,37 +61,61 @@ class GetParameters:
                 Ds = np.append(Ds, Ds_n)
         return(Ds)      
 
-class GeneratedCurve:
+class GenerateCurve:
     """Parameter processing for generative approach."""
 
-    def find_theta(self, points):
-        """find th_i from the norm and orientation of the vector p_{i}-p_{i-1}"""
+    def determine_weight(self, tstep):
+        """Calculate the weight of the stroke."""
+
+    def find_theta(self, num_c, points):
+        """Find th_i from the norm and orientation of the vector p_{i}-p_{i-1}"""
+        for i in range(num_c):
+            v_array = points[i+1]-points[i]
+            theta_norm = norm(v_array,2)
+            #print('norm', theta_norm)
+            frac = v_array[1]/v_array[0] # delta y/ delta x
+            theta_orient = np.arctan(frac) # angle
+            if i == 0:
+                theta = np.array([theta_norm, theta_orient])
+            else:
+                theta_n = np.array([theta_norm, theta_orient])
+                theta = np.vstack((theta, theta_n))
+        print('theta', theta)
+        return(theta)
 
 
-class test_gen(unittest.TestCase):
+class test_gen(unittest.TestCase): # I am not sure how to develop individual test cases, so I made a single one
     """Test generative approach to lognormal curves for art skills project."""
+    step_size = '0.1' # "timestep" between points
     num_of_pts = '3' # number of points being input, 2 points defines 1 curve
-    string_of_pts_1 = '1,1' # first target point
-    string_of_pts_2 = '5,5' # second target point
-    string_of_pts_3 = '9,9'
+    string_of_pts_1 = '1,1' # first target point, as user input
+    string_of_pts_2 = '5,3' # second target point, as user input
+    string_of_pts_3 = '9,9' # third target point, as user input
     amplitude1 = '1' # amplitude of first curve
     amplitude2 = '2' # amplitude of second curve
 
-    @patch('builtins.input', side_effect=[num_of_pts, string_of_pts_1, string_of_pts_2, string_of_pts_3, amplitude1, amplitude2])
-    def test_get_param(self, mock_input):
+    @patch('builtins.input', side_effect=[step_size, num_of_pts, string_of_pts_1, string_of_pts_2, string_of_pts_3, amplitude1, amplitude2])
+    def test_gen_approach(self, mock_input):
         """Test the get input methods"""
         param = GetParameters() # call class
+        step_size = param.get_step() # get timestep
         pt_number = param.get_num_pts() # get number of points
-        curve_num = pt_number - 1 # number of curves
+        curve_num = param.get_num_curves(pt_number)
         pt_array = param.get_points(pt_number) # get array of points
         print('points', pt_array)
-        np.testing.assert_equal(pt_array, ([1,1],[5,5],[9,9])) # Test user-input point array (Success!)
+        np.testing.assert_equal(pt_array, ([1,1],[5,3],[9,9])) # Test user-input point array (Success!)
         D_array = param.get_amplitudes(curve_num) # get amplitudes
         print('amplitudes', D_array)
-        np.testing.assert_equal(D_array, [1,2]) # Test user-input amplitude array (Success!)       
+        np.testing.assert_equal(D_array, [1,2]) # Test user-input amplitude array (Success!)
 
-    def test_generate(self):
-        """Test the processing and plotting method."""
+        """Test the generate methods"""
+        gen = GenerateCurve() # call class
+        theta_array = gen.find_theta(curve_num,pt_array)
+        # Test theta generate method (unsure what to put here)
+        weight_array = gen.determine_weight(step_size)
+
+
+
 
     # def testgen(self):
     #     """Prompt user for parameters, generate curve, plot"""
