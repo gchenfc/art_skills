@@ -182,12 +182,17 @@ class GeneratePoints:
 
 class RenderCurve:
     """Rendering the final plot."""
-    def plotting(self, pts):
+    def plotting(self, pts, des_pts):
         """Plot the points with matplotlib"""
-        x, y = pts.T
-        plt.scatter(x,y)
+        x1, y1 = pts.T
+        plt.scatter(x1,y1)
+        xd, yd = des_pts.T
+        plt.scatter(xd, yd)
         #print(pts)
         #plt.plot(pts[:][0], pts[:][1])
+        plt.xlabel('X Position')
+        plt.ylabel('Y Position')
+        plt.title('Generated Strokes')
         plt.show()
      
 class test_gen(unittest.TestCase): # I am not sure how to develop individual test cases, so I made a single one
@@ -254,7 +259,7 @@ class test_gen(unittest.TestCase): # I am not sure how to develop individual tes
         
         """Test plotting"""
         ren = RenderCurve() # call class
-        ren.plotting(point_array)
+        ren.plotting(point_array, pt_array)
 
 
 if __name__ == "__main__":
