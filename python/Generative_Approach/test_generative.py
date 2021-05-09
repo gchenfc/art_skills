@@ -85,7 +85,7 @@ class InputParameters:
 class GeneratePoints:
     """Parameter processing for generative approach."""
     
-    # TODO: define mu and sigma as described below, above their functions. This comes from "Dijoua08EPM" paper
+    # Define mu and sigma as described below, above their functions. This comes from "Dijoua08EPM" paper
     # sigma, according to Berio17, is the response time in a logarithmic time scale
     def sigma(self, Ac):
         """Use the shape parameter to estimate the log response time, sigma"""
@@ -135,7 +135,6 @@ class GeneratePoints:
             w_n.clear()
         return(w)
 
-    # this function currently only works for a single defined stroke. Second stroke displacements are wrong
     def displacement(self, tstep, T, dthetas, deltas, weights):
         """Generate stroke by weighted displacements at time (t)"""
         D_vec = dthetas[:,0]
@@ -160,36 +159,44 @@ class GeneratePoints:
             d_list.append(disp)
         return(d_list)
 
+    # this function currently only works for a single defined stroke. Second stroke points are calculated from first stroke origin
     def points(self, first_point, displacements):
         """Use displacements to get list of points."""
-        displace_list = []
-        for subarray in displacements: # create singular array of points
-            for supersub in subarray:
-                displace_list.append(list(supersub))        
-        print(np.shape(displace_list))
-        px = first_point[0][0]
-        py = first_point[0][1]
-        fpoint = np.array([px, py])
-        point = fpoint
-        print('point', point)
-        for i in range(np.shape(displace_list)[0]):
-            px = np.add(fpoint[0], displace_list[i][0])
-            py = np.add(fpoint[1], displace_list[i][1])
-            p = [px, py]
-            point = np.vstack([point, p])
-        print(np.shape(point))
-        return point
+        for c in range(len(displacements)):
+            if c == 0:
+                px = first_point[c][0]
+                py = first_point[c][1]
+                fpoint = np.array([px, py])
+                print('fpoint1', fpoint)
+                print('len1', len(displacements[c]))
+                point = fpoint
+                point_arr = fpoint
+                print('pa_0', point_arr)
+            else:
+                px = first_point[c][0]
+                py = first_point[c][1]
+                fpoint = np.array([px, py])
+                print('fpoint2', fpoint)
+                print('len2', len(displacements[c]))
+                point = fpoint
+            for i in range(len(displacements[c])):
+                px = np.add(fpoint[0], displacements[c][i][0])
+                py = np.add(fpoint[1], displacements[c][i][1])
+                p = [px, py]
+                point = np.vstack([point, p])
+            point_arr = np.vstack([point_arr, point])
+            print('points', np.shape(point_arr))
+        return point_arr
 
 class RenderCurve:
     """Rendering the final plot."""
-    def plotting(self, pts, des_pts):
+
+    def plot_geometry(self, pts, des_pts):
         """Plot the points with matplotlib"""
         x1, y1 = pts.T
         plt.scatter(x1,y1)
         xd, yd = des_pts.T
         plt.scatter(xd, yd)
-        #print(pts)
-        #plt.plot(pts[:][0], pts[:][1])
         plt.xlabel('X Position')
         plt.ylabel('Y Position')
         plt.title('Generated Strokes')
@@ -199,51 +206,42 @@ class test_gen(unittest.TestCase): # I am not sure how to develop individual tes
     """Test generative approach to lognormal curves for art skills project."""
     step_size = '0.01' # "timestep" between points
     num_of_pts = '3' # number of target points being input, 2 points defines 1 curve
-    string_of_pts_1 = '1,1' # first target point, as user input
-    string_of_pts_2 = '10,5' # second target point, as user input
-    string_of_pts_3 = '12,10' # third target point, as user input
-    delta1 = '0.8944' # central angle of the circular arc shape of curve 1 (rad)
-    delta2 = '0.5236' # central angle of the circular arc shape of curve 2 (rad)
+    string_of_pts_1 = '0,0' # first point, origin as user input
+    string_of_pts_2 = '6,9' # second target point, as user input
+    string_of_pts_3 = '10,4' # third target point, as user input TODO: get this to work with xi < xi-1. yi < yi-1 works iff xi > xi-1
+    delta1 = '0.9944' # central angle of the circular arc shape of curve 1 (rad)
+    delta2 = '0.3236' # central angle of the circular arc shape of curve 2 (rad)
     Ac1 = '0.1' # shape parameter that defines skewedness of the lognormal (Berio17euro...)(Plamondon2003)
-    Ac2 = '0.6' # shape parameter that defines skewedness of the lognormal (Berio17euro...)(Plamondon2003)
-    T1 = '1.2' # period of first curve
-    T2 = '1.0' # period of second curve
+    Ac2 = '0.1' # shape parameter that defines skewedness of the lognormal (Berio17euro...)(Plamondon2003)
+    T1 = '0.7' # period of first curve
+    T2 = '0.8' # period of second curve
 
     @patch('builtins.input', side_effect=[step_size, num_of_pts, string_of_pts_1, string_of_pts_2, string_of_pts_3, delta1, delta2, Ac1, Ac2, T1, T2])
     def test_gen_approach(self, mock_input):
         """Test the get input methods"""
         param = InputParameters() # call class
         step_size = param.step() # get timestep
+        np.testing.assert_equal(step_size, 0.01) # Test user-input method (Success!)
         pt_number = param.num_pts() # get number of points
-        np.testing.assert_equal(pt_number, 3) # Test user-input method (Success!)
-        curve_num = param.num_curves(pt_number)
-        pt_array = param.points(pt_number) # get array of points
-        deltas = param.internal_angle(curve_num)
-        Ac_array = param.shape_param(curve_num)
-        periods = param.period(curve_num)
+        curve_num = param.num_curves(pt_number) # get number of curves
+        pt_array = param.points(pt_number) # get array of input points
+        deltas = param.internal_angle(curve_num) # get internal angle of arc
+        Ac_array = param.shape_param(curve_num) # get shape parameter
+        periods = param.period(curve_num) # get period of each stroke
 
         """Test the generate methods"""
         gen = GeneratePoints() # call class
         D_theta = gen.D_and_theta(curve_num,pt_array) # find amplitude and direction of vector
-        # print(D_theta)
-        # Test theta generate method (unsure what to put here)
-        sigmas = gen.sigma(Ac_array)
+        sigmas = gen.sigma(Ac_array) 
         mus = gen.mu(sigmas, periods)
-        # print('sigma', sigmas)
-        # print('mu', mus)
         weight_array = gen.weight(step_size, periods, D_theta, sigmas, mus) # need timestep and vector magnitude
-        #print('weight 1', len(weight_array[0]), 'weight 2', len(weight_array[1]))
         valid_w = True # boolean to check that w exists exclusively within [0,1]
         for l in range(0,len(weight_array)):
             if any(t < 0 for t in weight_array[l]) or any(t > 1 for t in weight_array[l]):
                 valid_w = False
         self.assertTrue(valid_w) # Test weights are within [0, 1] (Success!)
         displace_array = gen.displacement(step_size, periods, D_theta, deltas, weight_array)
-        #print('disp', displace_array[0])
-        # columnx = 0
-        # columny = 1
-        # dx1 = sum(row[columnx] for row in displace_array[0])
-        # dy1 = sum(row[columny] for row in displace_array[0])
+        print('disp', displace_array)
         px1 = pt_array[0][0] + displace_array[0][-1][0]
         py1 = pt_array[0][1] + displace_array[0][-1][1]
         p_real1 = pt_array[1]
@@ -252,14 +250,14 @@ class test_gen(unittest.TestCase): # I am not sure how to develop individual tes
         p_real2 = pt_array[2]
         print('actual', [px2, py2], 'desired', pt_array[2])
         np.testing.assert_array_almost_equal([px1, py1], p_real1, 1)
-        #np.testing.assert_array_almost_equal([px2, py2], p_real2, 1)
+        np.testing.assert_array_almost_equal([px2, py2], p_real2, 1)
         point_array = gen.points(pt_array, displace_array)
         #print(point_array)
 
         
         """Test plotting"""
         ren = RenderCurve() # call class
-        ren.plotting(point_array, pt_array)
+        ren.plot_geometry(point_array, pt_array)
 
 
 if __name__ == "__main__":
@@ -287,26 +285,3 @@ if __name__ == "__main__":
 #         """Render plotly figure that reproduces artistic intent."""
 #         #generated_stroke = self.generated_stroke(perceived)
 #         # now render with plotly express
-
-# def points(self, first_point, displacements):
-#     """Use displacements to get list of points."""
-#     displace_list = []
-#     for subarray in displacements: # create singular array of points
-#         for supersub in subarray:
-#             displace_list.append(list(supersub))
-#     px = first_point[0][0]
-#     py = first_point[0][1]
-#     fpoint = np.array([px, py])
-#     for i in range(np.shape(displace_list)[0]):
-#         if i == 0:
-#             px = np.add(fpoint[i], displace_list[i][0])
-#             py = np.add(fpoint[i+1], displace_list[i][1])
-#         else:
-#             px = displace_list[i][0]
-#             py = displace_list[i][1]
-#             # px = np.add(point[i][0], displace_list[i][0])
-#             # py = np.add(point[i][1], displace_list[i][1])
-#         p = [px, py]
-#         point = np.vstack([point, p])
-#     print(np.shape(point))
-#     return point
