@@ -72,6 +72,8 @@ class TestWholeEnchilada(GtsamTestCase):
 
     def test_render_trajectory(self):
         """Test render_trajectory method."""
+        trajectory_generator = TrajectoryGenerator()
+        trajectory_generator.run(parameters)
 
     def test_perceive(self):
         """Test perceive method."""
