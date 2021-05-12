@@ -21,9 +21,14 @@ from scipy import special
 class InputParameters:
     """A class for recieving user input."""
 
+    def get_input(self, input_string):
+        """Prompt user for input"""
+        input_val = float(input(input_string))
+        return(input_val)
+    
     def step(self):
         "Prompt user for the sample rate/timestep of discrete points"
-        t_step = float(input("Enter the number of points: "))
+        t_step = float(input("Enter the timestep size: "))
         return(t_step)
 
     def num_pts(self):
@@ -201,10 +206,44 @@ class RenderCurve:
         plt.ylabel('Y Position')
         plt.title('Generated Strokes')
         plt.show()
-     
-class test_gen(unittest.TestCase): # I am not sure how to develop individual test cases, so I made a single one
+
+class ArtSkills:
+    """Top-level class."""
+    param = InputParameters() # call class
+
+    def __init__(self, step_size, num_pts, pt, delta, Ac, T):
+        self.step_size = step_size  # timestep size
+        self.num_pts = num_pts      # number of target points, including origin
+        self.pt = pt                # user-defined target point
+        self.delta = delta          # central angle of the circular arc shape of the stroke
+        self.Ac = Ac                # shape parameter that defines skewedness of the lognormal curve
+        self.T = T                  # period of the stroke
+
+    def capture_input(self):
+        """Asks for user-defined input parameters."""
+        timestep_str = "Enter the timestep size: "
+        numpoints_str = "Enter the number of points: "
+        parameter = np.array([param.get_input(timestep_str), param.get_input(numpoints_str)])
+
+    def generate_curve(self):
+        """ Infer a set of parameters that we think capture the artistic intent
+            of the artist.
+        """
+        # initialize parameters = PerceivedParameters()
+        # optimize for parameters such that we minimize:
+        #   diff(render_trajectory(parameters), captured_trajectory)
+        # typically done with GTSAM, by creating a facture graph
+
+    def plot_curve(self):
+        """Render plotly figure that reproduces artistic intent."""
+        #generated_stroke = self.generated_stroke(perceived)
+        # now render with plotly express  
+
+class Test_All(unittest.TestCase): # I am not sure how to develop individual test cases, so I made a single one
     """Test generative approach to lognormal curves for art skills project."""
-    step_size = '0.01' # "timestep" between points
+
+    """Simulated input values for testing"""
+    time_step = '0.01' # "timestep" between points
     num_of_pts = '3' # number of target points being input, 2 points defines 1 curve
     string_of_pts_1 = '0,0' # first point, origin as user input
     string_of_pts_2 = '6,9' # second target point, as user input
@@ -216,72 +255,70 @@ class test_gen(unittest.TestCase): # I am not sure how to develop individual tes
     T1 = '0.7' # period of first curve
     T2 = '0.8' # period of second curve
 
-    @patch('builtins.input', side_effect=[step_size, num_of_pts, string_of_pts_1, string_of_pts_2, string_of_pts_3, delta1, delta2, Ac1, Ac2, T1, T2])
-    def test_gen_approach(self, mock_input):
-        """Test the get input methods"""
-        param = InputParameters() # call class
-        step_size = param.step() # get timestep
-        np.testing.assert_equal(step_size, 0.01) # Test user-input method (Success!)
-        pt_number = param.num_pts() # get number of points
-        curve_num = param.num_curves(pt_number) # get number of curves
-        pt_array = param.points(pt_number) # get array of input points
-        deltas = param.internal_angle(curve_num) # get internal angle of arc
-        Ac_array = param.shape_param(curve_num) # get shape parameter
-        periods = param.period(curve_num) # get period of each stroke
+    @patch('builtins.input', side_effect=[time_step, num_of_pts, string_of_pts_1, string_of_pts_2, string_of_pts_3, delta1, delta2, Ac1, Ac2, T1, T2])
+    def test_input_sequence(self, mock_input):
+        """Test the basic user input methods"""
 
-        """Test the generate methods"""
-        gen = GeneratePoints() # call class
-        D_theta = gen.D_and_theta(curve_num,pt_array) # find amplitude and direction of vector
-        sigmas = gen.sigma(Ac_array) 
-        mus = gen.mu(sigmas, periods)
-        weight_array = gen.weight(step_size, periods, D_theta, sigmas, mus) # need timestep and vector magnitude
-        valid_w = True # boolean to check that w exists exclusively within [0,1]
-        for l in range(0,len(weight_array)):
-            if any(t < 0 for t in weight_array[l]) or any(t > 1 for t in weight_array[l]):
-                valid_w = False
-        self.assertTrue(valid_w) # Test weights are within [0, 1] (Success!)
-        displace_array = gen.displacement(step_size, periods, D_theta, deltas, weight_array)
-        print('disp', displace_array)
-        px1 = pt_array[0][0] + displace_array[0][-1][0]
-        py1 = pt_array[0][1] + displace_array[0][-1][1]
-        p_real1 = pt_array[1]
-        px2 = pt_array[1][0] + displace_array[1][-1][0]
-        py2 = pt_array[1][1] + displace_array[1][-1][1]
-        p_real2 = pt_array[2]
-        print('actual', [px2, py2], 'desired', pt_array[2])
-        np.testing.assert_array_almost_equal([px1, py1], p_real1, 1)
-        np.testing.assert_array_almost_equal([px2, py2], p_real2, 1)
-        point_array = gen.points(pt_array, displace_array)
-        #print(point_array)
+        param = InputParameters() # call class
+        timestep_str = "Enter the timestep size: "
+        numpoints_str = "Enter the number of points: "
+        point_str = "Enter point as 'x,y': "
+        setup_param = np.array([param.get_input(timestep_str), param.get_input(numpoints_str)]) # get timestep and number of target points
+        point_array = np.array([param.get_input(point_str), param.get_input(point_str)]) # get point string
+
+        np.testing.assert_array_equal(setup_param, [0.01, 3])
+        np.testing.assert_array_equal(point_array, [[0, 0], [6,9], [10,4]])
+        np.testing.assert_array_equal(curve_param, [[0.9944, 0.3236], [0.1, 0.1], [0.7, 0.8]])
+        
+        """Test the point input sequence"""
+        np.zeros(range(setup_param[1], 2)) # n-number of rows, 2 columns
+        for i in range(setup_param[1]):
+            param.get_input(timestep_str)
+
+
+        np.testing.assert_array_equal(parameters, [])
 
         
-        """Test plotting"""
-        ren = RenderCurve() # call class
-        ren.plot_geometry(point_array, pt_array)
+        # param = InputParameters() # call class
+        # step_size = param.step() # get timestep
+        # np.testing.assert_equal(step_size, 0.01) # Test user-input method (Success!)
+        
+#         pt_number = param.num_pts() # get number of points
+#         curve_num = param.num_curves(pt_number) # get number of curves
+#         pt_array = param.points(pt_number) # get array of input points
+#         deltas = param.internal_angle(curve_num) # get internal angle of arc
+#         Ac_array = param.shape_param(curve_num) # get shape parameter
+#         periods = param.period(curve_num) # get period of each stroke
 
+#         """Test the generate methods"""
+#         gen = GeneratePoints() # call class
+#         D_theta = gen.D_and_theta(curve_num,pt_array) # find amplitude and direction of vector
+#         sigmas = gen.sigma(Ac_array) 
+#         mus = gen.mu(sigmas, periods)
+#         weight_array = gen.weight(step_size, periods, D_theta, sigmas, mus) # need timestep and vector magnitude
+#         valid_w = True # boolean to check that w exists exclusively within [0,1]
+#         for l in range(0,len(weight_array)):
+#             if any(t < 0 for t in weight_array[l]) or any(t > 1 for t in weight_array[l]):
+#                 valid_w = False
+#         self.assertTrue(valid_w) # Test weights are within [0, 1] (Success!)
+#         displace_array = gen.displacement(step_size, periods, D_theta, deltas, weight_array)
+#         print('disp', displace_array)
+#         px1 = pt_array[0][0] + displace_array[0][-1][0]
+#         py1 = pt_array[0][1] + displace_array[0][-1][1]
+#         p_real1 = pt_array[1]
+#         px2 = pt_array[1][0] + displace_array[1][-1][0]
+#         py2 = pt_array[1][1] + displace_array[1][-1][1]
+#         p_real2 = pt_array[2]
+#         print('actual', [px2, py2], 'desired', pt_array[2])
+#         np.testing.assert_array_almost_equal([px1, py1], p_real1, 1)
+#         np.testing.assert_array_almost_equal([px2, py2], p_real2, 1)
+#         point_array = gen.points(pt_array, displace_array)
+#         #print(point_array)
+
+        
+#         """Test plotting"""
+#         ren = RenderCurve() # call class
+#         ren.plot_geometry(point_array, pt_array)
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-# class ArtSkills:
-#     """Top-level class."""
-
-#     def capture_input(self):
-#         """Asks for user-defined input parameters."""
-#         captured_parameters = capture_points()
-
-#     def generate_curve(self):
-#         """ Infer a set of parameters that we think capture the artistic intent
-#             of the artist.
-#         """
-#         # initialize parameters = PerceivedParameters()
-#         # optimize for parameters such that we minimize:
-#         #   diff(render_trajectory(parameters), captured_trajectory)
-#         # typically done with GTSAM, by creating a facture graph
-
-#     def plot_curve(self):
-#         """Render plotly figure that reproduces artistic intent."""
-#         #generated_stroke = self.generated_stroke(perceived)
-#         # now render with plotly express
