@@ -33,6 +33,7 @@ class PerceivedParameters:
     def num_segments(self):
         """Return the number of segments the user had in mind."""
 
+
 class ArtSkills:
     """Top-level class."""
 
