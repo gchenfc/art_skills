@@ -33,18 +33,20 @@ class TrajectoryGenerator:
         stroke = StrokeGenerator()
         sigma = stroke.sigma(self.Ac)
         mu = stroke.mu(sigma, self.T)
-        D = stroke.D(self.t_points)
+        D_scalar = stroke.D_scalar(self.t_points)
+        # D = stroke.D(self.t_points)
         theta = stroke.theta(self.t_points)
         weights = stroke.weights(self.step_size, self.T, sigma, mu)
-        displacements = stroke.displacements(self.step_size, self.T, D, theta,
-                                             self.delta, weights)
+        displacements = stroke.displacements(self.step_size, self.T, D_scalar,
+                                             theta, self.delta, weights)
         points = stroke.points(displacements, self.t_points)
-        velocities = stroke.velocity(self.step_size, points)
-        return(points, velocities)
+        # extract == bad
+        extracted_velocities = stroke.extract_velocity(self.step_size, points)
+        return(points, extracted_velocities)
 
 
 class StrokeGenerator:
-    """Generates a strokes from trajectory input."""
+    """Generates one stroke from trajectory input."""
 
     # Define sigma and mu (response time & stroke delay both in log time-scale)
     # This comes from "Dijoua08EPM" and "Berio17_euro..."
@@ -73,13 +75,24 @@ class StrokeGenerator:
         return mu
 
     @staticmethod
-    def D(t_points):
+    def D_scalar(t_points):
         """D: stroke amplitude, distance between target points
 
         Args:
             t_points ([ndarray]): [2D array of two target points]
         """
         D = [norm(t_points[x] - t_points[x-1])
+             for x in range(1, len(t_points))]
+        return(D)
+
+    @staticmethod
+    def D(t_points):
+        """D: stroke amplitude, distance between target points
+
+        Args:
+            t_points ([ndarray]): [2D array of two target points]
+        """
+        D = [t_points[x] - t_points[x-1]
              for x in range(1, len(t_points))]
         return(D)
 
@@ -95,6 +108,7 @@ class StrokeGenerator:
                  for x in range(1, len(t_points))]
         return(theta)
 
+    # TODO add t0 to this function
     @staticmethod
     def weights(step_size, T, sigma, mu):
         """weights: time varying weight, used for displacement point generation
@@ -106,15 +120,17 @@ class StrokeGenerator:
             mu
         """
         steps = [round(x/step_size) for x in T]
-        time = [[round((x*step_size), 2) for x in range(1, steps[y]+1)]
-                for y in range(len(steps))]
-        weight = [[(0.5*(1 + special.erf((math.log(t - 0) - y) /
-                    (x*math.sqrt(2))))) for t in time[z]]
-                  for x, y, z in zip(sigma, mu, range(len(sigma)))]
+        t0 = 0  # temporary fix
+        relative_times = [[round((x*step_size), 2)
+                           for x in range(1, steps[y]+1)]
+                          for y in range(len(steps))]
+        weight = [[(0.5*(1 + special.erf((math.log(t - t0) - y) /
+                    (x*math.sqrt(2))))) for t in relative_times[z]]
+                  for x, y, z in zip(sigma, mu, range(len(T)))]
         return(weight)
 
     @staticmethod
-    def displacements(step_size, T, D, theta, delta, weight):
+    def displacements(step_size, T, D_scalar, theta, delta, weight):
         """displacements: weighted displacement at time (t) along stroke
 
         Args:
@@ -127,14 +143,14 @@ class StrokeGenerator:
         theta_0 = [(x + (math.pi + y)/2) for x, y in zip(theta, delta)]
         steps = [round(x/step_size) for x in T]
         eps = 1*10**(-10)  # a really small value, used to avoid divide by zero
-        dx = [[(D[i]*((np.cos(x - y*weight[i][t]) - np.cos(x))
-                      * (2*np.sin(y/2))**-1)) if norm(y) > eps
-               else (D[i]*(np.cos(j)*weight[i][t])) for t in range(z-1)]
+        dx = [[(D_scalar[i]*((np.cos(x - y*weight[i][t]) - np.cos(x))
+                             * (2*np.sin(y/2))**-1)) if norm(y) > eps
+               else (D_scalar[i]*(np.cos(j)*weight[i][t])) for t in range(z-1)]
               for x, y, z, i, j in
               zip(theta_0, delta, steps, range(len(weight)), theta)]
-        dy = [[(D[i]*((np.sin(x - y*weight[i][t]) - np.sin(x))
-                      * (2*np.sin(y/2))**-1)) if norm(y) > eps
-               else (D[i]*(np.sin(j)*weight[i][t])) for t in range(z-1)]
+        dy = [[(D_scalar[i]*((np.sin(x - y*weight[i][t]) - np.sin(x))
+                             * (2*np.sin(y/2))**-1)) if norm(y) > eps
+               else (D_scalar[i]*(np.sin(j)*weight[i][t])) for t in range(z-1)]
               for x, y, z, i, j in
               zip(theta_0, delta, steps, range(len(weight)), theta)]
         displacement = [np.column_stack((dx[x], dy[x]))
@@ -162,12 +178,25 @@ class StrokeGenerator:
         return(points)
 
     @staticmethod
-    def velocity(step_size, points):
+    def extract_velocity(step_size, points):
         velocities = [math.dist(points[x], points[x-1])/step_size
                       for x in range(1, len(points))]
         time = [round(step_size * x, 2) for x in range(1, len(points))]
         velocity = [velocities, time]
         return(velocity)
+
+    # TODO add t0 to this function
+    # def SL_velocity(step_size, T, mu, sigma, D):
+    #     steps = [round(x/step_size) for x in T]
+    #     t0 = 0  # temporary fix
+    #     relative_times = [[round((x*step_size), 2)
+    #                        for x in range(1, steps[y]+1)]
+    #                       for y in range(len(steps))]
+    #     lambda_i = [[(1/(sigma*math.sqrt(2*math.pi)*(t - t0)) *
+    #                   math.exp(((math.log(t - t0) - mu)**2)/(2*sigma**2)))
+    #                  for t in relative_times[z]]
+    #                 for x, y, z in zip(sigma, mu, range(len(T)))]
+    #     vel =
 
 
 class TestStrokeGenerator(unittest.TestCase):
@@ -193,11 +222,11 @@ class TestStrokeGenerator(unittest.TestCase):
                                              [-2.023875, -1.298742])
         return(StrokeGenerator.mu(sigma, T))
 
-    def test_D(self):
+    def test_D_scalar(self):
         """Test the D method."""
         t_points = np.array([[0, 0], [15, 9], [2, 11]])
-        np.testing.assert_array_almost_equal(StrokeGenerator.D(t_points),
-                                             [17.492856, 13.152946])
+        np.testing.assert_array_almost_equal
+        (StrokeGenerator.D_scalar(t_points), [17.492856, 13.152946])
         return(StrokeGenerator.D(t_points))
 
     def test_theta(self):
@@ -220,9 +249,11 @@ class TestStrokeGenerator(unittest.TestCase):
         self.assertTrue(valid_w)  # Test weights are within [0, 1] (Success!)
 
         t_points = np.array([[0, 0], [15, 9], [2, 11]])
-        D, theta, delta = self.test_D(), self.test_theta(), [0.7, -0.6]
-        displacement = StrokeGenerator.displacements(step_size, T, D, theta,
-                                                     delta, weight)
+        D_scalar, theta, delta = self.test_D_scalar(), self.test_theta(), [0.7,
+                                                                           -0.6
+                                                                           ]
+        displacement = StrokeGenerator.displacements(step_size, T, D_scalar,
+                                                     theta, delta, weight)
         np.testing.assert_array_almost_equal(displacement[-1][-1],
                                              t_points[-1] - t_points[-2], 0.1)
         return(displacement)
@@ -239,7 +270,8 @@ class TestStrokeGenerator(unittest.TestCase):
     def test_velocity(self):
         """Test the velocity method."""
         step_size = 0.01
-        velocity = StrokeGenerator.velocity(step_size, self.test_points())
+        velocity = StrokeGenerator.extract_velocity(step_size,
+                                                    self.test_points())
         self.assertEqual(len(velocity[0]) + 1, len(self.test_points()))
 
 
