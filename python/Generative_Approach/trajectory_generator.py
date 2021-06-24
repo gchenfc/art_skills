@@ -171,7 +171,7 @@ class StrokeGenerator:
                            for x in range(1, steps[y]+1)]
                           for y in range(len(steps))]
         # weight = [[(0.5*(1 + special.erf((math.log(t - t0[n]) - y)
-        weight = [[(0.5*(1 + special.erf((math.log(t - t0[n]) - y)
+        weight = [[(0.5*(1 + special.erf((math.log(t) - y)
                                          / (x*math.sqrt(2)))))
                    for t in relative_times[n]]
                   for x, y, n in zip(sigma, mu, range(len(T)))]
@@ -214,16 +214,13 @@ class StrokeGenerator:
             _ ([]): []
         """
         trajectory = []
-        for x in range(len(displacement)):
-            p0 = np.array([t_points[x][0], t_points[x][1]])
+        for x in range(len(displacement)):  # number of strokes
             if x == 0:
+                p0 = np.array([t_points[0][0], t_points[0][1]])
                 stroke = p0
-                # points = p0
             else:
-                px1 = np.add(p0[0], displacement[x][0][0])
-                py1 = np.add(p0[1], displacement[x][0][1])
-                stroke = [px1, py1]
-            for i in range(len(displacement[x])):
+                p0 = stroke[-1]
+            for i in range(len(displacement[x])):  # number of points
                 px = np.add(p0[0], displacement[x][i][0])
                 py = np.add(p0[1], displacement[x][i][1])
                 p = [px, py]
