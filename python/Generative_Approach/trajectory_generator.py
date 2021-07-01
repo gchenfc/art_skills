@@ -123,8 +123,7 @@ class StrokeGenerator:
                     impulse response of each stroke to a centrally generated
                     command occurring at time t0i.
         Args:
-            sigma: t1_i of the previous stroke
-            mu: displacement of the previous stroke
+            
         """
         t1 = self.t1_i(delta_t, D)
         t0 = [(t1[n] - math.exp(mu[n] - sigma[n])) for n in range(len(t1))]
@@ -140,21 +139,16 @@ class StrokeGenerator:
                     impulse response of each stroke to a centrally generated
                     command occurring at time t0i.
         Args:
-            sigma: t1_i of the previous stroke
-            mu: displacement of the previous stroke
+
         """
         t0 = np.empty([1, 2])
 
-        print(t0[0])
         for n in range(len(sigma)):
             if n == 0:
-                t0[0][n] = [0]
-                print(t0)
+                t0[0][n] = 0
             else:
-                print("t-1", t0[n-1])
                 t0[0][n] = (t0[0][n-1] + delta_t[n]*math.sinh(3*sigma[n]))
-                print(t0[n])
-        return(t0)
+        return(t0[0])
 
     @staticmethod
     def weights(step_size, T, sigma, mu, t0):
@@ -166,14 +160,21 @@ class StrokeGenerator:
             sigma
             mu
         """
+        total_T = sum(T)
         steps = [round(x/step_size) for x in T]
-        relative_times = [[round((x*step_size), 2)
+
+        times = [[round((x*step_size), 2)
                            for x in range(1, steps[y]+1)]
                           for y in range(len(steps))]
-        # weight = [[(0.5*(1 + special.erf((math.log(t - t0[n]) - y)
-        weight = [[(0.5*(1 + special.erf((math.log(t) - y)
+        for i in range(len(times)):
+            if i > 0:
+                for n in range(len(times[i])):
+                    times[i][n] = round((times[i-1][-1] + times[i][n]), 2)
+        
+        weight = [[(0.5*(1 + special.erf((math.log(t - t0[n]) - y)
+        # weight = [[(0.5*(1 + special.erf((math.log(t) - y)
                                          / (x*math.sqrt(2)))))
-                   for t in relative_times[n]]
+                   for t in times[n]]
                   for x, y, n in zip(sigma, mu, range(len(T)))]
         return(weight)
 
@@ -309,8 +310,8 @@ class TestStrokeGenerator(unittest.TestCase):
 
         t0i = StrokeGenerator.t0_i_thesis(sigma, delta_t)
 
-        print("t0i", t0i, "t0", t0)
-        return(t0)
+        #print("t0i", t0i, "t0", t0)
+        return(t0i)
 
     def test_weights_and_displacements(self):
         """Test the weights method"""
