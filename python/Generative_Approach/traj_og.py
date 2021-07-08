@@ -60,7 +60,7 @@ class StrokeGenerator:
             Ac ([float]): [shape parameter that defines "skewdness" of the
                            lognormal curve]
         """
-        sigma = np.sqrt(-np.log(1.0 - Ac))
+        sigma = [math.sqrt(-math.log(1.0 - x)) for x in Ac]
         return(sigma)
 
     @staticmethod
@@ -71,8 +71,10 @@ class StrokeGenerator:
         Args:
             T ([float]): [period of the stroke]
         """
-        mu = 3.*sigma - np.log((-1.0 + np.exp(6.*sigma))/T)
+        mu = [(3*s - math.log((-1.0 + math.exp(6*s))/t))
+              for s, t in zip(sigma, T)]
         return(mu)
+
 
     @staticmethod
     def D(t_points):
@@ -81,8 +83,8 @@ class StrokeGenerator:
         Args:
             t_points ([ndarray]): [2D array of two target points]
         """
-        displacements = np.diff(t_points, axis=1)
-        D = np.sqrt( displacements[0,:]**2 + displacements[1,:]**2 )
+        D = [norm(t_points[x] - t_points[x-1])
+             for x in range(1, len(t_points))]
         return(D)
 
     @staticmethod
@@ -274,7 +276,7 @@ class TestStrokeGenerator(unittest.TestCase):
 
     def test_sigma(self):
         """Test the sigma method."""
-        Ac = np.array([0.1, 0.2])
+        Ac = [0.1, 0.2]
         # regression
         np.testing.assert_array_almost_equal(StrokeGenerator.sigma(Ac),
                                              [0.324593, 0.472381])
@@ -290,63 +292,63 @@ class TestStrokeGenerator(unittest.TestCase):
 
     def test_D(self):
         """Test the D method."""
-        t_points = np.array([[0, 0], [3, 6], [5, 10]]).T
+        t_points = np.array([[0, 0], [3, 6], [5, 10]])
         D = StrokeGenerator.D(t_points)
         np.testing.assert_array_almost_equal(D, [6.708204, 4.472136])
         return(StrokeGenerator.D(t_points))
 
-    # def test_theta(self):
-    #     """Test the theta method."""
-    #     t_points = np.array([[0, 0], [3, 6], [5, 10]])
-    #     # regression
-    #     np.testing.assert_array_almost_equal(StrokeGenerator.theta(t_points),
-    #                                          [1.107149, 1.107149])
-    #     return(StrokeGenerator.theta(t_points))
+    def test_theta(self):
+        """Test the theta method."""
+        t_points = np.array([[0, 0], [3, 6], [5, 10]])
+        # regression
+        np.testing.assert_array_almost_equal(StrokeGenerator.theta(t_points),
+                                             [1.107149, 1.107149])
+        return(StrokeGenerator.theta(t_points))
 
-    # def test_t1_t0(self):
-    #     """Test the t1 method."""
-    #     delta_t = [0, -0.05]
-    #     sigma, mu, D = self.test_sigma(), self.test_mu(), self.test_D()
-    #     np.testing.assert_array_almost_equal(StrokeGenerator.t1_i(delta_t, D),
-    #                                          [0, -0.33541])
-    #     """Test the t0 method."""
-    #     t0 = StrokeGenerator.t0_i(StrokeGenerator, sigma, mu, delta_t, D)
-    #     np.testing.assert_array_almost_equal(t0, [0, -0.447816])
+    def test_t1_t0(self):
+        """Test the t1 method."""
+        delta_t = [0, -0.05]
+        sigma, mu, D = self.test_sigma(), self.test_mu(), self.test_D()
+        np.testing.assert_array_almost_equal(StrokeGenerator.t1_i(delta_t, D),
+                                             [0, -0.33541])
+        """Test the t0 method."""
+        t0 = StrokeGenerator.t0_i(StrokeGenerator, sigma, mu, delta_t, D)
+        np.testing.assert_array_almost_equal(t0, [0, -0.447816])
 
-    #     t0i = StrokeGenerator.t0_i_thesis(sigma, delta_t)
+        t0i = StrokeGenerator.t0_i_thesis(sigma, delta_t)
 
-    #     #print("t0i", t0i, "t0", t0)
-    #     return(t0i)
+        #print("t0i", t0i, "t0", t0)
+        return(t0i)
 
-    # def test_weights_and_displacements(self):
-    #     """Test the weights method"""
-    #     step_size, T = 0.01, [0.5, 0.7]
-    #     sigma, mu, t0 = self.test_sigma(), self.test_mu(), self.test_t1_t0()
-    #     weight = StrokeGenerator.weights(step_size, T, sigma, mu, t0)
-    #     valid_w = True  # bool to check that w exists exclusively within [0,1]
-    #     for i in range(0, len(weight)):
-    #         if any(t < 0 for t in weight[i]) or any(t > 1 for t in weight[i]):
-    #             valid_w = False
-    #     self.assertTrue(valid_w)  # Test weights are within [0, 1]
-    #     """Test the displacement method"""
-    #     t_points = np.array([[0, 0], [3, 6], [5, 10]]).astype(float)
-    #     D, theta = self.test_D(), self.test_theta()
-    #     delta = [0.9, 0.3]
-    #     displacement = StrokeGenerator.displacements(step_size, T, D, theta,
-    #                                                  delta, weight)
-    #     np.testing.assert_array_almost_equal(displacement[-1][-1],
-    #                                          t_points[-1] - t_points[-2], 0.1)
+    def test_weights_and_displacements(self):
+        """Test the weights method"""
+        step_size, T = 0.01, [0.5, 0.7]
+        sigma, mu, t0 = self.test_sigma(), self.test_mu(), self.test_t1_t0()
+        weight = StrokeGenerator.weights(step_size, T, sigma, mu, t0)
+        valid_w = True  # bool to check that w exists exclusively within [0,1]
+        for i in range(0, len(weight)):
+            if any(t < 0 for t in weight[i]) or any(t > 1 for t in weight[i]):
+                valid_w = False
+        self.assertTrue(valid_w)  # Test weights are within [0, 1]
+        """Test the displacement method"""
+        t_points = np.array([[0, 0], [3, 6], [5, 10]]).astype(float)
+        D, theta = self.test_D(), self.test_theta()
+        delta = [0.9, 0.3]
+        displacement = StrokeGenerator.displacements(step_size, T, D, theta,
+                                                     delta, weight)
+        np.testing.assert_array_almost_equal(displacement[-1][-1],
+                                             t_points[-1] - t_points[-2], 0.1)
         
-    #     return(displacement)
+        return(displacement)
 
-    # def test_points(self):
-    #     """Test the points method."""
-    #     t_points = np.array([[0, 0], [3, 6], [5, 10]])
-    #     points = StrokeGenerator.points(self.test_weights_and_displacements(),
-    #                                     t_points)
-    #     np.testing.assert_array_almost_equal(points[-1][-1],
-    #                                          t_points[-1], 0.01)
-    #     return points
+    def test_points(self):
+        """Test the points method."""
+        t_points = np.array([[0, 0], [3, 6], [5, 10]])
+        points = StrokeGenerator.points(self.test_weights_and_displacements(),
+                                        t_points)
+        np.testing.assert_array_almost_equal(points[-1][-1],
+                                             t_points[-1], 0.01)
+        return points
 
     # def test_velocity(self):
         # """Test the velocity method."""
