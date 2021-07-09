@@ -75,7 +75,6 @@ class StrokeGenerator:
               for s, t in zip(sigma, T)]
         return(mu)
 
-
     @staticmethod
     def D(t_points):
         """D: stroke amplitude, distance between target points
