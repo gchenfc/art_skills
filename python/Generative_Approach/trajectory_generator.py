@@ -30,21 +30,33 @@ class TrajectoryGenerator:
         self.delta_t = delta_t  # rel. t-offset wrt prev. stroke occu. & durat.
         self.T = T    # period of the stroke (sec)
 
-    def generate_strokes(self):
+    def trajectory_setup(self):
+        """Use input values to setup all necessary derived parameters"""
+        strokegen = StrokeGenerator()
+        sigma = strokegen.sigma(self.Ac)
+        mu = strokegen.mu(sigma, self.T)
+        D, theta = strokegen.D(self.t_points, self.delta)
+        t0, t = strokegen.t0_t(self.step_size, sigma, mu, self.T, self.delta_t)
+        return(sigma, mu, D, theta, t0, t)
+
+    def generate_stroke(self, t, t0, sigma, mu, D, theta):
         """Use input values to generate a stroke"""
-        stroke = StrokeGenerator()
-        sigma = stroke.sigma(self.Ac)
-        mu = stroke.mu(sigma, self.T)
-        D = stroke.D(self.t_points)
-        theta = stroke.theta(self.t_points)
-        t0 = stroke.t0_i(sigma, mu, self.delta_t, D)
-        weights = stroke.weights(self.step_size, self.T, sigma, mu, t0)
-        displacements = stroke.displacements(self.step_size, self.T, D,
-                                             theta, self.delta, weights)
-        points = stroke.points(displacements, self.t_points)
-        velocities = stroke.velocity(self.step_size, points)
-        vel = stroke.SL_velocity(self.step_size, self.T, mu, sigma, D, t0)
-        return(points, velocities, vel, weights, displacements)
+        strokegen = StrokeGenerator()
+        weight = strokegen.weight(t, t0, sigma, mu)
+        stroke = strokegen.stroke(self.t_points, weight, D, theta, self.delta)
+        # velocities = strokegen.velocity(self.step_size, points)
+        # vel = strokegen.SL_velocity(self.step_size, self.T, mu, sigma, D, t0)
+        return(stroke)
+
+    def generate_trajectory(self):
+        sigma, mu, D, theta, t0, t = self.trajectory_setup()
+        trajectory = []
+        for i in range(len(self.t_points) - 1):
+            stroke = self.generate_stroke(t, t0[i], sigma[i], mu[i], D[i],
+                                          theta[i])
+            trajectory.append(stroke)
+            velocity = 0
+        return(trajectory, velocity)
 
 
 class StrokeGenerator:
@@ -104,7 +116,6 @@ class StrokeGenerator:
                     (towards a virtual target) and describes the lognormal
                     impulse response of each stroke to a centrally generated
                     command occurring at time t0i.
-        t1: onset time of the lognormal stroke profile
 
         Args:
             T_prev: the period of the pervious stroke
