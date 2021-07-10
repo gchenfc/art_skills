@@ -6,7 +6,10 @@ All Rights Reserved
 See LICENSE for the license information
 
 Unit test for generative approach to strokes, using methodology described in:
+
 Berio17eurographics_HandwritingTrajectories.pdf
+Berio21thesis_Autograff_graffiti_writing.pdf
+Github: colormotor/motor repository
 
 Author: Juan-Diego Florez, Frank Dellaert, Sang-Won Leigh
 """
@@ -15,7 +18,6 @@ import math
 import unittest
 import numpy as np
 from scipy import special
-# from scipy.stats import lognorm
 # from gtsam.utils.test_case import GtsamTestCase
 
 
@@ -28,7 +30,7 @@ class TrajectoryGenerator:
         self.delta = delta  # cent. angle (rad) of the stroke's circ. arc shape
         self.Ac = Ac  # shape parameter for log curve skewedness, from [0, 1]
         self.delta_t = delta_t  # rel. t-offset wrt prev. stroke occu. & durat.
-        self.T = T    # period of the stroke (sec)
+        self.T = np.ones(len(t_points)-1)*T  # period of the trajectory (sec)
 
     def trajectory_setup(self):
         """Use input values to setup all necessary derived parameters"""
@@ -45,17 +47,16 @@ class TrajectoryGenerator:
         weight = strokegen.weight(t, t0, sigma, mu)
         displacement = strokegen.displacement(self.t_points, weight, D, theta,
                                               delta)
-        # velocities = strokegen.velocity(self.dt, points)
-        # vel = strokegen.SL_velocity(self.dt, self.T, mu, sigma, D, t0)
         return(displacement)
 
     def generate_trajectory(self):
         sigma, mu, D, theta, t0, t = self.trajectory_setup()
-        trajectory = np.zeros((2, 54))
+        trajectory = np.zeros((2, len(t)))
         for i in range(len(self.t_points[0]) - 1):
             displacement = self.generate_stroke(t, t0[i], sigma[i], mu[i],
                                                 D[i], theta[i], self.delta[i])
             trajectory[:, :] += displacement
+
         return(trajectory)
 
     def velocity(self):
@@ -107,7 +108,8 @@ class StrokeGenerator:
         t_disp = np.diff(t_points, axis=1)
         D = np.sqrt(t_disp[0, :]**2 + t_disp[1, :]**2)
         theta = np.arctan2(t_disp[1, :], t_disp[0, :])
-        # shift D with lognormal (using delta parameter):
+        # From Berio code:
+        # shift D with lognormal (using delta parameter)
         h = (delta/2) / np.sin(delta/2)
         h[np.abs(np.sin(delta)) < self.sensitivity] = 1.
         D_adj = D*h
@@ -135,7 +137,7 @@ class StrokeGenerator:
         # t_offset = 0.05
         t0 = np.zeros(n)  # + t_offset
         """eqtn: t0 = t0_(i-1) + delta_t*T - e^(mu - sigma)"""
-        t0[1:] = delta_t[1:] * T[1:]
+        t0[1:] = delta_t[1:] * T
         t0 = np.cumsum(t0)
         # Add onsets in order to shift lognormal to start
         t0 = t0 - np.exp(mu[0] - sigma[0]*3)
@@ -172,8 +174,7 @@ class StrokeGenerator:
         P0_offset = np.ones((2, len(weight)))*P0
         # in Berio17, this is "theta + ..."
         theta_0 = theta - (math.pi + delta)/2
-        # if abs(delta) > self.eps:  # eps according to Berio17
-        if abs(delta) > self.sensitivity:  # "... > sensitivity in Berio code
+        if abs(delta) > self.sensitivity:
             # in Berio17: trig_fn(th0 - delta*weight) - ...
             d = D*np.vstack([(np.cos(theta_0 + delta*weight) -
                               np.cos(theta_0)) / (2*np.sin(delta/2)),
@@ -197,21 +198,6 @@ class StrokeGenerator:
                     for x in range(1, len(points[i]))]
             velocity_profiles.append([velocity_prof, time])
         return(velocity_profiles)
-
-    @staticmethod
-    def SL_velocity(dt, T, mu, sigma, D, t0):
-        steps = [round(t/dt) for t in T]
-        relative_times = [[round((x*dt), 2)
-                           for x in range(1, steps[y]+1)]
-                          for y in range(len(steps))]
-        lambda_i = [[(1/(x*math.sqrt(2*math.pi)*(t - t0[n])) *
-                      math.exp(((math.log(t - t0[n]) - y)**2)/(2*x**2)))
-                     for t in relative_times[n]]
-                    for x, y, n in zip(sigma, mu, range(len(T)))]
-        vel = [[D[n]*lambda_i[n][t] for t in range(len(lambda_i[n]))]
-               for n in range(len(T))]
-        V = [vel, relative_times]
-        return(V)
 
 
 class TestStrokeGenerator(unittest.TestCase):
@@ -329,13 +315,6 @@ class TestStrokeGenerator(unittest.TestCase):
                                     trajectory[1][-1]],
                                    [t_points[0][-1],
                                     t_points[1][-1]], 0.1)
-
-    # def test_velocity(self):
-        # """Test the velocity method."""
-        # dt = 0.01
-        # velocity = StrokeGenerator.velocity(dt,
-        #                                     self.test_points())
-        # self.assertEqual(len(velocity), len(self.test_points()))
 
 
 if __name__ == "__main__":
