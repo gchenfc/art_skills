@@ -35,15 +35,15 @@ class TrajectoryGenerator:
         strokegen = StrokeGenerator()
         sigma = strokegen.sigma(self.Ac)
         mu = strokegen.mu(sigma, self.T)
-        D, theta = strokegen.D(self.t_points, self.delta)
+        D, D_adj, theta = strokegen.D_theta(self.t_points, self.delta)
         t0, t = strokegen.t0_t(self.step_size, sigma, mu, self.T, self.delta_t)
         return(sigma, mu, D, theta, t0, t)
 
-    def generate_stroke(self, t, t0, sigma, mu, D, theta):
+    def generate_stroke(self, t, t0, sigma, mu, D, theta, delta):
         """Use input values to generate a stroke"""
         strokegen = StrokeGenerator()
         weight = strokegen.weight(t, t0, sigma, mu)
-        stroke = strokegen.stroke(self.t_points, weight, D, theta, self.delta)
+        stroke = strokegen.stroke(self.t_points, weight, D, theta, delta)
         # velocities = strokegen.velocity(self.step_size, points)
         # vel = strokegen.SL_velocity(self.step_size, self.T, mu, sigma, D, t0)
         return(stroke)
@@ -53,14 +53,17 @@ class TrajectoryGenerator:
         trajectory = []
         for i in range(len(self.t_points) - 1):
             stroke = self.generate_stroke(t, t0[i], sigma[i], mu[i], D[i],
-                                          theta[i])
-            trajectory.append(stroke)
+                                          theta[i], self.delta[i])
+            if i < 1:
+                trajectory = stroke
+            else:
+                trajectory = np.vstack([trajectory, stroke])
             velocity = 0
         return(trajectory, velocity)
 
 
 class StrokeGenerator:
-    """Generates one stroke from trajectory input."""
+    """Generates strokes from trajectory input."""
 
     def __init__(self, eps=1e-15, sensitivity=1e-10):
         self.eps = eps  # a really small value, used to avoid divide by zero
@@ -152,8 +155,8 @@ class StrokeGenerator:
                                       (sigma*math.sqrt(2))))
         return(weight)
 
-    def stroke(self, t_points, weight, D, theta, delta):
-        """stroke: discrete trajectory between 2 target points
+    def displacement(self, t_points, weight, D, theta, delta):
+        """displacement: discrete trajectory between 2 target points
 
         Args:
             step_size ([float]): [timestep between generated points]
@@ -163,7 +166,7 @@ class StrokeGenerator:
         """
         P0 = t_points.T[0]
         P0 = P0.reshape(-1, 1)
-        stroke = np.ones((2, len(weight)))*P0
+        P0_offset = np.ones((2, len(weight)))*P0
         # in Berio17, this is "theta + ..."
         theta_0 = theta - (math.pi + delta)/2
         # if abs(delta) > self.eps:  # eps according to Berio17
@@ -173,12 +176,12 @@ class StrokeGenerator:
                               np.cos(theta_0)) / (2*np.sin(delta/2)),
                              (np.sin(theta_0 + delta*weight) -
                               np.sin(theta_0)) / (2*np.sin(delta/2))])
-            stroke[:, :] += d
+            displacement = d + P0_offset
         else:
             d = D * np.vstack([np.cos(theta)*weight,
                                np.sin(theta)*weight])
-            stroke[:, :] += d
-        return(d)
+            displacement = d + P0_offset
+        return(displacement)
 
     @staticmethod
     def velocity(step_size, points):
@@ -295,16 +298,29 @@ class TestStrokeGenerator(unittest.TestCase):
         weight = self.test_weight()
         D, D_adj, theta = self.test_D_theta()
         delta = np.array([0.3, 0.3, 0.3])
-        stroke = StrokeGenerator.stroke(StrokeGenerator(), t_points, weight,
-                                        D[0], theta[0], delta[0])
-        print('tpoint', t_points[0][1], t_points[1][1])
-        print('last disp', stroke[0][-1], stroke[1][-1])
-        np.testing.assert_array_almost_equal([stroke[0][-1],
-                                              stroke[1][-1]],
+        displacement = StrokeGenerator.displacement(StrokeGenerator(),
+                                                    t_points, weight, D[0],
+                                                    theta[0], delta[0])
+        np.testing.assert_array_almost_equal([displacement[0][-1],
+                                              displacement[1][-1]],
                                              [t_points[0][1],
                                               t_points[1][1]], 3)
-        return(stroke)
+        return(displacement)
 
+    def test_trajectory(self):
+        t_points = np.array([[0, 0], [-50, 100], [100, 70], [-40, 120]]).T
+        weight = self.test_weight()
+        D, D_adj, theta = self.test_D_theta()
+        delta = np.array([0.3, 0.3, 0.3])
+        for i in range(len(t_points[0])):
+            displacement = StrokeGenerator.displacement(StrokeGenerator(),
+                                                        t_points, weight, D[0],
+                                                        theta[0], delta[0])
+            trajectory[:,:] += displacement
+        np.testing.assert_array_almost_equal([displacement[0][-1],
+                                              displacement[1][-1]],
+                                             [t_points[0][1],
+                                              t_points[1][1]], 3)
     # def test_velocity(self):
         # """Test the velocity method."""
         # step_size = 0.01
