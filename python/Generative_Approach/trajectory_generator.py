@@ -22,8 +22,8 @@ from scipy import special
 class TrajectoryGenerator:
     """Top-level class."""
 
-    def __init__(self, step_size, t_points, delta, Ac, delta_t, T):
-        self.step_size = step_size  # timestep size (sec)
+    def __init__(self, dt, t_points, delta, Ac, delta_t, T):
+        self.dt = dt  # timestep size (sec)
         self.t_points = t_points  # 2D array of target points, including origin
         self.delta = delta  # cent. angle (rad) of the stroke's circ. arc shape
         self.Ac = Ac  # shape parameter for log curve skewedness, from [0, 1]
@@ -36,30 +36,33 @@ class TrajectoryGenerator:
         sigma = strokegen.sigma(self.Ac)
         mu = strokegen.mu(sigma, self.T)
         D, D_adj, theta = strokegen.D_theta(self.t_points, self.delta)
-        t0, t = strokegen.t0_t(self.step_size, sigma, mu, self.T, self.delta_t)
+        t0, t = strokegen.t0_t(self.dt, sigma, mu, self.T, self.delta_t)
         return(sigma, mu, D, theta, t0, t)
 
     def generate_stroke(self, t, t0, sigma, mu, D, theta, delta):
         """Use input values to generate a stroke"""
         strokegen = StrokeGenerator()
         weight = strokegen.weight(t, t0, sigma, mu)
-        stroke = strokegen.stroke(self.t_points, weight, D, theta, delta)
-        # velocities = strokegen.velocity(self.step_size, points)
-        # vel = strokegen.SL_velocity(self.step_size, self.T, mu, sigma, D, t0)
-        return(stroke)
+        displacement = strokegen.displacement(self.t_points, weight, D, theta,
+                                              delta)
+        # velocities = strokegen.velocity(self.dt, points)
+        # vel = strokegen.SL_velocity(self.dt, self.T, mu, sigma, D, t0)
+        return(displacement)
 
     def generate_trajectory(self):
         sigma, mu, D, theta, t0, t = self.trajectory_setup()
-        trajectory = []
-        for i in range(len(self.t_points) - 1):
-            stroke = self.generate_stroke(t, t0[i], sigma[i], mu[i], D[i],
-                                          theta[i], self.delta[i])
-            if i < 1:
-                trajectory = stroke
-            else:
-                trajectory = np.vstack([trajectory, stroke])
-            velocity = 0
-        return(trajectory, velocity)
+        trajectory = np.zeros((2, 54))
+        for i in range(len(self.t_points[0]) - 1):
+            displacement = self.generate_stroke(t, t0[i], sigma[i], mu[i],
+                                                D[i], theta[i], self.delta[i])
+            trajectory[:, :] += displacement
+        return(trajectory)
+
+    def velocity(self):
+        trajectory = self.generate_trajectory()
+        velocity = np.sqrt(np.sum((np.gradient(trajectory, axis=1)/self.dt)**2,
+                                  axis=0))
+        return(velocity)
 
 
 class StrokeGenerator:
@@ -111,7 +114,7 @@ class StrokeGenerator:
         return(D, D_adj, theta)
 
     @staticmethod
-    def t0_t(step_size, sigma, mu, T, delta_t):
+    def t0_t(dt, sigma, mu, T, delta_t):
         """
         t0: the time of ocurrence of the command that the lognormal impulse
                responds to
@@ -137,7 +140,7 @@ class StrokeGenerator:
         # Add onsets in order to shift lognormal to start
         t0 = t0 - np.exp(mu[0] - sigma[0]*3)
         endtime = t0[-1] + np.exp(mu[-1] + sigma[-1]*3)
-        t = np.arange(0.0, endtime, step_size)
+        t = np.arange(0.0, endtime, dt)
         return(t0, t)
 
     """Stroke Level Methods: (operate on stroke-specific input values)"""
@@ -159,7 +162,7 @@ class StrokeGenerator:
         """displacement: discrete trajectory between 2 target points
 
         Args:
-            step_size ([float]): [timestep between generated points]
+            dt ([float]): [timestep between generated points]
             T ([float]): [period of the stroke]
             delta ([float]): [central angle of the circular arc shape of curve]
             weight ([list]): [weight at time t]
@@ -184,21 +187,21 @@ class StrokeGenerator:
         return(displacement)
 
     @staticmethod
-    def velocity(step_size, points):
+    def velocity(dt, points):
         velocity_profiles = []
         for i in range(len(points)):
-            velocity_prof = [math.dist(points[i][x], points[i][x-1])/step_size
+            velocity_prof = [math.dist(points[i][x], points[i][x-1])/dt
                              for x in range(1, len(points[i]))]
-            time = [round(step_size * x, 2) if i == 0
-                    else (round(step_size * x, 2))  # + T[-1])
+            time = [round(dt * x, 2) if i == 0
+                    else (round(dt * x, 2))  # + T[-1])
                     for x in range(1, len(points[i]))]
             velocity_profiles.append([velocity_prof, time])
         return(velocity_profiles)
 
     @staticmethod
-    def SL_velocity(step_size, T, mu, sigma, D, t0):
-        steps = [round(t/step_size) for t in T]
-        relative_times = [[round((x*step_size), 2)
+    def SL_velocity(dt, T, mu, sigma, D, t0):
+        steps = [round(t/dt) for t in T]
+        relative_times = [[round((x*dt), 2)
                            for x in range(1, steps[y]+1)]
                           for y in range(len(steps))]
         lambda_i = [[(1/(x*math.sqrt(2*math.pi)*(t - t0[n])) *
@@ -251,10 +254,10 @@ class TestStrokeGenerator(unittest.TestCase):
 
     def test_t0_t(self):
         """Test the t0 method."""
-        step_size = 0.01
+        dt = 0.01
         T, delta_t = np.array([0.3, 0.3, 0.3]), np.array([0.4, 0.4, 0.4])
         sigma, mu = self.test_sigma(), self.test_mu()
-        t0, t = StrokeGenerator.t0_t(step_size, sigma, mu, T, delta_t)
+        t0, t = StrokeGenerator.t0_t(dt, sigma, mu, T, delta_t)
         # regression, Berio code values
         np.testing.assert_array_almost_equal(t0, [0., 0.115824, 0.235824],
                                              0.001)
@@ -308,23 +311,29 @@ class TestStrokeGenerator(unittest.TestCase):
         return(displacement)
 
     def test_trajectory(self):
+        """Test trajectory generation"""
         t_points = np.array([[0, 0], [-50, 100], [100, 70], [-40, 120]]).T
-        weight = self.test_weight()
+        sigma, mu = self.test_sigma(), self.test_mu()
         D, D_adj, theta = self.test_D_theta()
+        t0, t = self.test_t0_t()
         delta = np.array([0.3, 0.3, 0.3])
-        for i in range(len(t_points[0])):
+        trajectory = np.zeros((2, 54))
+        for i in range(len(t_points[0]) - 1):
+            weight = StrokeGenerator.weight(StrokeGenerator(), t, t0[i],
+                                            sigma[i], mu[i])
             displacement = StrokeGenerator.displacement(StrokeGenerator(),
-                                                        t_points, weight, D[0],
-                                                        theta[0], delta[0])
-            trajectory[:,:] += displacement
-        np.testing.assert_array_almost_equal([displacement[0][-1],
-                                              displacement[1][-1]],
-                                             [t_points[0][1],
-                                              t_points[1][1]], 3)
+                                                        t_points, weight, D[i],
+                                                        theta[i], delta[i])
+            trajectory[:, :] += displacement
+        np.testing.assert_allclose([trajectory[0][-1],
+                                    trajectory[1][-1]],
+                                   [t_points[0][-1],
+                                    t_points[1][-1]], 0.1)
+
     # def test_velocity(self):
         # """Test the velocity method."""
-        # step_size = 0.01
-        # velocity = StrokeGenerator.velocity(step_size,
+        # dt = 0.01
+        # velocity = StrokeGenerator.velocity(dt,
         #                                     self.test_points())
         # self.assertEqual(len(velocity), len(self.test_points()))
 
