@@ -21,6 +21,8 @@ find_package(GTSAM REQUIRED) # Uses installed package
 #   searched before library folders
 include_directories(BEFORE "${PROJECT_SOURCE_DIR}")
 
+add_subdirectory(cpp)
+
 # ##############################################################################
 # * 4. Build static library from common sources. This is a common cmake step
 #   where we load all the source files and link against the GTSAM library.

@@ -1,5 +1,32 @@
 # Art Skills
 
+## GTSAM chebyshev alphabet stuff
+To get `cpp/chebyshev.cpp` to run:
+
+In GTSAM folder:
+1. `git checkout feature/basis` - to get Varun's basis function code
+2. `git merge develop`          - to get latest gtsam updates
+3. resolve merge conflicts (gtsam.i - use "incoming" from develop)
+    I think this should probably work but not sure:  
+        `git checkout feature/basis`  
+        `git merge -X theirs develop`
+4. `cd build`
+5. `ccmake ..` - this is a "GUI" interface to edit cmake variables.  scroll down to `GTSAM_WITH_EIGEN_UNSUPPORTED` and change it from "OFF" to "ON".  Hit "c" for "configure" and keep doing that until you get the option for "g" for "generate".  or:
+    `cmake -DGTSAM_WITH_EIGEN_UNSUPPORTED=ON ..`
+6. `cmake -DCMAKE_INSTALL_PREFIX=./install ..`
+7. `make -j8 install`
+
+Then back in art_skills,
+```bash
+cd build
+cmake ..
+make jd00_chebyshevAlphabet
+./cpp/jd00_chebyshevAlphabet
+```
+should work
+
+---
+
 A project to capture, perceive, and render artistic skills.
 
 - Capture: really, motion capture, cameras, etc. LOW level.
