@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 GTSAM Copyright 2010-2019, Georgia Tech Research Corporation,
 Atlanta, Georgia 30332-0415
@@ -16,6 +18,7 @@ Author: Juan-Diego Florez, Frank Dellaert, Sang-Won Leigh
 
 from stroke_generator import StrokeGenerator
 import numpy as np
+import scipy.signal
 
 
 class TrajectoryGenerator:
@@ -39,7 +42,7 @@ class TrajectoryGenerator:
         t0, t = strokegen.t0_t(self.dt, sigma, mu, self.T, self.delta_t)
         return(sigma, mu, D, theta, t0, t)
 
-    def generate_stroke(self, t, t0, sigma, mu, D, theta, delta):
+    def trajectory_displacements(self, t, t0, sigma, mu, D, theta, delta):
         """Use input values to generate a stroke"""
         strokegen = StrokeGenerator()
         weight = strokegen.weight(t, t0, sigma, mu)
@@ -55,11 +58,20 @@ class TrajectoryGenerator:
         sigma, mu, D, theta, t0, t = self.trajectory_setup()
         trajectory = np.zeros((2, len(t)))
         for i in range(len(self.t_points[0]) - 1):
-            displacement = self.generate_stroke(t, t0[i], sigma[i], mu[i],
-                                                D[i], theta[i], self.delta[i])
+            displacement = self.trajectory_displacements(t, t0[i], sigma[i],
+                                                         mu[i], D[i], theta[i],
+                                                         self.delta[i])
             trajectory[:, :] += displacement
 
         return(trajectory)
+
+    def extract_strokes(self):
+        """
+        strokes: the interpolated points of each stroke that makes up a trajectory
+        """
+        traj = self.generate_trajectory()
+        maxima = scipy.signal.argrelextrema(traj[0], np.greater)
+        return(maxima)
 
     def velocity(self):
         """
