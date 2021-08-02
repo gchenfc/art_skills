@@ -7,7 +7,8 @@
  * -------------------------------------------------------------------------- */
 
 // Generic GTSAM includes
-#include <gtsam/3rdparty/Eigen/Eigen/Dense.h>
+#include <gtsam/3rdparty/Eigen/Eigen/Dense>
+#include <gtsam/3rdparty/Eigen/Eigen/Core>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
