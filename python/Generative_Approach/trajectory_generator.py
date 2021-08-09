@@ -71,6 +71,10 @@ class TrajectoryGenerator:
         """
         traj = self.generate_trajectory()
         maxima = scipy.signal.argrelextrema(traj[0], np.greater)
+        minima = scipy.signal.argrelextrema(traj[0], np.less)
+        print(traj[0][maxima])
+        print(traj[0][minima])
+        print(traj[0])
         return(maxima)
 
     def velocity(self):
