@@ -4,8 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/home/jdflo/GIT_REPOS/gtsam/build/install/include/",
-                "/home/jdflo/GIT_REPOS/gtsam/build/install/include/gtsam/3rdparty/Eigen"
+                "/home/jdflo/include",
+                "/home/jdflo/include/gtsam/3rdparty/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

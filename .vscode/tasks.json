@@ -2,16 +2,14 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: g++ build active file",
-            "command": "/usr/bin/g++",
+            "label": "C/C++ make this example/test",
+            "command": "make",
             "args": [
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "-j8",
+                "${fileBasenameNoExtension}.run"
             ],
             "options": {
-                "cwd": "${fileDirname}"
+                "cwd": "build"
             },
             "problemMatcher": [
                 "$gcc"

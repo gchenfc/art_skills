@@ -38,19 +38,10 @@ int input_trajectory(char letter);
 
 int main()
 {
-    int wave, amplitude, ang_freq, t, shift;
-    cout << "Enter amplitude";
-    cin >> amplitude;
-    cout << "Enter ang_freq";
-    cin >> ang_freq;
-    cout << "Enter t";
-    cin >> t;
-    cout << "Enter shift";
-    cin >> shift;
+    // test case 1
+    // user defines letter for trajectory (A, C, V)
     
-    wave = trajectory(amplitude, ang_freq, t, shift);
-    cout << wave;
-
+    
     return 0;
 }
 

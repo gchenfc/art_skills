@@ -7,8 +7,6 @@
  * -------------------------------------------------------------------------- */
 
 // Generic GTSAM includes
-#include <gtsam/3rdparty/Eigen/Eigen/Dense>
-#include <gtsam/3rdparty/Eigen/Eigen/Core>
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
@@ -64,7 +62,7 @@ int main(int argc, char** argv) {
   // First create an initial guess
   Values initial;
   initial.insert<Vector>(coefficients_key,
-                         Vector::Zero(N));  // initial does not matter
+                         Vector::Zero(3));  // initial does not matter
   // Then optimize
   LevenbergMarquardtParams parameters;
   LevenbergMarquardtOptimizer optimizer(graph, initial, parameters);
