@@ -2,29 +2,27 @@
  * @file chebyshev_alphabet_test.cpp
  * @date August 12, 2021
  * @author JD Florez
- * @brief Unit tests for Chebyshev fitting on target geometries
+ * @brief Unit tests for Chebyshev1 fitting on target geometries
  */
 
-// Generic GTSAM includes
-// #include <gtsam/3rdparty/Eigen/Eigen/Dense>
-// #include <gtsam/3rdparty/Eigen/Eigen/Core>
+// Generic includes
 #include <iostream>
 #include <vector>
 #include <cmath>
-
-// #include <gtsam/geometry/Pose2.h>
-// #include <gtsam/inference/Key.h>
-// #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
-// #include <gtsam/nonlinear/Marginals.h>
-// #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-// #include <gtsam/nonlinear/Values.h>
-// #include <gtsam/slam/BetweenFactor.h>
+// Generic GTSAM includes - Gerry
+#include <gtsam/geometry/Pose2.h>
+#include <gtsam/inference/Key.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/Marginals.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/slam/BetweenFactor.h>
 // Chebyshev includes
-// #include <gtsam/basis/Chebyshev.h>
-// #include <gtsam/basis/FitBasis.h>
+#include <gtsam/basis/Chebyshev.h>
+#include <gtsam/basis/FitBasis.h>
 // namespace
 using namespace std;
-// using namespace gtsam;
+using namespace gtsam;
 
 struct trajectory
 {
@@ -33,7 +31,7 @@ struct trajectory
 };
 
 
-// functions
+// unit test functions
 int input_trajectory(char letter);
 
 int main()
@@ -50,4 +48,3 @@ int input_trajectory(char letter)
     
     return y;
 }
-
