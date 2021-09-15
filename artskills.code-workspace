@@ -1,0 +1,10 @@
+{
+    "settings": {
+        "ros.distro": "melodic"
+    },
+    "folders": [
+        {
+            "path": ".."
+        }
+    ]
+}
