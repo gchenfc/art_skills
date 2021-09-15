@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../../gtsam"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"iostream": "cpp"
+		},
+		"ros.distro": "melodic"
+	}
+}

@@ -1,3 +1,7 @@
 {
-    "python.pythonPath": "C:\\Users\\Xodom\\AppData\\Local\\Programs\\Python\\Python39\\python.exe"
+    "python.pythonPath": "C:\\Users\\Xodom\\AppData\\Local\\Programs\\Python\\Python39\\python.exe",
+    "ros.distro": "melodic",
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.linting.enabled": true
 }

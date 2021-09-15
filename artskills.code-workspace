@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../gtsam"
+		}
+	],
+	"settings": {
+		"ros.distro": "melodic"
+	}
+}
