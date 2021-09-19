@@ -12,7 +12,6 @@ Author: Frank Dellaert, Sang-Won Leigh, JD Florez-Castillo
 import unittest
 
 import numpy as np
-from numpy import load
 from matplotlib import pyplot as plt
 from numpy.core.function_base import linspace
 import gtsam
@@ -30,39 +29,6 @@ class render_trajectory:
 class alphabet_skills:
     """Top-level class."""
 
-    def create_V(self, input_sequence, step):
-        """Define 2D trajectory from user input.
-
-        Args:
-            input_sequence ([list of strings]): [contains a sequence of
-            letters of the alphabet]
-            step ([int]): [description]
-
-        Returns:
-            trajectory ([list of lists of arrays])
-        """
-        letter = []
-        trajectory = []
-        width = 1.0  # width of the letters
-        height = 1.0  # height of the letters
-        m = np.hypot(width, height)  # slope of diagonal strokes
-
-        for element in input_sequence:
-            if element == "V":
-                x1 = np.arange(0.0, width, step)
-                y1 = np.empty(len(x1),)
-                for i in range(len(x1)):
-                    if x1[i] <= width/2:
-                        y1[i] = -m*x1[i] + height
-                    else:
-                        y1[i] = m*x1[i] - height*2
-                stroke1 = np.array([x1, y1])
-                letter.append(stroke1)
-                trajectory.append(letter)
-            else:
-                print("Invalid desired trajectory")
-        return(trajectory[0])
-
     def capture_trajectory(self, input_sequence):
         """Read from mocap data
 
@@ -73,28 +39,32 @@ class alphabet_skills:
 
         # data_a is a list of strokes, where each stroke is an Nx2 numpy array
         data_a = data['A']
-        # for stroke in data_a:
-        #     plt.plot(stroke[:, 0], stroke[:, 1])
+        strokea1 = data_a[1]
+        strokea2 = data_a[3]
+        plt.plot(strokea1[:, 0], strokea1[:, 1])
+        plt.plot(strokea2[:, 0], strokea2[:, 1])
+        plt.show()
+
+        data_b = data['B']
+        strokeb1 = data_b[1]
+        strokeb2 = data_b[3]
+        strokeb3 = data_b[5]
+        # plt.plot(strokeb1[:, 0], strokeb1[:, 1])
+        # plt.plot(strokeb2[:, 0], strokeb2[:, 1])
+        # plt.plot(strokeb3[:, 0], strokeb3[:, 1])
         # plt.show()
 
-        stroke1 = data_a[1]
-        stroke2 = data_a[3]
-        traj = np.array([stroke1, stroke2])
-        plt.plot(stroke1[:, 0], stroke1[:, 1])
-        plt.plot(stroke2[:, 0], stroke2[:, 1])
-        plt.show()
-        data_b = data['B']
-        # for stroke in data_b:
-        #     plt.plot(stroke[:, 0], stroke[:, 1])
-        # plt.show()
         data_c = data['C']
+        strokec1 = data_c[1]
         # for stroke in data_c:
         #     plt.plot(stroke[:, 0], stroke[:, 1])
         # plt.show()
         data_d = data['D']
-        # for stroke in data_d:
-        #     plt.plot(stroke[:, 0], stroke[:, 1])
-        # plt.show()
+        stroked1 = data_d[1]
+        stroked2 = data_d[3]
+        for stroke in data_d:
+            plt.plot(stroke[:, 0], stroke[:, 1])
+        plt.show()
         data_e = data['E']
         # for stroke in data_e:
         #     plt.plot(stroke[:, 0], stroke[:, 1])
@@ -122,6 +92,8 @@ class alphabet_skills:
         #     else:
         #         print("Invalid desired trajectory")
         #     index += 1
+        traj = np.array([[strokea1, strokea2], [strokeb1, strokeb2, strokeb3],
+                        [strokec1], [stroked1, stroked2]])
         return(traj)
 
     def Chebyshev_fit(self, ):  # , read_2D: capture_trajectory):
@@ -185,21 +157,25 @@ class TestWholeEnchilada(GtsamTestCase):
         # data_y = []
         interp_x = []
         interp_y = []
-        count = 0
+        count_s = 0
+        count_l = 0
         order = 12
         traj = self.test_capture_trajectory()
-        for stroke in traj:
-            traj_x = (stroke[:, 0])
-            traj_y = (stroke[:, 1])
-            traj_t = linspace(0, 1, len(traj_x))
-            zipx = zip(traj_t, traj_x)
-            zipy = zip(traj_t, traj_y)
-            data_x = dict(zipx)
-            data_y = dict(zipy)
-            interp_x.append(skills.test_fit_basis_chebyshev1basis(data_x, traj_t, order))
-            interp_y.append(skills.test_fit_basis_chebyshev1basis(data_y, traj_t, order))
-            plt.plot(interp_x[count], interp_y[count])
-            count += 1
+        for letter in traj:
+            for stroke in letter:
+                print("LETTER", letter)
+                traj_x = (stroke[:, 0] + count_l*0.7)
+                traj_y = (stroke[:, 1])
+                traj_t = linspace(0, 1, len(traj_x))
+                zipx = zip(traj_t, traj_x)
+                zipy = zip(traj_t, traj_y)
+                data_x = dict(zipx)
+                data_y = dict(zipy)
+                interp_x.append(skills.test_fit_basis_chebyshev1basis(data_x, traj_t, order))
+                interp_y.append(skills.test_fit_basis_chebyshev1basis(data_y, traj_t, order))
+                plt.plot(interp_x[count_s], interp_y[count_s])
+                count_s += 1
+            count_l += 1
         plt.show()
 
     # def test_write_stroke(self):
