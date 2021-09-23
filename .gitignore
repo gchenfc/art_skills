@@ -3,5 +3,7 @@ cpp/*
 !cpp/Stroke_Capture/
 cpp/Stroke_Capture/*
 !cpp/Stroke_Capture/src/
-!cpp/*.cpp
-build
+
+.vscode/*
+python/.vscode/*
+.vscode/settings.json
