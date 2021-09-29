@@ -78,7 +78,7 @@ struct SlnParameters {
           vector.segment<5>(2 + i * SlnControlPoint::SIZE)));
     }
     // period
-    params.period = vector.at(vector.size() - 1);
+    params.period = vector(vector.size() - 1);
 
     return params;
   }

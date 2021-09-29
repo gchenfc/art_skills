@@ -31,6 +31,8 @@ namespace art_skills {
  * @return The xy point of the sigma log normal curve at time t
  */
 gtsam::Vector2 querySigmaLogNormal(const SlnParameters &params, double t) {
-  // do math here
+  // TODO(JD): implement this
+  return gtsam::Vector2::Zero();
 }
+
 }  // namespace art_skills

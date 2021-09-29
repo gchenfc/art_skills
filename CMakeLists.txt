@@ -5,8 +5,9 @@
 # * 1. To create your own project, replace "gtsam_example" with the actual name
 #   of your project
 cmake_minimum_required(VERSION 3.9)
-project(gtsam_example CXX C)
+project(art_skills CXX C)
 set(CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 
 # ##############################################################################
 # * 2. Find GTSAM components so we have access to the GTSAM Cython install path
@@ -14,18 +15,29 @@ find_package(GTSAM REQUIRED) # Uses installed package
 # Note: Since Jan-2019, GTSAMConfig.cmake defines exported CMake targets that
 # automatically do include the include_directories() without the need to call
 # include_directories(), just target_link_libraries(NAME gtsam)
-# include_directories(${GTSAM_INCLUDE_DIR})
+find_package(GTSAMCMakeTools)
+include(GtsamMakeConfigFile)
+include(GtsamBuildTypes)
+include(GtsamTesting)
 
 # ##############################################################################
 # * 3. Add the local source directory for CMake Ensure that local folder is
 #   searched before library folders
-include_directories(BEFORE "${PROJECT_SOURCE_DIR}")
+include_directories(BEFORE "${PROJECT_SOURCE_DIR}/cpp")
 
 # ##############################################################################
 # * 4. Build static library from common sources. This is a common cmake step
 #   where we load all the source files and link against the GTSAM library.
-add_library(${PROJECT_NAME} SHARED cpp/greeting.h cpp/greeting.cpp)
+
+# Glob all source/header files in SOURCE_SUBDIRS.
+file(GLOB sources "cpp/*.cpp")
+file(GLOB headers "cpp/*.h")
+add_library(${PROJECT_NAME} SHARED ${headers} ${sources})
 target_link_libraries(${PROJECT_NAME} gtsam)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
+add_subdirectory(cpp)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 # ##############################################################################
 # * 5. Install library
