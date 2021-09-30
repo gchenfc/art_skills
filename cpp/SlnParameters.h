@@ -28,19 +28,20 @@ namespace art_skills {
  * SlnControlPoints.
  */
 struct SlnControlPoint {
-  static constexpr int SIZE = 5;
-  gtsam::Vector2 xy;
-  double delta_t;
-  double t;
-  double ac;
-  // other parameters here
+  static constexpr int SIZE = 6;
+  gtsam::Vector2 xy; // point coordinate
+  double delta; // central angle of stroke shape
+  double delta_t; // relative time offset wrt prev. stroke
+  double ac; // shape parameter
+  double t; // time occurance of point
 
   static SlnControlPoint fromVector(gtsam::Vector5 vector) {
     SlnControlPoint ctrl_point;
     ctrl_point.xy = vector.head<2>();
-    ctrl_point.delta_t = vector(2);
-    ctrl_point.t = vector(3);
+    ctrl_point.delta = vector(2);
+    ctrl_point.delta_t = vector(3)
     ctrl_point.ac = vector(4);
+    ctrl_point.T = vector(5);
     return ctrl_point;
   }
 };
