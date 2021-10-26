@@ -24,7 +24,7 @@
 namespace art_skills {
 
 /**
- * SlnControlPoint defines a single control point.  A stroke goes between two
+ * SlnControlPoint defines a single control point. A stroke goes between two
  * SlnControlPoints.
  */
 struct SlnControlPoint {

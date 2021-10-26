@@ -11,8 +11,8 @@
 
 /**
  *  @file  SparseSlnFactor.h
- *  @author JD
- *  @author Gerry
+ *  @author Juan-Diego Florez
+ *  @author Gerry Chen
  **/
 
 #pragma once
@@ -31,8 +31,8 @@ namespace art_skills {
 /**
  * A factor associated with a single 2D mocap point at a given time.
  * It is assumed that the caller uses the time to select the right stroke
- * segment `S_i`, and passes in t0, t1, and t to the constructor, where t0 and
- * t1 are the beginning and and time for that stroke i.
+ * segment `S_i`, and passes in t0 and t to the constructor, where t0 is
+ * the beginning time for that stroke i.
  * It is a unary factor that predicts the measurement given the parameters for
  * stroke i only, converted into a vector (not GTSAM-like, but hey).
  */
@@ -46,8 +46,7 @@ class SparseSlnFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
  private:
   typedef NoiseModelFactor1<Vector> Base;
 
-  int num_control_points_;
-  double t0_, t1_; /** the beginning and and time for that stroke i */
+  int num_strokes_;
   double t_;       /** the time step corresponding to this data point */
   Vector2 xy_;     /** The measured mocap data point */
 
@@ -55,17 +54,16 @@ class SparseSlnFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
   /** Constructor
    * @param parameters_key key for a SlnParameters struct (converted to a
    * vector)
-   * @param num_control_points the number of control points in the sigma log
-   * normal parameters
+   * @param num_strokes the number of stroke in the SLN trajectory
    * @param t the time that this data point corresonds to
    * @param mocap_data_xy the data point we're fitting to
    */
-  SigmaLogNormalFactor(gtsam::Key parameters_key,  //
-                       int num_control_points, double t,
+  SparseSlnFactor(gtsam::Key parameters_key,
+                       int num_strokes, double t,
                        const Vector2& mocap_data_xy,
                        const gtsam::SharedNoiseModel& model = nullptr)
       : Base(model, parameters_key),
-        num_control_points_(num_control_points),
+        num_strokes_(num_strokes),
         t_(t),
         xy_(mocap_data_xy) {}
 
@@ -75,14 +73,14 @@ class SparseSlnFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
       boost::optional<gtsam::Matrix&> H = boost::none) const override {
     // lambda function for querySigmaLogNormal but without `t` argument
     auto predict = [this, &x](const Vector& params_vector) {
-      SlnParameters params = SlnParameters::fromVector(num_control_points_, x);
+      SlnParameters params = SlnParameters::fromVector(num_strokes_, x);
       return querySigmaLogNormal(params, t_);
     };
     Vector2 predicted_xy = predict(x);
 
     // TODO(Gery+JD): fix this dynamic jacobian stuff
     if (H) {
-      switch (num_control_points_) {
+      switch (num_strokes_) {
         case 3:
           (*H) =
               gtsam::numericalDerivative11<Vector2, gtsam::Vector, 3 + 3 * 5>(
