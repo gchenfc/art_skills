@@ -86,18 +86,13 @@ class StrokeGenerator:
         # the first stroke starts with zero velocity
         # t_offset = 0.05
         t0 = np.zeros(n)  # + t_offset
-        #print("inst t0", t0)
         """eqtn: t0 = t0_(i-1) + delta_t*T - e^(mu - sigma)"""
         t0[1:] = delta_t[1:] * T
-        #print("t0 from delt", t0)
         t0 = np.cumsum(t0)
         # Add onsets in order to shift lognormal to start
         t0 = t0 - np.exp(mu[0] - sigma[0]*3)
-        #print("t0", t0)
         endtime = t0[-1] + np.exp(mu[-1] + sigma[-1]*3)
-        #print("endtime", endtime)
         t = np.arange(0.0, endtime, dt)
-        #print("t", t)
         return(t0, t)
 #
     """Stroke Level Methods: (operate on stroke-specific input values)"""
@@ -118,8 +113,8 @@ class StrokeGenerator:
 
     def displacement(self, t_points, weight, D, theta, delta):
         """
-        displacement: displacements between interpolated points, generated between
-                         target points
+        displacement: displacements between interpolated points, generated
+                      between target points
 
         Args:
             t_points ([np.array(float)]): [timestep between generated points]
