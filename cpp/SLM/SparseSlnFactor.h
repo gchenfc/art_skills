@@ -36,80 +36,66 @@ namespace art_skills {
  * It is a unary factor that predicts the measurement given the parameters for
  * stroke i only, converted into a vector (not GTSAM-like, but hey).
  */
-class SparseSlnFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
+class SparseSlnFactor
+    : public gtsam::NoiseModelFactor2<gtsam::Vector6, gtsam::Vector2> {
  public:
   using Vector = gtsam::Vector;
   using Vector2 = gtsam::Vector2;
+  using Vector6 = gtsam::Vector6;
   typedef typename boost::shared_ptr<SparseSlnFactor> shared_ptr;
   typedef SparseSlnFactor This;
 
  private:
-  typedef NoiseModelFactor1<Vector> Base;
-
-  int num_strokes_;
-  double t_;       /** the time step corresponding to this data point */
-  Vector2 xy_;     /** The measured mocap data point */
+  using Base = NoiseModelFactor2<gtsam::Vector6, gtsam::Vector2>;
+  double t_;   /** the time step corresponding to this data point */
+  Vector2 xy_; /** The measured mocap data point */
 
  public:
   /** Constructor
    * @param parameters_key key for a SlnParameters struct (converted to a
    * vector)
-   * @param num_strokes the number of stroke in the SLN trajectory
    * @param t the time that this data point corresonds to
    * @param mocap_data_xy the data point we're fitting to
    */
-  SparseSlnFactor(gtsam::Key parameters_key,
-                       int num_strokes, double t,
-                       const Vector2& mocap_data_xy,
-                       const gtsam::SharedNoiseModel& model = nullptr)
-      : Base(model, parameters_key),
-        num_strokes_(num_strokes),
-        t_(t),
-        xy_(mocap_data_xy) {}
+  SparseSlnFactor(gtsam::Key parameters_key, gtsam::Key p0_key, double t,
+                  const Vector2& mocap_data_xy,
+                  const gtsam::SharedNoiseModel& model = nullptr)
+      : Base(model, parameters_key, p0_key), t_(t), xy_(mocap_data_xy) {}
 
   /** vector of errors */
   Vector evaluateError(
-      const Vector& x,  //
-      boost::optional<gtsam::Matrix&> H = boost::none) const override {
-    // lambda function for querySigmaLogNormal but without `t` argument
-    auto predict = [this, &x](const Vector& params_vector) {
-      SlnParameters params = SlnParameters::fromVector(num_strokes_, x);
-      return querySigmaLogNormal(params, t_);
+      const Vector6& params, const Vector2& p0,  //
+      boost::optional<gtsam::Matrix&> H_params = boost::none,
+      boost::optional<gtsam::Matrix&> H_p0 = boost::none) const override {
+    // lambda function for queryposition but without `t` argument
+    auto predict = [this](const Vector6& params_vector, const Vector2& p0) {
+      SlnStroke params;
+      params.xy = p0;
+      params.t0 = params_vector(0);
+      params.D = params_vector(1);
+      params.theta1 = params_vector(2);
+      params.theta2 = params_vector(3);
+      params.sigma = params_vector(4);
+      params.mu = params_vector(5);
+
+      return SigmaLogNormal::queryposition(params, t_, 0.01);
     };
-    Vector2 predicted_xy = predict(x);
+    Vector2 predicted_xy = predict(params, p0);
 
     // TODO(Gery+JD): fix this dynamic jacobian stuff
-    if (H) {
-      switch (num_strokes_) {
-        case 3:
-          (*H) =
-              gtsam::numericalDerivative11<Vector2, gtsam::Vector, 3 + 3 * 5>(
-                  predict, x);
-          break;
-        case 4:
-          (*H) =
-              gtsam::numericalDerivative11<Vector2, gtsam::Vector, 3 + 4 * 5>(
-                  predict, x);
-          break;
-        case 5:
-          (*H) =
-              gtsam::numericalDerivative11<Vector2, gtsam::Vector, 3 + 5 * 5>(
-                  predict, x);
-          break;
-        case 6:
-          (*H) =
-              gtsam::numericalDerivative11<Vector2, gtsam::Vector, 3 + 6 * 5>(
-                  predict, x);
-          break;
-        default:
-          throw std::runtime_error(
-              "TODO: fix dynamic number of control points");
-      }
+    if (H_params) {
+      (*H_params) = gtsam::numericalDerivative21<Vector2, Vector6, Vector2>(
+          predict, params, p0);
+    }
+    if (H_p0) {
+      (*H_p0) = gtsam::numericalDerivative22<Vector2, Vector6, Vector2>(
+          predict, params, p0);
     }
     return predicted_xy - xy_;
   }
 
-  const Vector2& prior() const { return xy_; }
+  const Vector2& data_xy() const { return xy_; }
+  double data_t() const { return t_; }
 
   // /** print */
   // void print(const std::string& s,

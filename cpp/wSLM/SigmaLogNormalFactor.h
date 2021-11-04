@@ -61,7 +61,7 @@ class SigmaLogNormalFactor : public gtsam::NoiseModelFactor1<gtsam::Vector> {
                        const Vector2& mocap_data_xy,
                        const gtsam::SharedNoiseModel& model = nullptr)
       : Base(model, parameters_key),
-        num_control_points_(num_control_points),
+        num_control_points_(num_control_points),9398
         t_(t),
         xy_(mocap_data_xy) {}
 

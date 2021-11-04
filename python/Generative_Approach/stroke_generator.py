@@ -23,8 +23,7 @@ class StrokeGenerator:
             Ac ([np.array(float)]): [shape parameter that defines "skewdness"
                                      of the lognormal curve]
         """
-        sigma = np.sqrt(-np.log(1.0 - Ac))
-        return(sigma)
+        return(np.sqrt(-np.log(1.0 - Ac)))
 
     @staticmethod
     def mu(sigma, T):
@@ -36,8 +35,7 @@ class StrokeGenerator:
             sigma ([np.array(float)]): [log response time of the stroke]
             T ([float]): [period of the trajectory]
         """
-        mu = 3.*sigma - np.log((-1.0 + np.exp(6.*sigma))/T)
-        return(mu)
+        return(3.*sigma - np.log((-1.0 + np.exp(6.*sigma))/T))
 
     def D_theta(self, t_points, delta):
         """
@@ -93,6 +91,7 @@ class StrokeGenerator:
         t0 = t0 - np.exp(mu[0] - sigma[0]*3)
         endtime = t0[-1] + np.exp(mu[-1] + sigma[-1]*3)
         t = np.arange(0.0, endtime, dt)
+        t0[0] = 0
         return(t0, t)
 #
     """Stroke Level Methods: (operate on stroke-specific input values)"""
