@@ -246,32 +246,6 @@ timing/fast:
 .PHONY : timing/fast
 
 #=============================================================================
-# Target rules for targets named jd00_sigmalognormal_2strokes.run
-
-# Build rule for target.
-jd00_sigmalognormal_2strokes.run: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 jd00_sigmalognormal_2strokes.run
-.PHONY : jd00_sigmalognormal_2strokes.run
-
-# fast build rule for target.
-jd00_sigmalognormal_2strokes.run/fast:
-	$(MAKE) -f cpp/SLM/CMakeFiles/jd00_sigmalognormal_2strokes.run.dir/build.make cpp/SLM/CMakeFiles/jd00_sigmalognormal_2strokes.run.dir/build
-.PHONY : jd00_sigmalognormal_2strokes.run/fast
-
-#=============================================================================
-# Target rules for targets named jd00_sigmalognormal_2strokes
-
-# Build rule for target.
-jd00_sigmalognormal_2strokes: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 jd00_sigmalognormal_2strokes
-.PHONY : jd00_sigmalognormal_2strokes
-
-# fast build rule for target.
-jd00_sigmalognormal_2strokes/fast:
-	$(MAKE) -f cpp/SLM/CMakeFiles/jd00_sigmalognormal_2strokes.dir/build.make cpp/SLM/CMakeFiles/jd00_sigmalognormal_2strokes.dir/build
-.PHONY : jd00_sigmalognormal_2strokes/fast
-
-#=============================================================================
 # Target rules for targets named testSparseSumSLNFactor.valgrind
 
 # Build rule for target.
@@ -362,33 +336,6 @@ testSparseSumSLNFactor.run/fast:
 	$(MAKE) -f cpp/SLM/tests/CMakeFiles/testSparseSumSLNFactor.run.dir/build.make cpp/SLM/tests/CMakeFiles/testSparseSumSLNFactor.run.dir/build
 .PHONY : testSparseSumSLNFactor.run/fast
 
-cpp/SLM/jd00_sigmalognormal_2strokes.o: cpp/SLM/jd00_sigmalognormal_2strokes.cpp.o
-
-.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.o
-
-# target to build an object file
-cpp/SLM/jd00_sigmalognormal_2strokes.cpp.o:
-	$(MAKE) -f CMakeFiles/art_skills.dir/build.make CMakeFiles/art_skills.dir/cpp/SLM/jd00_sigmalognormal_2strokes.cpp.o
-.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.cpp.o
-
-cpp/SLM/jd00_sigmalognormal_2strokes.i: cpp/SLM/jd00_sigmalognormal_2strokes.cpp.i
-
-.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.i
-
-# target to preprocess a source file
-cpp/SLM/jd00_sigmalognormal_2strokes.cpp.i:
-	$(MAKE) -f CMakeFiles/art_skills.dir/build.make CMakeFiles/art_skills.dir/cpp/SLM/jd00_sigmalognormal_2strokes.cpp.i
-.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.cpp.i
-
-cpp/SLM/jd00_sigmalognormal_2strokes.s: cpp/SLM/jd00_sigmalognormal_2strokes.cpp.s
-
-.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.s
-
-# target to generate assembly for a file
-cpp/SLM/jd00_sigmalognormal_2strokes.cpp.s:
-	$(MAKE) -f CMakeFiles/art_skills.dir/build.make CMakeFiles/art_skills.dir/cpp/SLM/jd00_sigmalognormal_2strokes.cpp.s
-.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -408,8 +355,6 @@ help:
 	@echo "... install"
 	@echo "... check"
 	@echo "... timing"
-	@echo "... jd00_sigmalognormal_2strokes.run"
-	@echo "... jd00_sigmalognormal_2strokes"
 	@echo "... testSparseSumSLNFactor.valgrind"
 	@echo "... testSigmaLogNormal"
 	@echo "... check.tests"
@@ -417,9 +362,6 @@ help:
 	@echo "... testSigmaLogNormal.run"
 	@echo "... testSigmaLogNormal.valgrind"
 	@echo "... testSparseSumSLNFactor.run"
-	@echo "... cpp/SLM/jd00_sigmalognormal_2strokes.o"
-	@echo "... cpp/SLM/jd00_sigmalognormal_2strokes.i"
-	@echo "... cpp/SLM/jd00_sigmalognormal_2strokes.s"
 .PHONY : help
 
 

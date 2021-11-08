@@ -10,7 +10,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- *  @file  sigmalognormal_3strokes.cpp
+ *  @file  sigmalognormal_2strokes.cpp
  *  @author Juan-Diego Florez
  *  @author Gerry Chen
  **/
@@ -67,9 +67,9 @@ int main(int argc, char** argv) {
   // Matrix for t, x, y, reference for each position factor
   Matrix53 data1;
   data1 << 0.05, 1.50799612, 0.,  //
-      0.10, 8.11741321, 0.,              //
-      0.15, 20.21912658, 0.,             //
-      0.20, 32.6542469, 0.,              //
+      0.10, 8.11741321, 0.,       //
+      0.15, 20.21912658, 0.,      //
+      0.20, 32.6542469, 0.,       //
       0.25, 41.50480693, 0.;
 
   Matrix53 data2;
