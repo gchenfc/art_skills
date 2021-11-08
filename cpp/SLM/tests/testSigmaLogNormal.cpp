@@ -2,7 +2,7 @@
 // using wsl params, see if we return the correct position at time t
 #include <CppUnitLite/TestHarness.h>
 
-#include "../SigmaLogNormal.h"
+#include "SigmaLogNormal.h"
 
 using namespace std;
 using namespace gtsam;
@@ -13,7 +13,9 @@ TEST(Sln, velocity) {
   double sigma = 0.47238073;
   double mu = -2.96602237;
   double t = 0.01;
-  lambda = SigmaLogNormal::logimpulse(sigma, mu, t0, t);
+  double lambda = SigmaLogNormal::logimpulse(sigma, mu, t0, t);
+
+  double D = 30;
   EXPECT_DOUBLES_EQUAL(1.91996807e-09, SigmaLogNormal::velocity(D, lambda),
                        1e-12);
 }

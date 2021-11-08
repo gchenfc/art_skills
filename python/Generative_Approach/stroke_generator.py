@@ -35,7 +35,7 @@ class StrokeGenerator:
             sigma ([np.array(float)]): [log response time of the stroke]
             T ([float]): [period of the trajectory]
         """
-        return(3.*sigma - np.log((-1.0 + np.exp(6.*sigma))/T))
+        return(3.*sigma - np.log((-1.0 + np.exp(6.*sigma)) / T))
 
     def D_theta(self, t_points, delta):
         """
@@ -50,15 +50,17 @@ class StrokeGenerator:
         t_disp = np.diff(t_points, axis=1)
         D = np.sqrt(t_disp[0, :]**2 + t_disp[1, :]**2)
         theta = np.arctan2(t_disp[1, :], t_disp[0, :])
+        D_adj = D
         # From Berio code:
         # shift D with lognormal (using delta parameter)
-        h = (delta/2) / np.sin(delta/2)
-        h[np.abs(np.sin(delta)) < self.sensitivity] = 1.
-        D_adj = D*h
+        if delta.any() > self.sensitivity:
+            h = (delta/2) / np.sin(delta/2)
+            h[np.abs(np.sin(delta)) < self.sensitivity] = 1.
+            D_adj = D*h
         return(D, D_adj, theta)
 
     @staticmethod
-    def t0_t(dt, sigma, mu, T, delta_t):
+    def t0_t(dt, sigma, mu, T, delta_t, t_offset=0.):
         """
         t0: the time of ocurrence of the command that the lognormal impulse
             responds to.
@@ -83,15 +85,15 @@ class StrokeGenerator:
         # add small time offset at the start to guarantee that
         # the first stroke starts with zero velocity
         # t_offset = 0.05
-        t0 = np.zeros(n)  # + t_offset
-        """eqtn: t0 = t0_(i-1) + delta_t*T - e^(mu - sigma)"""
+        t0 = np.zeros(n) + t_offset
+        # eqtn: t0 = t0_(i-1) + delta_t*T - e^(mu - sigma)"""
         t0[1:] = delta_t[1:] * T
         t0 = np.cumsum(t0)
         # Add onsets in order to shift lognormal to start
         t0 = t0 - np.exp(mu[0] - sigma[0]*3)
         endtime = t0[-1] + np.exp(mu[-1] + sigma[-1]*3)
         t = np.arange(0.0, endtime, dt)
-        t0[0] = 0
+        #t0[0] = 0
         return(t0, t)
 #
     """Stroke Level Methods: (operate on stroke-specific input values)"""
@@ -143,21 +145,22 @@ class StrokeGenerator:
             displacement = d + P0_offset
         return(displacement)
 
-    @staticmethod
-    def velocity(dt, points):
-        """
-        velocity: lognormal profiles, speed in trajectory
+    # @staticmethod
+    # def velocity(dt, points):
+    #     """
+    #     velocity: lognormal profiles, speed in trajectory
 
-        Args:
-            dt ([float]): the timestep of the trajectory
-            points ([np.array(float)]): the generated points of the trajectory
-        """
-        velocity_profiles = []
-        for i in range(len(points)):
-            velocity_prof = [math.dist(points[i][x], points[i][x-1])/dt
-                             for x in range(1, len(points[i]))]
-            time = [round(dt * x, 2) if i == 0
-                    else (round(dt * x, 2))  # + T[-1])
-                    for x in range(1, len(points[i]))]
-            velocity_profiles.append([velocity_prof, time])
-        return(velocity_profiles)
+    #     Args:
+    #         dt ([float]): the timestep of the trajectory
+    #         points ([np.array(float)]): the generated points of the
+    #           trajectory
+    #     """
+    #     velocity_profiles = []
+    #     for i in range(len(points)):
+    #         velocity_prof = [math.dist(points[i][x], points[i][x-1])/dt
+    #                          for x in range(1, len(points[i]))]
+    #         time = [round(dt * x, 2) if i == 0
+    #                 else (round(dt * x, 2))  # + T[-1])
+    #                 for x in range(1, len(points[i]))]
+    #         velocity_profiles.append([velocity_prof, time])
+    #     return(velocity_profiles)

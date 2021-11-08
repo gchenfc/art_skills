@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/jdflo/GIT_REPOS/art_skills
+CMAKE_SOURCE_DIR = /home/jdflo/GIT_REPOS/gtsam_projects/art_skills
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/jdflo/GIT_REPOS/art_skills/build
+CMAKE_BINARY_DIR = /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -137,9 +137,9 @@ install/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/jdflo/GIT_REPOS/art_skills/build/CMakeFiles /home/jdflo/GIT_REPOS/art_skills/build/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build/CMakeFiles /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/jdflo/GIT_REPOS/art_skills/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -207,17 +207,17 @@ examples/fast:
 .PHONY : examples/fast
 
 #=============================================================================
-# Target rules for targets named gtsam_example
+# Target rules for targets named art_skills
 
 # Build rule for target.
-gtsam_example: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 gtsam_example
-.PHONY : gtsam_example
+art_skills: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 art_skills
+.PHONY : art_skills
 
 # fast build rule for target.
-gtsam_example/fast:
-	$(MAKE) -f CMakeFiles/gtsam_example.dir/build.make CMakeFiles/gtsam_example.dir/build
-.PHONY : gtsam_example/fast
+art_skills/fast:
+	$(MAKE) -f CMakeFiles/art_skills.dir/build.make CMakeFiles/art_skills.dir/build
+.PHONY : art_skills/fast
 
 #=============================================================================
 # Target rules for targets named check
@@ -246,109 +246,148 @@ timing/fast:
 .PHONY : timing/fast
 
 #=============================================================================
-# Target rules for targets named jd00_chebyshevAlphabet.run
+# Target rules for targets named jd00_sigmalognormal_2strokes.run
 
 # Build rule for target.
-jd00_chebyshevAlphabet.run: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 jd00_chebyshevAlphabet.run
-.PHONY : jd00_chebyshevAlphabet.run
+jd00_sigmalognormal_2strokes.run: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 jd00_sigmalognormal_2strokes.run
+.PHONY : jd00_sigmalognormal_2strokes.run
 
 # fast build rule for target.
-jd00_chebyshevAlphabet.run/fast:
-	$(MAKE) -f cpp/CMakeFiles/jd00_chebyshevAlphabet.run.dir/build.make cpp/CMakeFiles/jd00_chebyshevAlphabet.run.dir/build
-.PHONY : jd00_chebyshevAlphabet.run/fast
+jd00_sigmalognormal_2strokes.run/fast:
+	$(MAKE) -f cpp/SLM/CMakeFiles/jd00_sigmalognormal_2strokes.run.dir/build.make cpp/SLM/CMakeFiles/jd00_sigmalognormal_2strokes.run.dir/build
+.PHONY : jd00_sigmalognormal_2strokes.run/fast
 
 #=============================================================================
-# Target rules for targets named jd00_chebyshevAlphabet
+# Target rules for targets named jd00_sigmalognormal_2strokes
 
 # Build rule for target.
-jd00_chebyshevAlphabet: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 jd00_chebyshevAlphabet
-.PHONY : jd00_chebyshevAlphabet
+jd00_sigmalognormal_2strokes: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 jd00_sigmalognormal_2strokes
+.PHONY : jd00_sigmalognormal_2strokes
 
 # fast build rule for target.
-jd00_chebyshevAlphabet/fast:
-	$(MAKE) -f cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/build.make cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/build
-.PHONY : jd00_chebyshevAlphabet/fast
+jd00_sigmalognormal_2strokes/fast:
+	$(MAKE) -f cpp/SLM/CMakeFiles/jd00_sigmalognormal_2strokes.dir/build.make cpp/SLM/CMakeFiles/jd00_sigmalognormal_2strokes.dir/build
+.PHONY : jd00_sigmalognormal_2strokes/fast
 
 #=============================================================================
-# Target rules for targets named chebyshev_alphabet_test
+# Target rules for targets named testSparseSumSLNFactor.valgrind
 
 # Build rule for target.
-chebyshev_alphabet_test: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 chebyshev_alphabet_test
-.PHONY : chebyshev_alphabet_test
+testSparseSumSLNFactor.valgrind: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 testSparseSumSLNFactor.valgrind
+.PHONY : testSparseSumSLNFactor.valgrind
 
 # fast build rule for target.
-chebyshev_alphabet_test/fast:
-	$(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.dir/build
-.PHONY : chebyshev_alphabet_test/fast
+testSparseSumSLNFactor.valgrind/fast:
+	$(MAKE) -f cpp/SLM/tests/CMakeFiles/testSparseSumSLNFactor.valgrind.dir/build.make cpp/SLM/tests/CMakeFiles/testSparseSumSLNFactor.valgrind.dir/build
+.PHONY : testSparseSumSLNFactor.valgrind/fast
 
 #=============================================================================
-# Target rules for targets named check.jd_cheby
+# Target rules for targets named testSigmaLogNormal
 
 # Build rule for target.
-check.jd_cheby: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 check.jd_cheby
-.PHONY : check.jd_cheby
+testSigmaLogNormal: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 testSigmaLogNormal
+.PHONY : testSigmaLogNormal
 
 # fast build rule for target.
-check.jd_cheby/fast:
-	$(MAKE) -f cpp/CMakeFiles/check.jd_cheby.dir/build.make cpp/CMakeFiles/check.jd_cheby.dir/build
-.PHONY : check.jd_cheby/fast
+testSigmaLogNormal/fast:
+	$(MAKE) -f cpp/SLM/tests/CMakeFiles/testSigmaLogNormal.dir/build.make cpp/SLM/tests/CMakeFiles/testSigmaLogNormal.dir/build
+.PHONY : testSigmaLogNormal/fast
 
 #=============================================================================
-# Target rules for targets named chebyshev_alphabet_test.run
+# Target rules for targets named check.tests
 
 # Build rule for target.
-chebyshev_alphabet_test.run: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 chebyshev_alphabet_test.run
-.PHONY : chebyshev_alphabet_test.run
+check.tests: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 check.tests
+.PHONY : check.tests
 
 # fast build rule for target.
-chebyshev_alphabet_test.run/fast:
-	$(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.run.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.run.dir/build
-.PHONY : chebyshev_alphabet_test.run/fast
+check.tests/fast:
+	$(MAKE) -f cpp/SLM/tests/CMakeFiles/check.tests.dir/build.make cpp/SLM/tests/CMakeFiles/check.tests.dir/build
+.PHONY : check.tests/fast
 
 #=============================================================================
-# Target rules for targets named chebyshev_alphabet_test.valgrind
+# Target rules for targets named testSparseSumSLNFactor
 
 # Build rule for target.
-chebyshev_alphabet_test.valgrind: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 chebyshev_alphabet_test.valgrind
-.PHONY : chebyshev_alphabet_test.valgrind
+testSparseSumSLNFactor: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 testSparseSumSLNFactor
+.PHONY : testSparseSumSLNFactor
 
 # fast build rule for target.
-chebyshev_alphabet_test.valgrind/fast:
-	$(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.valgrind.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.valgrind.dir/build
-.PHONY : chebyshev_alphabet_test.valgrind/fast
+testSparseSumSLNFactor/fast:
+	$(MAKE) -f cpp/SLM/tests/CMakeFiles/testSparseSumSLNFactor.dir/build.make cpp/SLM/tests/CMakeFiles/testSparseSumSLNFactor.dir/build
+.PHONY : testSparseSumSLNFactor/fast
 
-cpp/greeting.o: cpp/greeting.cpp.o
+#=============================================================================
+# Target rules for targets named testSigmaLogNormal.run
 
-.PHONY : cpp/greeting.o
+# Build rule for target.
+testSigmaLogNormal.run: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 testSigmaLogNormal.run
+.PHONY : testSigmaLogNormal.run
+
+# fast build rule for target.
+testSigmaLogNormal.run/fast:
+	$(MAKE) -f cpp/SLM/tests/CMakeFiles/testSigmaLogNormal.run.dir/build.make cpp/SLM/tests/CMakeFiles/testSigmaLogNormal.run.dir/build
+.PHONY : testSigmaLogNormal.run/fast
+
+#=============================================================================
+# Target rules for targets named testSigmaLogNormal.valgrind
+
+# Build rule for target.
+testSigmaLogNormal.valgrind: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 testSigmaLogNormal.valgrind
+.PHONY : testSigmaLogNormal.valgrind
+
+# fast build rule for target.
+testSigmaLogNormal.valgrind/fast:
+	$(MAKE) -f cpp/SLM/tests/CMakeFiles/testSigmaLogNormal.valgrind.dir/build.make cpp/SLM/tests/CMakeFiles/testSigmaLogNormal.valgrind.dir/build
+.PHONY : testSigmaLogNormal.valgrind/fast
+
+#=============================================================================
+# Target rules for targets named testSparseSumSLNFactor.run
+
+# Build rule for target.
+testSparseSumSLNFactor.run: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 testSparseSumSLNFactor.run
+.PHONY : testSparseSumSLNFactor.run
+
+# fast build rule for target.
+testSparseSumSLNFactor.run/fast:
+	$(MAKE) -f cpp/SLM/tests/CMakeFiles/testSparseSumSLNFactor.run.dir/build.make cpp/SLM/tests/CMakeFiles/testSparseSumSLNFactor.run.dir/build
+.PHONY : testSparseSumSLNFactor.run/fast
+
+cpp/SLM/jd00_sigmalognormal_2strokes.o: cpp/SLM/jd00_sigmalognormal_2strokes.cpp.o
+
+.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.o
 
 # target to build an object file
-cpp/greeting.cpp.o:
-	$(MAKE) -f CMakeFiles/gtsam_example.dir/build.make CMakeFiles/gtsam_example.dir/cpp/greeting.cpp.o
-.PHONY : cpp/greeting.cpp.o
+cpp/SLM/jd00_sigmalognormal_2strokes.cpp.o:
+	$(MAKE) -f CMakeFiles/art_skills.dir/build.make CMakeFiles/art_skills.dir/cpp/SLM/jd00_sigmalognormal_2strokes.cpp.o
+.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.cpp.o
 
-cpp/greeting.i: cpp/greeting.cpp.i
+cpp/SLM/jd00_sigmalognormal_2strokes.i: cpp/SLM/jd00_sigmalognormal_2strokes.cpp.i
 
-.PHONY : cpp/greeting.i
+.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.i
 
 # target to preprocess a source file
-cpp/greeting.cpp.i:
-	$(MAKE) -f CMakeFiles/gtsam_example.dir/build.make CMakeFiles/gtsam_example.dir/cpp/greeting.cpp.i
-.PHONY : cpp/greeting.cpp.i
+cpp/SLM/jd00_sigmalognormal_2strokes.cpp.i:
+	$(MAKE) -f CMakeFiles/art_skills.dir/build.make CMakeFiles/art_skills.dir/cpp/SLM/jd00_sigmalognormal_2strokes.cpp.i
+.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.cpp.i
 
-cpp/greeting.s: cpp/greeting.cpp.s
+cpp/SLM/jd00_sigmalognormal_2strokes.s: cpp/SLM/jd00_sigmalognormal_2strokes.cpp.s
 
-.PHONY : cpp/greeting.s
+.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.s
 
 # target to generate assembly for a file
-cpp/greeting.cpp.s:
-	$(MAKE) -f CMakeFiles/gtsam_example.dir/build.make CMakeFiles/gtsam_example.dir/cpp/greeting.cpp.s
-.PHONY : cpp/greeting.cpp.s
+cpp/SLM/jd00_sigmalognormal_2strokes.cpp.s:
+	$(MAKE) -f CMakeFiles/art_skills.dir/build.make CMakeFiles/art_skills.dir/cpp/SLM/jd00_sigmalognormal_2strokes.cpp.s
+.PHONY : cpp/SLM/jd00_sigmalognormal_2strokes.cpp.s
 
 # Help Target
 help:
@@ -365,19 +404,22 @@ help:
 	@echo "... check_valgrind"
 	@echo "... all.tests"
 	@echo "... examples"
-	@echo "... gtsam_example"
+	@echo "... art_skills"
 	@echo "... install"
 	@echo "... check"
 	@echo "... timing"
-	@echo "... jd00_chebyshevAlphabet.run"
-	@echo "... jd00_chebyshevAlphabet"
-	@echo "... chebyshev_alphabet_test"
-	@echo "... check.jd_cheby"
-	@echo "... chebyshev_alphabet_test.run"
-	@echo "... chebyshev_alphabet_test.valgrind"
-	@echo "... cpp/greeting.o"
-	@echo "... cpp/greeting.i"
-	@echo "... cpp/greeting.s"
+	@echo "... jd00_sigmalognormal_2strokes.run"
+	@echo "... jd00_sigmalognormal_2strokes"
+	@echo "... testSparseSumSLNFactor.valgrind"
+	@echo "... testSigmaLogNormal"
+	@echo "... check.tests"
+	@echo "... testSparseSumSLNFactor"
+	@echo "... testSigmaLogNormal.run"
+	@echo "... testSigmaLogNormal.valgrind"
+	@echo "... testSparseSumSLNFactor.run"
+	@echo "... cpp/SLM/jd00_sigmalognormal_2strokes.o"
+	@echo "... cpp/SLM/jd00_sigmalognormal_2strokes.i"
+	@echo "... cpp/SLM/jd00_sigmalognormal_2strokes.s"
 .PHONY : help
 
 

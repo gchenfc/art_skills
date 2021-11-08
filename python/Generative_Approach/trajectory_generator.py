@@ -19,6 +19,7 @@ Author: Juan-Diego Florez, Frank Dellaert, Sang-Won Leigh
 from stroke_generator import StrokeGenerator
 import numpy as np
 import scipy.signal
+from scipy.stats import lognorm
 
 
 class TrajectoryGenerator:
@@ -32,6 +33,7 @@ class TrajectoryGenerator:
         self.Ac = Ac  # shape parameter for log curve skewedness, from [0, 1]
         self.delta_t = delta_t  # rel. t-offset wrt prev. stroke occu. & durat.
         self.T = np.ones(len(t_points)-1)*T  # period of the trajectory (sec)
+        self.log_eps = 1e-15
 
     def trajectory_setup(self):
         """Use input values to setup all necessary derived parameters"""
@@ -57,19 +59,58 @@ class TrajectoryGenerator:
         """
         sigma, mu, D, theta, t0, t = self.trajectory_setup()
         trajectory = np.zeros((2, len(t)))
+        strokes = []
         for i in range(len(self.t_points[0]) - 1):
             displacement = self.trajectory_displacements(t, t0[i], sigma[i],
                                                          mu[i], D[i], theta[i],
                                                          self.delta[i])
             trajectory[:, :] += displacement
+            strokes.append(D[i] * self.lognormal(t, t0[i], mu[i], sigma[i]))
 
-        return(trajectory)
+        return(trajectory, strokes)
+
+    def lognormal(self, x, x0, mu, sigma):
+        ''' 3 parameter lognormal'''
+        x = x - x0
+        x = np.maximum(x, self.log_eps)
+        dist = lognorm(s=sigma, loc=0, scale=np.exp(mu))
+        return dist.pdf(x)
+
+    def compute_time_steps(self, t_offset=0.0):
+        sigma, mu, _, _, t0_og, t_og = self.trajectory_setup()
+        m = self.t_points.shape[1] - 1
+        delta_t = np.ones(m)*self.delta_t
+        Ac = np.ones(m)*self.Ac
+        T = np.ones(m)*self.T
+
+        sigma = StrokeGenerator.sigma(Ac)
+        mu = StrokeGenerator.mu(sigma, T)
+
+        # compute t0 values from delta
+        # add small time offset ad the start to guarantee
+        # that first stroke starts with zero velocity
+        T0 = np.zeros(m)+t_offset  # +0.05
+        T0[1:] = delta_t[1:] * T[:-1]
+        T0 = np.cumsum(T0)
+        # T1 = np.array(T0)
+
+        # Add onsets in order to shift lognormal to start
+        T0 = T0 - np.exp(mu[0] - sigma[0]*3)
+
+        # endtime
+        endt = T0[-1] + np.exp(mu[-1] + sigma[-1]*3)
+
+        # time steps
+        t = np.arange(0.0, endt, self.dt)
+        #print("time", t == t_og)
+        return t
 
     def extract_strokes(self):
         """
-        strokes: the interpolated points of each stroke that makes up a trajectory
+        strokes: the interpolated points of each stroke that makes up a
+        trajectory
         """
-        traj = self.generate_trajectory()
+        traj, strokes = self.generate_trajectory()
         maxima = scipy.signal.argrelextrema(traj[0], np.greater)
         # minima = scipy.signal.argrelextrema(traj[0], np.less)
         # print(traj[0][maxima])
@@ -82,7 +123,8 @@ class TrajectoryGenerator:
         velocity: the lognormal velocity profile, calculated from speeds
                   between generated points
         """
-        trajectory = self.generate_trajectory()
+        trajectory, strokes = self.generate_trajectory()
+
         velocity = np.sqrt(np.sum((np.gradient(trajectory, axis=1)/self.dt)**2,
                                   axis=0))
         return(velocity)

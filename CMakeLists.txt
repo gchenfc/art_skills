@@ -30,8 +30,9 @@ include_directories(BEFORE "${PROJECT_SOURCE_DIR}/cpp")
 #   where we load all the source files and link against the GTSAM library.
 
 # Glob all source/header files in SOURCE_SUBDIRS.
-file(GLOB sources "cpp/*.cpp")
-file(GLOB headers "cpp/*.h")
+# TODO: Fix this later
+file(GLOB sources "cpp/SLM/*.cpp")
+file(GLOB headers "cpp/SLM/*.h")
 add_library(${PROJECT_NAME} SHARED ${headers} ${sources})
 target_link_libraries(${PROJECT_NAME} gtsam)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
@@ -56,6 +57,7 @@ install(
 # # Build scripts (CMake tracks the dependecy to link with GTSAM through our
 # project's static library) gtsamAddExamplesGlob("*.cpp" "" "${PROJECT_NAME}")
 
+#[[
 # ##############################################################################
 # * 6. Find the gtwrap package (either installed via GTSAM or as a standalone
 #   package) The cmake code for wrapping is included automatically.
@@ -154,3 +156,4 @@ add_custom_target(
   COMMAND ${PYTHON_EXECUTABLE} ${GTSAM_MODULE_PATH}/setup.py install
   DEPENDS ${PROJECT_NAME}_py
   WORKING_DIRECTORY ${GTSAM_MODULE_PATH})
+#]]

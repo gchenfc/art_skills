@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/jdflo/GIT_REPOS/art_skills
+CMAKE_SOURCE_DIR = /home/jdflo/GIT_REPOS/gtsam_projects/art_skills
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/jdflo/GIT_REPOS/art_skills/build
+CMAKE_BINARY_DIR = /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -68,28 +68,37 @@ install/strip/fast: preinstall/fast
 	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
 .PHONY : install/strip/fast
 
-# Special rule for the target install
-install: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
-	/usr/bin/cmake -P cmake_install.cmake
-.PHONY : install
+# Special rule for the target edit_cache
+edit_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
+	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : edit_cache
 
-# Special rule for the target install
-install/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
-	/usr/bin/cmake -P cmake_install.cmake
-.PHONY : install/fast
+# Special rule for the target edit_cache
+edit_cache/fast: edit_cache
 
-# Special rule for the target rebuild_cache
-rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : rebuild_cache
+.PHONY : edit_cache/fast
 
-# Special rule for the target rebuild_cache
-rebuild_cache/fast: rebuild_cache
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
 
-.PHONY : rebuild_cache/fast
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+
+.PHONY : list_install_components/fast
+
+# Special rule for the target test
+test:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
+	/usr/bin/ctest --force-new-ctest-process $(ARGS)
+.PHONY : test
+
+# Special rule for the target test
+test/fast: test
+
+.PHONY : test/fast
 
 # Special rule for the target install/local
 install/local: preinstall
@@ -103,48 +112,39 @@ install/local/fast: preinstall/fast
 	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
 .PHONY : install/local/fast
 
-# Special rule for the target test
-test:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
-	/usr/bin/ctest --force-new-ctest-process $(ARGS)
-.PHONY : test
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
 
-# Special rule for the target test
-test/fast: test
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
 
-.PHONY : test/fast
+.PHONY : rebuild_cache/fast
 
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	/usr/bin/cmake -P cmake_install.cmake
+.PHONY : install
 
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-
-.PHONY : list_install_components/fast
-
-# Special rule for the target edit_cache
-edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
-	/usr/bin/ccmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : edit_cache
-
-# Special rule for the target edit_cache
-edit_cache/fast: edit_cache
-
-.PHONY : edit_cache/fast
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	/usr/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/jdflo/GIT_REPOS/art_skills/build/CMakeFiles /home/jdflo/GIT_REPOS/art_skills/build/cpp/CMakeFiles/progress.marks
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/jdflo/GIT_REPOS/art_skills/build/CMakeFiles 0
+	cd /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build/CMakeFiles /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build/cpp/CMakeFiles/progress.marks
+	cd /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/clean
+	cd /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/clean
 .PHONY : clean
 
 # The main clean target
@@ -154,162 +154,18 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/preinstall
+	cd /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/preinstall
+	cd /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
-
-# Convenience name for target.
-cpp/CMakeFiles/jd00_chebyshevAlphabet.run.dir/rule:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/CMakeFiles/jd00_chebyshevAlphabet.run.dir/rule
-.PHONY : cpp/CMakeFiles/jd00_chebyshevAlphabet.run.dir/rule
-
-# Convenience name for target.
-jd00_chebyshevAlphabet.run: cpp/CMakeFiles/jd00_chebyshevAlphabet.run.dir/rule
-
-.PHONY : jd00_chebyshevAlphabet.run
-
-# fast build rule for target.
-jd00_chebyshevAlphabet.run/fast:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/jd00_chebyshevAlphabet.run.dir/build.make cpp/CMakeFiles/jd00_chebyshevAlphabet.run.dir/build
-.PHONY : jd00_chebyshevAlphabet.run/fast
-
-# Convenience name for target.
-cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/rule:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/rule
-.PHONY : cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/rule
-
-# Convenience name for target.
-jd00_chebyshevAlphabet: cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/rule
-
-.PHONY : jd00_chebyshevAlphabet
-
-# fast build rule for target.
-jd00_chebyshevAlphabet/fast:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/build.make cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/build
-.PHONY : jd00_chebyshevAlphabet/fast
-
-# Convenience name for target.
-cpp/CMakeFiles/chebyshev_alphabet_test.dir/rule:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/CMakeFiles/chebyshev_alphabet_test.dir/rule
-.PHONY : cpp/CMakeFiles/chebyshev_alphabet_test.dir/rule
-
-# Convenience name for target.
-chebyshev_alphabet_test: cpp/CMakeFiles/chebyshev_alphabet_test.dir/rule
-
-.PHONY : chebyshev_alphabet_test
-
-# fast build rule for target.
-chebyshev_alphabet_test/fast:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.dir/build
-.PHONY : chebyshev_alphabet_test/fast
-
-# Convenience name for target.
-cpp/CMakeFiles/check.jd_cheby.dir/rule:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/CMakeFiles/check.jd_cheby.dir/rule
-.PHONY : cpp/CMakeFiles/check.jd_cheby.dir/rule
-
-# Convenience name for target.
-check.jd_cheby: cpp/CMakeFiles/check.jd_cheby.dir/rule
-
-.PHONY : check.jd_cheby
-
-# fast build rule for target.
-check.jd_cheby/fast:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/check.jd_cheby.dir/build.make cpp/CMakeFiles/check.jd_cheby.dir/build
-.PHONY : check.jd_cheby/fast
-
-# Convenience name for target.
-cpp/CMakeFiles/chebyshev_alphabet_test.run.dir/rule:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/CMakeFiles/chebyshev_alphabet_test.run.dir/rule
-.PHONY : cpp/CMakeFiles/chebyshev_alphabet_test.run.dir/rule
-
-# Convenience name for target.
-chebyshev_alphabet_test.run: cpp/CMakeFiles/chebyshev_alphabet_test.run.dir/rule
-
-.PHONY : chebyshev_alphabet_test.run
-
-# fast build rule for target.
-chebyshev_alphabet_test.run/fast:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.run.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.run.dir/build
-.PHONY : chebyshev_alphabet_test.run/fast
-
-# Convenience name for target.
-cpp/CMakeFiles/chebyshev_alphabet_test.valgrind.dir/rule:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f CMakeFiles/Makefile2 cpp/CMakeFiles/chebyshev_alphabet_test.valgrind.dir/rule
-.PHONY : cpp/CMakeFiles/chebyshev_alphabet_test.valgrind.dir/rule
-
-# Convenience name for target.
-chebyshev_alphabet_test.valgrind: cpp/CMakeFiles/chebyshev_alphabet_test.valgrind.dir/rule
-
-.PHONY : chebyshev_alphabet_test.valgrind
-
-# fast build rule for target.
-chebyshev_alphabet_test.valgrind/fast:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.valgrind.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.valgrind.dir/build
-.PHONY : chebyshev_alphabet_test.valgrind/fast
-
-chebyshev_alphabet_test.o: chebyshev_alphabet_test.cpp.o
-
-.PHONY : chebyshev_alphabet_test.o
-
-# target to build an object file
-chebyshev_alphabet_test.cpp.o:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.dir/chebyshev_alphabet_test.cpp.o
-.PHONY : chebyshev_alphabet_test.cpp.o
-
-chebyshev_alphabet_test.i: chebyshev_alphabet_test.cpp.i
-
-.PHONY : chebyshev_alphabet_test.i
-
-# target to preprocess a source file
-chebyshev_alphabet_test.cpp.i:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.dir/chebyshev_alphabet_test.cpp.i
-.PHONY : chebyshev_alphabet_test.cpp.i
-
-chebyshev_alphabet_test.s: chebyshev_alphabet_test.cpp.s
-
-.PHONY : chebyshev_alphabet_test.s
-
-# target to generate assembly for a file
-chebyshev_alphabet_test.cpp.s:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/chebyshev_alphabet_test.dir/build.make cpp/CMakeFiles/chebyshev_alphabet_test.dir/chebyshev_alphabet_test.cpp.s
-.PHONY : chebyshev_alphabet_test.cpp.s
-
-jd00_chebyshevAlphabet.o: jd00_chebyshevAlphabet.cpp.o
-
-.PHONY : jd00_chebyshevAlphabet.o
-
-# target to build an object file
-jd00_chebyshevAlphabet.cpp.o:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/build.make cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/jd00_chebyshevAlphabet.cpp.o
-.PHONY : jd00_chebyshevAlphabet.cpp.o
-
-jd00_chebyshevAlphabet.i: jd00_chebyshevAlphabet.cpp.i
-
-.PHONY : jd00_chebyshevAlphabet.i
-
-# target to preprocess a source file
-jd00_chebyshevAlphabet.cpp.i:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/build.make cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/jd00_chebyshevAlphabet.cpp.i
-.PHONY : jd00_chebyshevAlphabet.cpp.i
-
-jd00_chebyshevAlphabet.s: jd00_chebyshevAlphabet.cpp.s
-
-.PHONY : jd00_chebyshevAlphabet.s
-
-# target to generate assembly for a file
-jd00_chebyshevAlphabet.cpp.s:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(MAKE) -f cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/build.make cpp/CMakeFiles/jd00_chebyshevAlphabet.dir/jd00_chebyshevAlphabet.cpp.s
-.PHONY : jd00_chebyshevAlphabet.cpp.s
 
 # Help Target
 help:
@@ -318,24 +174,12 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... install/strip"
-	@echo "... install"
-	@echo "... rebuild_cache"
-	@echo "... install/local"
-	@echo "... test"
-	@echo "... jd00_chebyshevAlphabet.run"
-	@echo "... jd00_chebyshevAlphabet"
-	@echo "... chebyshev_alphabet_test"
-	@echo "... check.jd_cheby"
-	@echo "... list_install_components"
-	@echo "... chebyshev_alphabet_test.run"
 	@echo "... edit_cache"
-	@echo "... chebyshev_alphabet_test.valgrind"
-	@echo "... chebyshev_alphabet_test.o"
-	@echo "... chebyshev_alphabet_test.i"
-	@echo "... chebyshev_alphabet_test.s"
-	@echo "... jd00_chebyshevAlphabet.o"
-	@echo "... jd00_chebyshevAlphabet.i"
-	@echo "... jd00_chebyshevAlphabet.s"
+	@echo "... list_install_components"
+	@echo "... test"
+	@echo "... install/local"
+	@echo "... rebuild_cache"
+	@echo "... install"
 .PHONY : help
 
 
@@ -347,6 +191,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/jdflo/GIT_REPOS/art_skills/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/jdflo/GIT_REPOS/gtsam_projects/art_skills/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

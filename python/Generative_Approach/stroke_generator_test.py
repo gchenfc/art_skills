@@ -48,7 +48,8 @@ class TestStrokeGenerator(unittest.TestCase):
         sigma, mu = self.test_sigma(), self.test_mu()
         t0, t = StrokeGenerator.t0_t(dt, sigma, mu, T, delta_t)
         # regression, Berio code values
-        np.testing.assert_array_almost_equal(t0, [0., 0.115824, 0.235824],
+        np.testing.assert_array_almost_equal(t0, [-0.10374027, 0.01625973, 
+                                                  0.13625973],
                                              0.001)
         np.testing.assert_equal(len(t), 54)
         return(t0, t)

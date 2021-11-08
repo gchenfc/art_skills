@@ -15,8 +15,6 @@
  *  @author Gerry Chen
  **/
 
-#pragma once
-
 #include <gtsam/base/Vector.h>
 
 #include <vector>
@@ -48,45 +46,69 @@ int main(int argc, char** argv) {
   NonlinearFactorGraph graph;
 
   // Create the keys we need for this simple example
-  static Symbol strokeparam1('sp', 1), strokeparam2('sp', 2);
-  static Symbol p01('p0', 1), p02('p0', 2);
+  static Symbol strokeparam1('s', 1), strokeparam2('s', 2);
+  static Symbol p01('p', 1), p02('p', 2);
 
   // Add a prior on p01 at the origin. A prior factor consists of a mean and
   // a noise model (covariance matrix)
-  Vector2 prior(0.0, 0.0);  // prior mean is at origin, P0 is at origin
-  auto priorNoise = noiseModel::Diagonal::Sigmas(
-      Vector2(0.0001, 0.0001));            // 0.1mm std on x,y
-  graph.addPrior(p01, prior, priorNoise);  // add directly to graph
+  Vector2 prior1(0.0, 0.0);  // prior mean is at origin, P0 is at origin
+  auto priorNoise1 = noiseModel::Diagonal::Sigmas(
+      Vector2(0.0001, 0.0001));              // 0.1mm std on x,y
+  graph.addPrior(p01, prior1, priorNoise1);  // add directly to graph
 
-  Vector2 prior(30.0,
-                0.0);  // prior mean is at origin, P0 is at start of stroke 2
-  auto priorNoise = noiseModel::Diagonal::Sigmas(
-      Vector2(0.0001, 0.0001));            // 0.1mm std on x,y
-  graph.addPrior(p02, prior, priorNoise);  // add directly to graph
+  Vector2 prior2(30.0, 0.0);  // prior mean is at start of stroke 2
+  auto priorNoise2 = noiseModel::Diagonal::Sigmas(
+      Vector2(0.0001, 0.0001));              // 0.1mm std on x,y
+  graph.addPrior(p02, prior2, priorNoise2);  // add directly to graph
 
-  // Add 2 position factors, measured from trajectories.ipynb
-  Vector2 position1(1.19080574e+01, 0.00000000e+00);  // 5th point
-  Vector2 position2(7.24578721e+01, 0.00000000e+00);  // 10th point
+  // If P02 is supposedto start where stroke1 ends, need a new factor that uses
+  // P02 as position, modified SparseSLNFactor, position is a variable
+
+  // Matrix for t, x, y, reference for each position factor
+  Matrix53 data1;
+  data1 << 0.05, 1.50799612, 0.,  //
+      0.10, 8.11741321, 0.,              //
+      0.15, 20.21912658, 0.,             //
+      0.20, 32.6542469, 0.,              //
+      0.25, 41.50480693, 0.;
+
+  Matrix53 data2;
+  data2 << 0.34, 54.4648483, 0.,  //
+      0.39, 66.90712126, 0.,      //
+      0.44, 80.14918063, 0.,      //
+      0.49, 89.94344084, 0.,      //
+      0.54, 95.53231736, 0.;
+
   // create a measurement for both factors (the same in this case)
   auto position_noise = noiseModel::Diagonal::Sigmas(
       Vector3(0.00001, 0.00001));  // 20cm std on x,y, 0.1 rad on theta
-  graph.emplace_shared<SparseSlnFactor>(strokeparam1, p01, position1,
-                                        position_noise);
-  graph.emplace_shared<SparseSlnFactor>(strokeparam1, p01, position2,
-                                        position_noise);
 
+  // TODO: for loop to create factors for each position, 5 pts per stroke
+  for (int i = 1; i <= 5; i++) {
+    graph.emplace_shared<SparseSlnFactor>(strokeparam1, p01, data1(i, 0),
+                                          data1.block<1, 2>(i, 1),
+                                          position_noise);
+    graph.emplace_shared<SparseSlnFactor>(strokeparam2, p02, data2(i, 0),
+                                          data2.block<1, 2>(i, 1),
+                                          position_noise);
+  }
   // Print
   graph.print("Factor Graph:\n");
 
   // Create (deliberately inaccurate) initial estimate
   Values initialEstimate;
   // starting with initial control point p0
-  initialEstimate.insert(p01, Vector2(0.0001, -0.0001));
-  initialEstimate.insert(p02, Vector2(49.9999, 0.0001));
+  initialEstimate.insert(p01, Vector2(2, -1));
+  initialEstimate.insert(p02, Vector2(25, 2));
   // Now for param initial guesses (t0, D, th1, th2, sigma, mu)
-  initialEstimate.insert(strokeparam1,
-                         Vector6(0.0, 29.0, 1.0, 1.0, 0.6, -3.5));
-  initialEstimate.insert(strokeparam2, Vector6(0.0, 71.0, 1.0, 1.0, 0.5, -3.0));
+
+  // Syntaxes for constructing >4 sized vector:
+  Vector6 sp1;
+  sp1 << 0.0, 29.0, 1.0, 1.0, 0.6, -3.5;
+  initialEstimate.insert(strokeparam1, sp1);
+
+  initialEstimate.insert(
+      strokeparam2, (Vector6() << 0.0, 71.0, 1.0, 1.0, 0.5, -3.0).finished());
 
   // Print
   initialEstimate.print("Initial Estimate:\n");
