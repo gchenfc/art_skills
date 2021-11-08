@@ -49,19 +49,7 @@ TEST(SparseSlnFactor, WholeEnchilada) {
 
   // Create the keys we need for this simple example
   static Symbol strokeparam1('s', 1), strokeparam2('s', 2);
-  static Symbol p01('p', 1), p02('p', 2);
-
-  // Add a prior on p01 at the origin. A prior factor consists of a mean and
-  // a noise model (covariance matrix)
-  Vector2 prior1(0.0, 0.0);  // prior mean is at origin, P0 is at origin
-  auto priorNoise1 = noiseModel::Diagonal::Sigmas(
-      Vector2(0.0001, 0.0001));              // 0.1mm std on x,y
-  graph.addPrior(p01, prior1, priorNoise1);  // add directly to graph
-
-  Vector2 prior2(30.0, 0.0);  // prior mean is at start of stroke 2
-  auto priorNoise2 = noiseModel::Diagonal::Sigmas(
-      Vector2(0.0001, 0.0001));              // 0.1mm std on x,y
-  graph.addPrior(p02, prior2, priorNoise2);  // add directly to graph
+  static Symbol p1('p', 1), p2('p', 2);
 
   // If P02 is supposedto start where stroke1 ends, need a new factor that uses
   // P02 as position, modified SparseSLNFactor, position is a variable
@@ -87,21 +75,21 @@ TEST(SparseSlnFactor, WholeEnchilada) {
 
   // TODO: for loop to create factors for each position, 5 pts per stroke
   for (int i = 1; i <= 5; i++) {
-    graph.emplace_shared<SparseSlnFactor>(strokeparam1, p01, data1(i, 0),
-                                          data1.block<1, 2>(i, 1),
-                                          position_noise);
-    graph.emplace_shared<SparseSlnFactor>(strokeparam2, p02, data2(i, 0),
-                                          data2.block<1, 2>(i, 1),
-                                          position_noise);
+    graph.emplace_shared<SparseSlnFactor>(
+        strokeparam1, p1, data1(i, 0), data1.block<1, 2>(i, 1), position_noise);
+    graph.emplace_shared<SparseSlnFactor>(
+        strokeparam2, p2, data2(i, 0), data2.block<1, 2>(i, 1), position_noise);
   }
+  EXPECT_LONGS_EQUAL(10, graph.size());
+
   // Print
-  graph.print("Factor Graph:\n");
+  //   graph.print("Factor Graph:\n");
 
   // Create (deliberately inaccurate) initial estimate
   Values initialEstimate;
   // starting with initial control point p0
-  initialEstimate.insert(p01, Vector2(2, -1));
-  initialEstimate.insert(p02, Vector2(25, 2));
+  initialEstimate.insert(p1, Vector2(2, -1));
+  initialEstimate.insert(p2, Vector2(25, 2));
   // Now for param initial guesses (t0, D, th1, th2, sigma, mu)
 
   // Syntaxes for constructing >4 sized vector:
@@ -112,8 +100,11 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   initialEstimate.insert(
       strokeparam2, (Vector6() << 0.0, 71.0, 1.0, 1.0, 0.5, -3.0).finished());
 
+  // regression
+  EXPECT_DOUBLES_EQUAL(48028, graph[0]->error(initialEstimate), 1);
+
   // Print
-  initialEstimate.print("Initial Estimate:\n");
+  //   initialEstimate.print("Initial Estimate:\n");
 
   // Optimize using Levenberg-Marquardt optimization. The optimizer
   // accepts an optional set of configuration parameters, controlling
@@ -121,7 +112,9 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   // to use, and the amount of information displayed during optimization.
   // Here we will use the default set of parameters.  See the
   // documentation for the full set of parameters.
-  LevenbergMarquardtOptimizer optimizer(graph, initialEstimate);
+  LevenbergMarquardtParams params;
+  params.setVerbosity("error");
+  LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, params);
   Values result = optimizer.optimize();
   result.print("Final Result:\n");
 }
