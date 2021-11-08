@@ -80,7 +80,7 @@ class SparseSlnFactor
 
       return SigmaLogNormal::queryposition(params, t_, 0.01);
     };
-    Vector2 predicted_xy = predict(params, p0);
+    const Vector2 predicted_xy = predict(params, p0);
 
     // TODO(Gery+JD): fix this dynamic jacobian stuff
     if (H_params) {
@@ -97,18 +97,17 @@ class SparseSlnFactor
   const Vector2& data_xy() const { return xy_; }
   double data_t() const { return t_; }
 
-  // /** print */
-  // void print(const std::string& s,
-  //            const gtsam::KeyFormatter& keyFormatter =
-  //                gtsam::DefaultKeyFormatter) const override {
-  //   std::cout << s << "SigmaLogNormalFactor on " << keyFormatter(this->key())
-  //             << "\n"  //
-  //             << "  data point: " << xy_;
-  //   if (this->noiseModel_)
-  //     this->noiseModel_->print("  noise model: ");
-  //   else
-  //     std::cout << "no noise model" << std::endl;
-  // }
+  /** print */
+  void print(const std::string& s,
+             const gtsam::KeyFormatter& keyFormatter =
+                 gtsam::DefaultKeyFormatter) const override {
+    std::cout << s << "SparseSlnFactor on " << keyFormatter(this->key1())
+              << "\n  data point: " << xy_.transpose() << "\n";
+    if (this->noiseModel_)
+      this->noiseModel_->print("noise model: ");
+    else
+      std::cout << "no noise model" << std::endl;
+  }
 };
 
 }  // namespace art_skills
