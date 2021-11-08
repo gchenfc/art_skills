@@ -1,8 +1,0 @@
-{
-    "python.pythonPath": "C:\\Users\\Xodom\\AppData\\Local\\Programs\\Python\\Python39\\python.exe",
-    "ros.distro": "melodic",
-    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-    "python.linting.pylintEnabled": false,
-    "python.linting.flake8Enabled": true,
-    "python.linting.enabled": true
-}
