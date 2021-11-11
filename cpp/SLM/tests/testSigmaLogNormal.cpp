@@ -1,6 +1,8 @@
 // using wsl params, see if we return the correct position at time t
 #include <CppUnitLite/TestHarness.h>
-#include<iostream>
+
+#include <iostream>
+
 #include "../SigmaLogNormal.h"
 
 using namespace std;
@@ -8,40 +10,54 @@ using namespace gtsam;
 using namespace art_skills;
 
 TEST(Sln, velocity) {
-  double t0 = 0;
+  double t0 = -0.17290046;
   double sigma = 0.22648023;
   double mu = -1.07559856;
-  double t = 0.05;
-  double lambda = SigmaLogNormal::logimpulse(sigma, mu, t0, t);
-  EXPECT_DOUBLES_EQUAL(5.86302063, lambda, 1e-12);
+  double t = 0.01;
+  double lambda = SigmaLogNormal::logimpulse(t0, sigma, mu, t);
+  EXPECT_DOUBLES_EQUAL(0.21847935659224005, lambda, 1e-6);
   double D = 50;
-  EXPECT_DOUBLES_EQUAL(5.86302063, SigmaLogNormal::velocity(D, lambda),
-                       1e-12);
+  EXPECT_DOUBLES_EQUAL(10.9239678296, SigmaLogNormal::velocity(D, lambda),
+                       1e-5);
 }
 
 TEST(Sln, direction) {
-  double t0 = 0;
-  double theta1 = 0;
-  double theta2 = 0;
-  double sigma = 0.47238073;
-  double mu = -2.96602237;
+  double t0 = -0.17290046;
+  ;
+  double theta1 = 0.;
+  double theta2 = 0.;
+  double sigma = 0.22648023;
+  double mu = -1.07559856;
   double t = 0.01;
 
   EXPECT_DOUBLES_EQUAL(
-      0, SigmaLogNormal::direction(theta1, theta2, mu, sigma, t0, t), 1e-12);
+      0., SigmaLogNormal::direction(theta1, theta2, mu, sigma, t0, t), 1e-6);
 }
 
-// TEST(Sln, position) {
-//   Vector6 strokeparam;
-//   strokeparam << 0.0, 29.0, 1.0, 1.0, 0.6, -3.5;
-//   strokeparam =
-//       gtsam::Vector7(xy = [ 0, 0 ], t0 = 0, D = 30, theta1 = 0, theta2 = 0,
-//                      sigma = 0.47238073, mu = -2.96602237);
-//   double t = 0.01;
+TEST(Sln, position) {
+  SlnStroke params;
+  // TODO: Why doesn't gtsam::Vector2 work here?
+  Vector2 p0;
+  p0 << 0., 0.;
+  params.xy = p0;
+  params.t0 = -0.17290046;
+  ;
+  params.D = 50;
+  params.theta1 = 0;
+  params.theta2 = 0;
+  params.sigma = 0.22648023;
+  params.mu = -1.07559856;
+  double t = 0.01;
+  double dt = 0.01;
 
-//   EXPECT_DOUBLES_EQUAL(1.91996807e-09,
-//                        SigmaLogNormal::position(strokeparam, t)[0], 1e-12);
-// }
+  // 0.14819898530609998 is the value obtained from wSL method, which uses the
+  // same lambda term, but uses an indirect integration method to approximate
+  // the velocity and position, which varies from the direct approach from the
+  // SL method. The below check is done using a value calculated externally,
+  // using the lambda value from Sl and wSL:
+  EXPECT_DOUBLES_EQUAL(0.10923970609042487,
+                       SigmaLogNormal::position(params, t, dt)[0], 1e-12);
+}
 /* ************************************************************************* */
 int main() {
   TestResult tr;

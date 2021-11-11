@@ -102,7 +102,7 @@ class TrajectoryGenerator:
 
         # time steps
         t = np.arange(0.0, endt, self.dt)
-        #print("time", t == t_og)
+        # print("time", t == t_og)
         return t
 
     def extract_strokes(self):
@@ -124,7 +124,7 @@ class TrajectoryGenerator:
                   between generated points
         """
         trajectory, strokes = self.generate_trajectory()
-
+        # print(trajectory)
         velocity = np.sqrt(np.sum((np.gradient(trajectory, axis=1)/self.dt)**2,
                                   axis=0))
         return(velocity)

@@ -34,7 +34,7 @@ class SigmaLogNormal {
    */
   // TODO: how are the num_strokes being set/extracted?
   static gtsam::Vector2 queryposition(const SlnStroke &strokeparams, double t,
-                               double dt) {
+                                      double dt) {
     return position(strokeparams, t, dt);
   }
 
@@ -45,8 +45,8 @@ class SigmaLogNormal {
    * @return The xy point in a stroke at trajectory time t
    */
   static double logimpulse(double t0, double sigma, double mu, double t) {
-    return -(1 / (sigma * sqrt(2 * M_PI) * (t - t0))) *
-           exp((std::pow((log(t - t0) - mu), 2)) / (2 * sigma * sigma));
+    return 1 / (sigma * sqrt(2 * M_PI) * (t - t0)) *
+           exp(-(std::pow(log(t - t0) - mu, 2)) / (2 * sigma * sigma));
   }
 
   /**
@@ -85,17 +85,22 @@ class SigmaLogNormal {
     double inst_t = 0;
 
     // Integrate
-    for (int i = 1; i <= (t - 0); i++) {
+    for (int i = 1; (dt * i) <= (t - 0); i++) {
       inst_t = 0 + i * dt;
-      double vel =
-          velocity(strokeparameters.D,
-                   logimpulse(strokeparameters.sigma, strokeparameters.mu,
-                              strokeparameters.t0, inst_t));
+      double lambda = logimpulse(strokeparameters.t0, strokeparameters.sigma,
+                                 strokeparameters.mu, inst_t);
+      double vel = velocity(strokeparameters.D, lambda);
       double phi = direction(strokeparameters.theta1, strokeparameters.theta2,
                              strokeparameters.mu, strokeparameters.sigma,
                              strokeparameters.t0, inst_t);
+      std::cout << "\n test " << inst_t << " lambda: " << lambda
+                << " vel: " << vel << " phi: " << phi << "\n";
       xy = xy + dt * (vel * gtsam::Vector2(cos(phi), sin(phi)));
+      std::cout << "xy " << xy;
+      // xy = xy + gtsam::Vector2(vel, vel);
+      // xy = gtsam::Vector2(vel, i);
     }
+
     return xy;
   }
 };
