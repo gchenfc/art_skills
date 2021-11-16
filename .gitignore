@@ -5,5 +5,5 @@ cpp/Stroke_Capture/*
 !cpp/Stroke_Capture/src/
 
 .vscode/*
-python/.vscode/*
+.build/*
 .vscode/settings.json
