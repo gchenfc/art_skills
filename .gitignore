@@ -1,7 +1,5 @@
-
-
+.vscode/
+build/
 .vscode/*
 python/.vscode/*
-.vscode/settings.json
-build
 .vscode/settings.json

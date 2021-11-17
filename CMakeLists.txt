@@ -57,7 +57,7 @@ install(
 # # Build scripts (CMake tracks the dependecy to link with GTSAM through our
 # project's static library) gtsamAddExamplesGlob("*.cpp" "" "${PROJECT_NAME}")
 
-#[[
+##[[
 # ##############################################################################
 # * 6. Find the gtwrap package (either installed via GTSAM or as a standalone
 #   package) The cmake code for wrapping is included automatically.
