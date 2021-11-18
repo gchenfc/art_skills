@@ -5,7 +5,7 @@ import numpy as np
 class CaptureTrajectory:
     """A class for generating the trajectory from data"""
 
-    def capture_alphabet(data_file):
+    def capture_alphabet(self, data_file):
         """Read from mocap data
 
         Args:
@@ -15,13 +15,13 @@ class CaptureTrajectory:
         data = np.load(data_file, allow_pickle=True)
         return(data)
 
-    def capture_trajectory(self, input_sequence):
-        """Parse
+    def parse_trajectory(self, input_sequence):
+        """Parse trajectory from mocap data
 
         Args:
             alphabet ([.npz]): [a bunch of .npy files]
         """
-        data = np.load('all_letters.npz', allow_pickle=True)
+        data = self.capture_alphabet("all_letters.npz")
         traj = []
         # data_a is a list of strokes, where each stroke is an Nx2 numpy array
         data_a = data['A']

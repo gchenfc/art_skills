@@ -14,7 +14,7 @@ Github: colormotor/motor repository
 Author: Juan-Diego Florez, Frank Dellaert, Sang-Won Leigh
 """
 
-from weighted_SL.stroke_generator import StrokeGenerator
+from art_skills.wSL_stroke_generator import StrokeGenerator
 import numpy as np
 import scipy.signal
 from scipy.stats import lognorm

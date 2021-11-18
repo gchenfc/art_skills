@@ -10,7 +10,7 @@ Author: Frank Dellaert, Sang-Won Leigh, JD Florez-Castillo
 """
 
 import unittest
-
+from art_skills.capture_trajectory import CaptureTrajectory
 import numpy as np
 from matplotlib import pyplot as plt
 from numpy.core.function_base import linspace
@@ -71,8 +71,8 @@ class TestWholeEnchilada(GtsamTestCase):
 
     def test_capture_trajectory(self):
         """Generate a trajectory."""
-        skills = alphabet_skills()
-        trajectory = skills.capture_trajectory(["A"])
+        cap = CaptureTrajectory()
+        trajectory = cap.parse_trajectory(["A"])
         plt.plot(trajectory[0][0][:, 0], trajectory[0][0][:, 1])
         plt.plot(trajectory[0][1][:, 0], trajectory[0][1][:, 1])
         plt.show()
@@ -85,7 +85,7 @@ class TestWholeEnchilada(GtsamTestCase):
         order = 3
         zipx = zip(t, x)
         datax = dict(zipx)
-        trajectory = skills.Chebyshev_fit(datax, t, order)
+        trajectory = skills.chebyshev_fit(datax, t, order)
         plt.plot(t, x)
         plt.plot(t, trajectory)
         plt.show()
@@ -94,8 +94,8 @@ class TestWholeEnchilada(GtsamTestCase):
         """Capture/take input, perceive/process, and render the entire
         alphabet."""
         skills = alphabet_skills()
-        capture = capture_trajectory()
-        traj = capture.capture_trajectory(["Test"])
+        cap = CaptureTrajectory()
+        traj = cap.parse_trajectory(["Test"])
         xcoord, ycoord = skills.render_trajectory(traj, 12)
         for stroke in range(len(xcoord)):
             plt.plot(xcoord[stroke], ycoord[stroke])
