@@ -1,6 +1,8 @@
-from trajectory_generator import TrajectoryGenerator
+import art_skills
 import numpy as np
 import unittest
+
+# TODO: put trajectory tests from wSL_stroke_generator_test.py into this file
 
 
 class TestTrajectoryGenerator(unittest.TestCase):
@@ -8,13 +10,11 @@ class TestTrajectoryGenerator(unittest.TestCase):
 
     def setUp(self):
         """Create class for testing multiple methods."""
-        self.trajectory_generator = TrajectoryGenerator()
+        self.trajectory_generator = art_skills.TrajectoryGenerator()
 
     def test_XX(self):
-        """Test the sigma method."""
-        return(TrajectoryGenerator.XX)
+        """Test the trajectory method."""
 
 
 if __name__ == "__main__":
     unittest.main()
-    

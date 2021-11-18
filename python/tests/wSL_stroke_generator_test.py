@@ -1,4 +1,4 @@
-from stroke_generator import StrokeGenerator
+import python.art_skills
 import numpy as np
 import unittest
 
@@ -8,47 +8,46 @@ class TestStrokeGenerator(unittest.TestCase):
 
     def setUp(self):
         """Create class for testing multiple methods."""
-        self.stroke_generator = StrokeGenerator()
+        self.SG = python.art_skills.wSL_stroke_generator.StrokeGenerator()
 
     def test_sigma(self):
         """Test the sigma method."""
         Ac = np.array([0.05, 0.05, 0.05])
         # regression, Berio code values
-        np.testing.assert_array_almost_equal(StrokeGenerator.sigma(Ac),
+        np.testing.assert_array_almost_equal(self.SG.sigma(Ac),
                                              [0.22648023, 0.22648023,
                                               0.22648023])
-        return(StrokeGenerator.sigma(Ac))
+        return(self.SG.sigma(Ac))
 
     def test_mu(self):
         """Test the mu method."""
         sigma, T = self.test_sigma(), 0.3
         # regression, Berio code values
-        np.testing.assert_array_almost_equal(StrokeGenerator.mu(sigma, T),
+        np.testing.assert_array_almost_equal(self.SG.mu(sigma, T),
                                              [-1.58642418, -1.58642418,
                                               -1.58642418])
-        return(StrokeGenerator.mu(sigma, T))
+        return(self.SG.mu(sigma, T))
 
     def test_D_theta(self):
         """Test the D and theta method."""
         t_points = np.array([[0, 0], [-50, 100], [100, 70], [-40, 120]]).T
         delta = np.array([0.3, 0.3, 0.3])
-        D, D_adj, theta = StrokeGenerator.D_theta(StrokeGenerator(), t_points,
-                                                  delta)
+        D, D_adj, theta = self.SG.D_theta(t_points, delta)
         # regression, Berio code values
         np.testing.assert_array_almost_equal(D_adj, [112.223765, 153.545734,
                                                      149.219632])
         np.testing.assert_array_almost_equal(theta, [2.034444, -0.197396,
                                                      2.798569])
-        return(StrokeGenerator.D_theta(StrokeGenerator(), t_points, delta))
+        return(self.SG.D_theta(t_points, delta))
 
     def test_t0_t(self):
         """Test the t0 method."""
         dt = 0.01
         T, delta_t = 0.3, np.array([0.4, 0.4, 0.4])
         sigma, mu = self.test_sigma(), self.test_mu()
-        t0, t = StrokeGenerator.t0_t(dt, sigma, mu, T, delta_t)
+        t0, t = self.SG.t0_t(dt, sigma, mu, T, delta_t)
         # regression, Berio code values
-        np.testing.assert_array_almost_equal(t0, [-0.10374027, 0.01625973, 
+        np.testing.assert_array_almost_equal(t0, [-0.10374027, 0.01625973,
                                                   0.13625973],
                                              0.001)
         np.testing.assert_equal(len(t), 54)
@@ -58,8 +57,8 @@ class TestStrokeGenerator(unittest.TestCase):
         """Test the weight method"""
         sigma, mu = self.test_sigma(), self.test_mu()
         t0, t = self.test_t0_t()
-        weight = StrokeGenerator.weight(StrokeGenerator(), t, t0[0], sigma[0],
-                                        mu[0])
+        weight = self.SG.weight(t, t0[0], sigma[0],
+                                mu[0])
         valid_w = True  # bool to check that w exists exclusively within [0,1]
         if any(t < 0 for t in weight) or any(t > 1 for t in weight):
             valid_w = False
@@ -91,9 +90,8 @@ class TestStrokeGenerator(unittest.TestCase):
         weight = self.test_weight()
         D, D_adj, theta = self.test_D_theta()
         delta = np.array([0.3, 0.3, 0.3])
-        displacement = StrokeGenerator.displacement(StrokeGenerator(),
-                                                    t_points, weight, D[0],
-                                                    theta[0], delta[0])
+        displacement = self.SG.displacement(t_points, weight, D[0],
+                                            theta[0], delta[0])
         np.testing.assert_array_almost_equal([displacement[0][-1],
                                               displacement[1][-1]],
                                              [t_points[0][1],
@@ -109,11 +107,11 @@ class TestStrokeGenerator(unittest.TestCase):
         delta = np.array([0.3, 0.3, 0.3])
         trajectory = np.zeros((2, 54))
         for i in range(len(t_points[0]) - 1):
-            weight = StrokeGenerator.weight(StrokeGenerator(), t, t0[i],
-                                            sigma[i], mu[i])
-            displacement = StrokeGenerator.displacement(StrokeGenerator(),
-                                                        t_points, weight, D[i],
-                                                        theta[i], delta[i])
+            weight = self.SG.weight(t, t0[i],
+                                    sigma[i], mu[i])
+            displacement = self.SG.displacement(
+                t_points, weight, D[i],
+                theta[i], delta[i])
             trajectory[:, :] += displacement
         np.testing.assert_allclose([trajectory[0][-1],
                                     trajectory[1][-1]],

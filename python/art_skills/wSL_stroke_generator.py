@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import math
 import numpy as np
 from scipy import special
@@ -11,8 +9,7 @@ class StrokeGenerator:
     def __init__(self, eps=1e-15, sensitivity=1e-10):
         self.eps = eps  # a really small value, used to avoid divide by zero
         self.sensitivity = sensitivity  # a small value used for filtering
-#
-    """Trajectory Level Methods: (operate on all input values)"""
+
     @staticmethod
     def sigma(Ac):
         """
@@ -79,24 +76,20 @@ class StrokeGenerator:
                                           to the previous stroke time
                                           occurrence and duration]
         """
-        n = delta_t.shape[0]
-
-        """Method from Berio code, similar to Berio 17"""
+        # Method from Berio code, similar to Berio 17eurographics:
         # add small time offset at the start to guarantee that
         # the first stroke starts with zero velocity
-        # t_offset = 0.05
+        n = delta_t.shape[0]
         t1 = np.zeros(n) + t_offset
         # eqtn: t0 = t0_(i-1) + delta_t*T - e^(mu - sigma)"""
         t1[1:] = delta_t[1:] * T
         t1 = np.cumsum(t1)
-        # print("t1", t1)
         # Add onsets in order to shift lognormal to start
         t0 = t1 - np.exp(mu[0] - sigma[0]*3)
         endtime = t0[-1] + np.exp(mu[-1] + sigma[-1]*3)
         t = np.arange(0.0, endtime, dt)
         return(t0, t)
-#
-    """Stroke Level Methods: (operate on stroke-specific input values)"""
+
     def weight(self, t, t0, sigma, mu):
         """
         weight: lognormal interpolation between target points
@@ -145,22 +138,22 @@ class StrokeGenerator:
             displacement = d + P0_offset
         return(displacement)
 
-    # @staticmethod
-    # def velocity(dt, points):
-    #     """
-    #     velocity: lognormal profiles, speed in trajectory
+    @staticmethod
+    def velocity(dt, points):
+        """
+        velocity: lognormal profiles, speed in trajectory
 
-    #     Args:
-    #         dt ([float]): the timestep of the trajectory
-    #         points ([np.array(float)]): the generated points of the
-    #           trajectory
-    #     """
-    #     velocity_profiles = []
-    #     for i in range(len(points)):
-    #         velocity_prof = [math.dist(points[i][x], points[i][x-1])/dt
-    #                          for x in range(1, len(points[i]))]
-    #         time = [round(dt * x, 2) if i == 0
-    #                 else (round(dt * x, 2))  # + T[-1])
-    #                 for x in range(1, len(points[i]))]
-    #         velocity_profiles.append([velocity_prof, time])
-    #     return(velocity_profiles)
+        Args:
+            dt ([float]): the timestep of the trajectory
+            points ([np.array(float)]): the generated points of the
+              trajectory
+        """
+        velocity_profiles = []
+        for i in range(len(points)):
+            velocity_prof = [math.dist(points[i][x], points[i][x-1])/dt
+                             for x in range(1, len(points[i]))]
+            time = [round(dt * x, 2) if i == 0
+                    else (round(dt * x, 2))  # + T[-1])
+                    for x in range(1, len(points[i]))]
+            velocity_profiles.append([velocity_prof, time])
+        return(velocity_profiles)

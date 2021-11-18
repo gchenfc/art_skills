@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 GTSAM Copyright 2010-2019, Georgia Tech Research Corporation,
 Atlanta, Georgia 30332-0415
@@ -16,7 +14,7 @@ Github: colormotor/motor repository
 Author: Juan-Diego Florez, Frank Dellaert, Sang-Won Leigh
 """
 
-from stroke_generator import StrokeGenerator
+from weighted_SL.stroke_generator import StrokeGenerator
 import numpy as np
 import scipy.signal
 from scipy.stats import lognorm
@@ -75,35 +73,6 @@ class TrajectoryGenerator:
         x = np.maximum(x, self.log_eps)
         dist = lognorm(s=sigma, loc=0, scale=np.exp(mu))
         return dist.pdf(x)
-
-    def compute_time_steps(self, t_offset=0.0):
-        sigma, mu, _, _, t0_og, t_og = self.trajectory_setup()
-        m = self.t_points.shape[1] - 1
-        delta_t = np.ones(m)*self.delta_t
-        Ac = np.ones(m)*self.Ac
-        T = np.ones(m)*self.T
-
-        sigma = StrokeGenerator.sigma(Ac)
-        mu = StrokeGenerator.mu(sigma, T)
-
-        # compute t0 values from delta
-        # add small time offset ad the start to guarantee
-        # that first stroke starts with zero velocity
-        T0 = np.zeros(m)+t_offset  # +0.05
-        T0[1:] = delta_t[1:] * T[:-1]
-        T0 = np.cumsum(T0)
-        # T1 = np.array(T0)
-
-        # Add onsets in order to shift lognormal to start
-        T0 = T0 - np.exp(mu[0] - sigma[0]*3)
-
-        # endtime
-        endt = T0[-1] + np.exp(mu[-1] + sigma[-1]*3)
-
-        # time steps
-        t = np.arange(0.0, endt, self.dt)
-        # print("time", t == t_og)
-        return t
 
     def extract_strokes(self):
         """
