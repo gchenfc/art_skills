@@ -24,21 +24,20 @@ class TestChebyshevFit(GtsamTestCase):
 
     def test_capture_trajectory(self):
         """Generate a trajectory."""
-        cap = CaptureTrajectory()
-        trajectory = cap.parse_trajectory(["A"])
+        caprend = CaptureRenderTrajectory()
+        trajectory = caprend.parse_trajectory(["A"])
         plt.plot(trajectory[0][0][:, 0], trajectory[0][0][:, 1])
         plt.plot(trajectory[0][1][:, 0], trajectory[0][1][:, 1])
         plt.show()
 
     def test_chebyshev(self):
         """Test Chebyshev fitting"""
-        skills = alphabet_skills()
         x = np.array([0, 0.1, 1.5, 0.25, 0])
         t = np.array([0, 0.5,   1,  1.5, 2])
         order = 3
         zipx = zip(t, x)
         datax = dict(zipx)
-        trajectory = skills.chebyshev_fit(datax, t, order)
+        trajectory = ChebyshevFit(datax, t, order)
         plt.plot(t, x)
         plt.plot(t, trajectory)
         plt.show()
@@ -46,10 +45,9 @@ class TestChebyshevFit(GtsamTestCase):
     def test_write_alphabet(self):
         """Capture/take input, perceive/process, and render the entire
         alphabet."""
-        skills = alphabet_skills()
-        cap = CaptureTrajectory()
-        traj = cap.parse_trajectory(["Test"])
-        xcoord, ycoord = skills.render_trajectory(traj, 12)
+        caprend = CaptureRenderTrajectory()
+        traj = caprend.parse_trajectory(["Test"])
+        xcoord, ycoord = caprend.render_trajectory(traj, 12)
         for stroke in range(len(xcoord)):
             plt.plot(xcoord[stroke], ycoord[stroke])
         plt.axis("equal")

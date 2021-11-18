@@ -9,11 +9,10 @@ Unit tests for the entire project, end-end
 Author: Frank Dellaert, JD Florez-Castillo
 """
 
-from art_skills.capture_render_trajectory import CaptureRenderTrajectory
 import gtsam
 
 
-def ChebyshevFit(self, data, time, p_order):
+def ChebyshevFit(data, time, p_order):
     """
     Fits a Chebyshev Basis and interpolates for x against t using GTSAM
 
@@ -23,7 +22,6 @@ def ChebyshevFit(self, data, time, p_order):
         porder ([int]): [the order of chebyshev polynomial]
     """
     noise = gtsam.noiseModel.Unit.Create(1)
-    self.x = [0., 0.5, 0.75]
     fit = gtsam.FitBasisChebyshev1Basis(data, noise, p_order)
     coeff = fit.parameters()
     basis = gtsam.Chebyshev1Basis

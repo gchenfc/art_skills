@@ -1,5 +1,7 @@
 import numpy as np
 from numpy.core.function_base import linspace
+
+from art_skills.chebyshev_fitter import ChebyshevFit
 # from matplotlib import pyplot as plt
 
 
@@ -77,8 +79,8 @@ class CaptureRenderTrajectory:
                 zipy = zip(traj_t, traj_y)
                 data_x = dict(zipx)
                 data_y = dict(zipy)
-                interp_x.append(self.chebyshev_fit(data_x, traj_t, order))
-                interp_y.append(self.chebyshev_fit(data_y, traj_t, order))
+                interp_x.append(ChebyshevFit(data_x, traj_t, order))
+                interp_y.append(ChebyshevFit(data_y, traj_t, order))
                 count_s += 1
             count_l += 1
         return(interp_x, interp_y)

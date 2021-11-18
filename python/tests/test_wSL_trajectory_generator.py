@@ -10,7 +10,6 @@ class TestTrajectoryGenerator(unittest.TestCase):
 
     def setUp(self):
         """Create class for testing multiple methods."""
-        self.trajectory_generator = art_skills.TrajectoryGenerator()
 
     def test_XX(self):
         """Test the trajectory method."""
