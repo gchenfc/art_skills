@@ -24,7 +24,7 @@
 
 #include <string>
 
-#include "SigmaLogNormal.h"
+#include "SlnStroke.h"
 
 namespace art_skills {
 
@@ -64,32 +64,24 @@ class SparseSlnFactor
 
   /** vector of errors */
   Vector evaluateError(
-      const Vector6& params, const Vector2& p0,  //
-      boost::optional<gtsam::Matrix&> H_params = boost::none,
+      const Vector6& parameters, const Vector2& p0,  //
+      boost::optional<gtsam::Matrix&> H_parameters = boost::none,
       boost::optional<gtsam::Matrix&> H_p0 = boost::none) const override {
     // lambda function for queryposition but without `t` argument
-    auto predict = [this](const Vector6& params_vector, const Vector2& p0) {
-      SlnStroke params;
-      params.xy = p0;
-      params.t0 = params_vector(0);
-      params.D = params_vector(1);
-      params.theta1 = params_vector(2);
-      params.theta2 = params_vector(3);
-      params.sigma = params_vector(4);
-      params.mu = params_vector(5);
-
-      return SigmaLogNormal::queryposition(params, t_, 0.01);
+    auto predict = [this](const Vector6& parameters, const Vector2& p0) {
+      SlnStroke stroke(p0, parameters);
+      return stroke.position(t_, 0.01);
     };
-    const Vector2 predicted_xy = predict(params, p0);
+    const Vector2 predicted_xy = predict(parameters, p0);
 
     // TODO(Gery+JD): fix this dynamic jacobian stuff
-    if (H_params) {
-      (*H_params) = gtsam::numericalDerivative21<Vector2, Vector6, Vector2>(
-          predict, params, p0);
+    if (H_parameters) {
+      (*H_parameters) = gtsam::numericalDerivative21<Vector2, Vector6, Vector2>(
+          predict, parameters, p0);
     }
     if (H_p0) {
       (*H_p0) = gtsam::numericalDerivative22<Vector2, Vector6, Vector2>(
-          predict, params, p0);
+          predict, parameters, p0);
     }
     return predicted_xy - xy_;
   }
