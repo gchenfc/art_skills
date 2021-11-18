@@ -1,4 +1,4 @@
-from python.art_skills import wSL_stroke_generator
+from art_skills import wSL_stroke_generator
 import numpy as np
 import unittest
 
@@ -8,7 +8,7 @@ class TestStrokeGenerator(unittest.TestCase):
 
     def setUp(self):
         """Create class for testing multiple methods."""
-        self.SG = art_skills.StrokeGenerator()
+        self.SG = wSL_stroke_generator.StrokeGenerator()
 
     def test_sigma(self):
         """Test the sigma method."""

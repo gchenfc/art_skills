@@ -1,8 +1,9 @@
 import numpy as np
+from numpy.core.function_base import linspace
 # from matplotlib import pyplot as plt
 
 
-class CaptureTrajectory:
+class CaptureRenderTrajectory:
     """A class for generating the trajectory from data"""
 
     def capture_alphabet(self, data_file):
@@ -54,3 +55,30 @@ class CaptureTrajectory:
                                 [strokeb1, strokeb2, strokeb3],
                                 [strokec1], [stroked1, stroked2]])
         return(traj)
+
+    def render_trajectory(self, traj, order):
+        """
+        Render trajectory that reproduces artistic intent.
+
+        Args:
+            traj ([array]): [the letters and strokes of each letter]
+            order ([int]): [the order of chebyshev polynomial]
+        """
+        interp_x = []
+        interp_y = []
+        count_s = 0
+        count_l = 0
+        for letter in traj:
+            for stroke in letter:
+                traj_x = (stroke[:, 0] + count_l*0.7)
+                traj_y = (stroke[:, 1])
+                traj_t = linspace(0, 1, len(traj_x))
+                zipx = zip(traj_t, traj_x)
+                zipy = zip(traj_t, traj_y)
+                data_x = dict(zipx)
+                data_y = dict(zipy)
+                interp_x.append(self.chebyshev_fit(data_x, traj_t, order))
+                interp_y.append(self.chebyshev_fit(data_y, traj_t, order))
+                count_s += 1
+            count_l += 1
+        return(interp_x, interp_y)

@@ -5,7 +5,7 @@ All Rights Reserved
 
 See LICENSE for the license information
 
-Unit test for generative approach to strokes, using methodology described in:
+Generative approach to strokes, using methodology described in:
 
 Berio17eurographics_HandwritingTrajectories.pdf
 Berio21thesis_Autograff_graffiti_writing.pdf

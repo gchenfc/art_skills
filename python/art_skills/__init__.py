@@ -1,4 +1,4 @@
 from art_skills.wSL_stroke_generator import StrokeGenerator
 from art_skills.wSL_trajectory_generator import TrajectoryGenerator
-from art_skills.capture_trajectory import CaptureTrajectory
-from art_skills.chebyshev import alphabet_skills
+from art_skills.capture_render_trajectory import CaptureRenderTrajectory
+from art_skills.chebyshev_fitter import ChebyshevFit
