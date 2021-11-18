@@ -18,6 +18,8 @@
 
 // using wsl params, see if we return the correct position at time t
 #include <CppUnitLite/TestHarness.h>
+#include <gtsam/base/Testable.h>
+#include <gtsam/geometry/Point2.h>
 
 #include <iostream>
 
@@ -27,8 +29,13 @@ using namespace std;
 using namespace gtsam;
 using namespace art_skills;
 
+// All the hardcoded values below are obtained from wSL method, using
+// generate_wSL.ipynb, which uses the same lambda term, but uses an indirect
+// integration method to approximate the speed and position, which varies from
+// the direct approach from the SL method.
+
 namespace example {
-const Vector2 xy = Vector2::Zero();
+const Point2 xy(0, 0);
 const double t0 = -0.17290046;
 const double theta1 = 0.;
 const double theta2 = 0.;
@@ -57,12 +64,12 @@ TEST(Sln, position) {
   using example::stroke;
   double t1 = 0.01;
   double dt = 0.01;
-  EXPECT_DOUBLES_EQUAL(0.10923970609042487, stroke.position(t1, dt)[0], 1e-12);
+  EXPECT(gtsam::assert_equal(gtsam::Point2(0.10923970609042487, 0),
+                             stroke.position(t1, dt)));
 }
 
 TEST(Sln, position2) {
-  Vector2 p2;
-  p2 << 50., 0.;
+  Point2 p2(50, 0);
   const double t0 = 0.02709954;
   const double D = 50;
   const double theta1 = 0;
@@ -71,14 +78,10 @@ TEST(Sln, position2) {
   const double mu = -1.07559856;
   const SlnStroke stroke(p2, t0, D, theta1, theta2, sigma, mu);
 
-  // 0.14819898530609998 is the value obtained from wSL method, which uses the
-  // same lambda term, but uses an indirect integration method to approximate
-  // the speed and position, which varies from the direct approach from the
-  // SL method. The below check is done using a value calculated externally,
-  // using the lambda value from Sl and wSL:
   double t2 = 0.03;
   double dt = 0.01;
-  EXPECT_DOUBLES_EQUAL(0.10923970609042487, stroke.position(t2, dt)[0], 1e-12);
+  EXPECT(gtsam::assert_equal(gtsam::Point2(50.10923970609042487, 0),
+                             stroke.position(t2, dt)));
 }
 /* ************************************************************************* */
 int main() {

@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <gtsam/base/Vector.h>
+#include <gtsam/geometry/Point2.h>
 
 #include <vector>
 
@@ -32,17 +32,17 @@ namespace art_skills {
  * t0 defines the start time of the stroke along the trajectory
  */
 class SlnStroke {
-  gtsam::Vector2 xy;  // point coordinate
-  double t0;          // start of impulse in global time
-  double D;           // amplitude of stroke (||P[i] - P[i-1]||)
-  double theta1;      // initial angular deviation
-  double theta2;      // initial angular deviation
-  double sigma;       // logresponse time
-  double mu;          // logtime delay
+  gtsam::Point2 xy;  // point coordinate
+  double t0;         // start of impulse in global time
+  double D;          // amplitude of stroke (||P[i] - P[i-1]||)
+  double theta1;     // initial angular deviation
+  double theta2;     // initial angular deviation
+  double sigma;      // logresponse time
+  double mu;         // logtime delay
 
  public:
   /// Construct from individual parameters
-  SlnStroke(const gtsam::Vector2& xy, double t0, double D, double theta1,
+  SlnStroke(const gtsam::Point2& xy, double t0, double D, double theta1,
             double theta2, double sigma, double mu)
       : xy(xy),
         t0(t0),
@@ -53,7 +53,7 @@ class SlnStroke {
         mu(mu) {}
 
   /// Construct from initial point and 6-vector of parameters
-  SlnStroke(const gtsam::Vector2& xy, const gtsam::Vector6& p)
+  SlnStroke(const gtsam::Point2& xy, const gtsam::Vector6& p)
       : xy(xy),
         t0(p(0)),
         D(p(1)),
@@ -98,23 +98,21 @@ class SlnStroke {
    * @param dt The timestep used for integration/sampling
    * @return The xy position in a stroke at time t
    */
-  // TODO: Fix the way time is handled, t0 should be taken into account at the
-  // end
-  gtsam::Vector2 position(double t, double dt) const {
-    gtsam::Vector2 xy = this->xy;  // initialize to starting point
+  gtsam::Point2 position(double t, double dt) const {
+    gtsam::Point2 xy = this->xy;  // initialize to starting point
     double inst_t = 0;
     // Integrate
-    for (int i = 1; (dt * i) <= (t - 0); i++) {
-      inst_t = 0 + i * dt;
+    for (size_t i = 1; (dt * i) <= (t - t0); i++) {
+      inst_t = t0 + i * dt;
       const double lambda = log_impulse(inst_t);
       const double s = speed(lambda);
       const double phi = direction(inst_t);
       std::cout << "\n t =  " << inst_t << " | lambda = " << lambda
                 << " | v = " << s << " | phi = " << phi << "\n";
-      xy = xy + dt * (s * gtsam::Vector2(cos(phi), sin(phi)));
+      xy = xy + dt * (s * gtsam::Point2(cos(phi), sin(phi)));
       std::cout << "xy \n" << xy << "\n ...";
-      // xy = xy + gtsam::Vector2(s, s);
-      // xy = gtsam::Vector2(s, i);
+      // xy = xy + gtsam::Point2(s, s);
+      // xy = gtsam::Point2(s, i);
     }
 
     return xy;
