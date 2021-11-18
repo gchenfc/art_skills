@@ -45,8 +45,11 @@ class SigmaLogNormal {
    * @return The xy point in a stroke at trajectory time t
    */
   static double logimpulse(double t0, double sigma, double mu, double t) {
-    return 1 / (sigma * sqrt(2 * M_PI) * (t - t0)) *
-           exp(-(std::pow(log(t - t0) - mu, 2)) / (2 * sigma * sigma));
+    double lambda = 1 / (sigma * sqrt(2 * M_PI) * (t - t0)) *
+             exp(-(std::pow(log(t - t0) - mu, 2)) / (2 * sigma * sigma));
+    return lambda;
+    // return 1 / (sigma * sqrt(2 * M_PI) * (t - t0)) *
+    //        exp(-(std::pow(log(t - t0) - mu, 2)) / (2 * sigma * sigma));
   }
 
   /**
@@ -79,6 +82,7 @@ class SigmaLogNormal {
    * @param dt The timestep used for integration/sampling
    * @return The xy position in a stroke at time t
    */
+  // TODO: Fix the way time is handled, t0 should be taken into account at the end
   static gtsam::Vector2 position(const SlnStroke &strokeparameters, double t,
                                  double dt) {
     gtsam::Vector2 xy = strokeparameters.xy;  // initialize to starting point
@@ -92,10 +96,10 @@ class SigmaLogNormal {
       double phi = direction(strokeparameters.theta1, strokeparameters.theta2,
                              strokeparameters.mu, strokeparameters.sigma,
                              strokeparameters.t0, inst_t);
-      // std::cout << "\n t =  " << inst_t << " | lambda = " << lambda
-      //           << " | v = " << vel << " | phi = " << phi << "\n";
+      std::cout << "\n t =  " << inst_t << " | lambda = " << lambda
+                << " | v = " << vel << " | phi = " << phi << "\n";
       xy = xy + dt * (vel * gtsam::Vector2(cos(phi), sin(phi)));
-      // std::cout << "xy \n" << xy << "\n ...";
+      std::cout << "xy \n" << xy << "\n ...";
       // xy = xy + gtsam::Vector2(vel, vel);
       // xy = gtsam::Vector2(vel, i);
     }

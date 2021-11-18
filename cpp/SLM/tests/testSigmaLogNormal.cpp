@@ -23,7 +23,6 @@ TEST(Sln, velocity) {
 
 TEST(Sln, direction) {
   double t0 = -0.17290046;
-  ;
   double theta1 = 0.;
   double theta2 = 0.;
   double sigma = 0.22648023;
@@ -36,19 +35,32 @@ TEST(Sln, direction) {
 
 TEST(Sln, position) {
   SlnStroke params;
-  // TODO: Why doesn't gtsam::Vector2 work here?
-  Vector2 p0;
-  p0 << 0., 0.;
-  params.xy = p0;
+  double dt = 0.01;
+
+  double t1 = 0.01;
+  Vector2 p1;
+  p1 << 0., 0.;
+  params.xy = p1;
   params.t0 = -0.17290046;
-  ;
   params.D = 50;
   params.theta1 = 0;
   params.theta2 = 0;
   params.sigma = 0.22648023;
   params.mu = -1.07559856;
-  double t = 0.01;
-  double dt = 0.01;
+
+  EXPECT_DOUBLES_EQUAL(0.10923970609042487,
+                       SigmaLogNormal::position(params, t1, dt)[0], 1e-12);
+
+  double t2 = 0.03;                       
+  Vector2 p2;
+  p2 << 50., 0.;
+  params.xy = p2;
+  params.t0 = 0.02709954;
+  params.D = 50;
+  params.theta1 = 0;
+  params.theta2 = 0;
+  params.sigma = 0.22648023;
+  params.mu = -1.07559856;
 
   // 0.14819898530609998 is the value obtained from wSL method, which uses the
   // same lambda term, but uses an indirect integration method to approximate
@@ -56,7 +68,7 @@ TEST(Sln, position) {
   // SL method. The below check is done using a value calculated externally,
   // using the lambda value from Sl and wSL:
   EXPECT_DOUBLES_EQUAL(0.10923970609042487,
-                       SigmaLogNormal::position(params, t, dt)[0], 1e-12);
+                       SigmaLogNormal::position(params, t2, dt)[0], 1e-12);
 }
 /* ************************************************************************* */
 int main() {

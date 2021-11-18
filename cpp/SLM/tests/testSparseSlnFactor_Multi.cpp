@@ -56,18 +56,25 @@ TEST(SparseSlnFactor, WholeEnchilada) {
 
   // Matrix for t, x, y, reference for each position factor
   Matrix53 data1;
-  data1 << 0.05, 1.76579, 0.,  //
-      0.10, 9.0322, 0.,        //
-      0.15, 21.4449, 0.,       //
-      0.20, 33.6345, 0.,       //
-      0.25, 41.9882, 0.;
+  data1 << 0.05, 1.50799612, 0.,  //
+      0.10, 8.11741321, 0.,        //
+      0.15, 20.21929084, 0.,       //
+      0.20, 32.72157755, 0.,       //
+      0.25, 42.94530815, 0.;
 
   Matrix53 data2;
-  data2 << 0.34, 54.4648483, 0.,  //
-      0.39, 66.90712126, 0.,      //
-      0.44, 80.14918063, 0.,      //
-      0.49, 89.94344084, 0.,      //
-      0.54, 95.53231736, 0.;
+  data2 << 0.34, 65.78952532, 0.,  //
+      0.39, 79.7163996, 0.,      //
+      0.44, 89.78552592, 0.,      //
+      0.49, 95.47698334, 0.,      //
+      0.54, 98.17967079, 0.;
+
+//   Matrix53 data2;
+//   data2 << 0.34, 54.4648483, 0.,  //
+//       0.39, 66.90712126, 0.,      //
+//       0.44, 80.14918063, 0.,      //
+//       0.49, 89.94344084, 0.,      //
+//       0.54, 95.53231736, 0.;
 
   // create a measurement for both factors (the same in this case)
   auto position_noise =
@@ -80,7 +87,7 @@ TEST(SparseSlnFactor, WholeEnchilada) {
     graph.emplace_shared<SparseSlnFactor>(
         strokeparam2, p2, data2(i-1, 0), data2.block<1, 2>(i-1, 1), position_noise);
   }
-  EXPECT_LONGS_EQUAL(5, graph.size());
+  EXPECT_LONGS_EQUAL(10, graph.size());
 
   // Print
   //graph.print("Factor Graph:\n");
@@ -89,19 +96,24 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   Values initialEstimate;
   // starting with initial control point p0
   initialEstimate.insert(p1, Vector2(0., 0.));
-  initialEstimate.insert(p2, Vector2(25, 2));
+  initialEstimate.insert(p2, Vector2(50, 0));
   
   // Now for param initial guesses (t0, D, th1, th2, sigma, mu)
   // Syntaxes for constructing >4 sized vector:
   Vector6 sp1;
-  sp1 << -0.17, 60.0, 0.5, 0., 0.23, -1.08;
+  // -0.173, 50, 0, 0, 0.226, -1.076
+  sp1 << -0.17, 490.0, 0.5, 0., 0.23, -1.08;
   initialEstimate.insert(strokeparam1, sp1);
-
-  initialEstimate.insert(
-      strokeparam2, (Vector6() << 0.1, 71.0, 1.0, 1.0, 0.5, -3.0).finished());
+  Vector6 sp2;
+  // 0.027, 50, 0, 0, 0.226, -1.076
+  sp2 << 0.027, 51.0, 0.2, 0.3, 0.3, -1.0;
+  initialEstimate.insert(strokeparam2, sp2);
+  // 0.027, 50, 0, 0, 0.226, -1.076
+//   initialEstimate.insert(
+//       strokeparam2, (Vector6() << 0.027, 51.0, 0.2, 0.3, 0.3, -1.0).finished());
 
   // regression
-  // EXPECT_DOUBLES_EQUAL(1.525, graph[0]->error(initialEstimate), 1);
+  //EXPECT_DOUBLES_EQUAL(1.525, graph[0]->error(initialEstimate), 1);
 
   // Print
   //initialEstimate.print("Initial Estimate:\n");
@@ -113,10 +125,10 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   // Here we will use the default set of parameters.  See the
   // documentation for the full set of parameters.
   LevenbergMarquardtParams params;
-  // params.setVerbosity("error");
+  params.setVerbosity("error");
   LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, params);
   Values result = optimizer.optimize();
-  //result.print("Final Result:\n");
+  result.print("Final Result:\n");
 
 }
 

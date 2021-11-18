@@ -48,8 +48,8 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   NonlinearFactorGraph graph;
 
   // Create the keys we need for this simple example
-  static Symbol strokeparam1('s', 1);//, strokeparam2('s', 2);
-  static Symbol p1('p', 1);//, p2('p', 2);
+  static Symbol strokeparam1('s', 1);
+  static Symbol p1('p', 1);
 
   // If P02 is supposedto start where stroke1 ends, need a new factor that uses
   // P02 as position, modified SparseSLNFactor, position is a variable
@@ -61,13 +61,6 @@ TEST(SparseSlnFactor, WholeEnchilada) {
       0.15, 21.4449, 0.,       //
       0.20, 33.6345, 0.,       //
       0.25, 41.9882, 0.;
-
-//   Matrix53 data2;
-//   data2 << 0.34, 54.4648483, 0.,  //
-//       0.39, 66.90712126, 0.,      //
-//       0.44, 80.14918063, 0.,      //
-//       0.49, 89.94344084, 0.,      //
-//       0.54, 95.53231736, 0.;
 
   // create a measurement for both factors (the same in this case)
   auto position_noise =
