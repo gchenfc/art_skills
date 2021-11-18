@@ -83,7 +83,6 @@ class SigmaLogNormal {
                                  double dt) {
     gtsam::Vector2 xy = strokeparameters.xy;  // initialize to starting point
     double inst_t = 0;
-
     // Integrate
     for (int i = 1; (dt * i) <= (t - 0); i++) {
       inst_t = 0 + i * dt;
@@ -93,10 +92,10 @@ class SigmaLogNormal {
       double phi = direction(strokeparameters.theta1, strokeparameters.theta2,
                              strokeparameters.mu, strokeparameters.sigma,
                              strokeparameters.t0, inst_t);
-      std::cout << "\n test " << inst_t << " lambda: " << lambda
-                << " vel: " << vel << " phi: " << phi << "\n";
+      // std::cout << "\n t =  " << inst_t << " | lambda = " << lambda
+      //           << " | v = " << vel << " | phi = " << phi << "\n";
       xy = xy + dt * (vel * gtsam::Vector2(cos(phi), sin(phi)));
-      std::cout << "xy " << xy;
+      // std::cout << "xy \n" << xy << "\n ...";
       // xy = xy + gtsam::Vector2(vel, vel);
       // xy = gtsam::Vector2(vel, i);
     }

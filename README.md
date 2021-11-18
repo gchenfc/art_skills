@@ -6,16 +6,6 @@ A project to capture, perceive, and render artistic skills.
 - Perceive: infer parameters from low-level input by optimization over a generative model of the strokes.
 - Render: possibly style-transfer, scale transfer to a an output device like a giant cable-robot, a super-duper Kuka, or ShodaFranka.
 
-oFX & MATLAB setup and workflow (04/26/21):
-1) Install oFX for Visual Studio 17 from the following webstie: https://openframeworks.cc/download/
-2) Do not open oFX projects manually, instead use to the "projectGenerator.exe" in the install folder to create or launch projects
-3) Go to the following link to access and download the project: https://www.dropbox.com/s/v2wpm659orm6itd/Stroke_Capture.zip?dl=0
-4) Alternatively, create en empty project and replace the project files with the scripts in the "art_skills/cpp/Stroke_Capture" folder
-5) Use the oFX project launcher to open the project in Visual Studio, you will be prompted to rebase, which you should for it to work
-6) Modify the ofstream output path to the /art_skills/matlab folder in the art_skills folder to save text files where the "vel_processing.m" file can read them
-7) Run the oFX project and collect input strokes
-8) Open the matlab file and run to see generated plots
-
 ## Instructions from template:
 
 - Python 3.6+ is required, since we support these versions.

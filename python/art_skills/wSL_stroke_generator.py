@@ -90,6 +90,24 @@ class StrokeGenerator:
         t = np.arange(0.0, endtime, dt)
         return(t0, t)
 
+    @staticmethod
+    def time(dt, sigma, mu, t0):
+        """
+        t: the time distribution for the trajectory
+
+        Args:
+            dt ([float]): the timestep of the trajectory
+            sigma ([np.array(float)]): [log response time of the stroke]
+            mu (np.array(float)]): [stroke delay]
+            T ([float]): [period of the trajectory]
+            delta_t ([np.array(float)]): [a relative time offset with respect
+                                          to the previous stroke time
+                                          occurrence and duration]
+        """
+        endtime = t0[-1] + np.exp(mu[-1] + sigma[-1]*3)
+        t = np.arange(0.0, endtime, dt)
+        return(t)
+
     def weight(self, t, t0, sigma, mu):
         """
         weight: lognormal interpolation between target points

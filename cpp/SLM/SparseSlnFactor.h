@@ -97,17 +97,17 @@ class SparseSlnFactor
   const Vector2& data_xy() const { return xy_; }
   double data_t() const { return t_; }
 
-  /** print */
-  void print(const std::string& s,
-             const gtsam::KeyFormatter& keyFormatter =
-                 gtsam::DefaultKeyFormatter) const override {
-    std::cout << s << "SparseSlnFactor on " << keyFormatter(this->key1())
-              << "\n  data point: " << xy_.transpose() << "\n";
-    if (this->noiseModel_)
-      this->noiseModel_->print("noise model: ");
-    else
-      std::cout << "no noise model" << std::endl;
-  }
+  // /** print */
+  // void print(const std::string& s,
+  //            const gtsam::KeyFormatter& keyFormatter =
+  //                gtsam::DefaultKeyFormatter) const override {
+  //   std::cout << s << "SparseSlnFactor on " << keyFormatter(this->key1())
+  //             << "\n  data point: " << xy_.transpose() << "\n";
+  //   if (this->noiseModel_)
+  //     this->noiseModel_->print("noise model: ");
+  //   else
+  //     std::cout << "no noise model" << std::endl;
+  // }
 };
 
 }  // namespace art_skills

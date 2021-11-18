@@ -48,8 +48,8 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   NonlinearFactorGraph graph;
 
   // Create the keys we need for this simple example
-  static Symbol strokeparam1('s', 1);//, strokeparam2('s', 2);
-  static Symbol p1('p', 1);//, p2('p', 2);
+  static Symbol strokeparam1('s', 1), strokeparam2('s', 2);
+  static Symbol p1('p', 1), p2('p', 2);
 
   // If P02 is supposedto start where stroke1 ends, need a new factor that uses
   // P02 as position, modified SparseSLNFactor, position is a variable
@@ -62,12 +62,12 @@ TEST(SparseSlnFactor, WholeEnchilada) {
       0.20, 33.6345, 0.,       //
       0.25, 41.9882, 0.;
 
-//   Matrix53 data2;
-//   data2 << 0.34, 54.4648483, 0.,  //
-//       0.39, 66.90712126, 0.,      //
-//       0.44, 80.14918063, 0.,      //
-//       0.49, 89.94344084, 0.,      //
-//       0.54, 95.53231736, 0.;
+  Matrix53 data2;
+  data2 << 0.34, 54.4648483, 0.,  //
+      0.39, 66.90712126, 0.,      //
+      0.44, 80.14918063, 0.,      //
+      0.49, 89.94344084, 0.,      //
+      0.54, 95.53231736, 0.;
 
   // create a measurement for both factors (the same in this case)
   auto position_noise =
@@ -77,30 +77,34 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   for (int i = 1; i <= 5; i++) {
     graph.emplace_shared<SparseSlnFactor>(
         strokeparam1, p1, data1(i-1, 0), data1.block<1, 2>(i-1, 1), position_noise);
-    // graph.emplace_shared<SparseSlnFactor>(
-    //     strokeparam2, p2, data2(i-1, 0), data2.block<1, 2>(i-1, 1), position_noise);
+    graph.emplace_shared<SparseSlnFactor>(
+        strokeparam2, p2, data2(i-1, 0), data2.block<1, 2>(i-1, 1), position_noise);
   }
   EXPECT_LONGS_EQUAL(5, graph.size());
 
   // Print
-  graph.print("Factor Graph:\n");
+  //graph.print("Factor Graph:\n");
 
   // Create (deliberately inaccurate) initial estimate
   Values initialEstimate;
   // starting with initial control point p0
   initialEstimate.insert(p1, Vector2(0., 0.));
+  initialEstimate.insert(p2, Vector2(25, 2));
   
   // Now for param initial guesses (t0, D, th1, th2, sigma, mu)
   // Syntaxes for constructing >4 sized vector:
   Vector6 sp1;
-  sp1 << -0.17, 70.0, 0.5, 0., 0.23, -1.08;
+  sp1 << -0.17, 60.0, 0.5, 0., 0.23, -1.08;
   initialEstimate.insert(strokeparam1, sp1);
+
+  initialEstimate.insert(
+      strokeparam2, (Vector6() << 0.1, 71.0, 1.0, 1.0, 0.5, -3.0).finished());
 
   // regression
   // EXPECT_DOUBLES_EQUAL(1.525, graph[0]->error(initialEstimate), 1);
 
   // Print
-  initialEstimate.print("Initial Estimate:\n");
+  //initialEstimate.print("Initial Estimate:\n");
 
   // Optimize using Levenberg-Marquardt optimization. The optimizer
   // accepts an optional set of configuration parameters, controlling
@@ -109,10 +113,10 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   // Here we will use the default set of parameters.  See the
   // documentation for the full set of parameters.
   LevenbergMarquardtParams params;
-   params.setVerbosity("values"); // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
+  // params.setVerbosity("error");
   LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, params);
   Values result = optimizer.optimize();
-  result.print("Final Result:\n");
+  //result.print("Final Result:\n");
 
 }
 

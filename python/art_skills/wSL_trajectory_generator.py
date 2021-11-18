@@ -82,9 +82,6 @@ class TrajectoryGenerator:
         traj, strokes = self.generate_trajectory()
         maxima = scipy.signal.argrelextrema(traj[0], np.greater)
         # minima = scipy.signal.argrelextrema(traj[0], np.less)
-        # print(traj[0][maxima])
-        # print(traj[0][minima])
-        # print(traj[0])
         return(maxima)
 
     def velocity(self):
@@ -93,7 +90,64 @@ class TrajectoryGenerator:
                   between generated points
         """
         trajectory, strokes = self.generate_trajectory()
-        # print(trajectory)
         velocity = np.sqrt(np.sum((np.gradient(trajectory, axis=1)/self.dt)**2,
                                   axis=0))
         return(velocity)
+
+
+class SL_TG:
+    def __init__(self, p0, dt, t0, D, theta1, theta2, theta, sigma, mu):
+        """Setup the input parameters"""
+        self.p0 = p0
+        self.dt = dt  # timestep size (sec)
+        self.t0 = t0  # 2D array of target points, including origin
+        self.D = D  # cent. angle (rad) of the stroke's circ. arc shape
+        # shape parameter for log curve skewedness, from [0, 1]
+        self.theta1 = theta1
+        self.theta2 = theta2
+        self.theta = theta
+        self.sigma = sigma
+        self.mu = mu
+        self.log_eps = 1e-15
+
+    def trajectory_setup(self):
+        """Use input values to setup all necessary derived parameters"""
+        strokegen = StrokeGenerator()
+        delta = (self.theta1 + self. theta2)/2
+        t = strokegen.time(self.dt, self.sigma, self.mu, self.t0)
+        return(delta, t)
+
+    def trajectory_displacements(self, p0, t, t0, sigma, mu, D, theta, delta):
+        """Use input values to generate a stroke"""
+        strokegen = StrokeGenerator()
+        weight = strokegen.weight(t, t0, sigma, mu)
+        displacement = strokegen.displacement(p0, weight, D, theta,
+                                              delta)
+        return(displacement)
+
+    def generate_trajectory(self):
+        """
+        trajectory: the distribution of generated points described by the
+                    collection of strokes
+        """
+        delta, t = self.trajectory_setup()
+        trajectory = np.zeros((2, len(t)))
+        strokes = []
+        for i in range(len(self.D)):
+            displacement = self.trajectory_displacements(self.p0, t, self.t0[i],
+                                                         self.sigma[i],
+                                                         self.mu[i], self.D[i],
+                                                         self.theta[i],
+                                                         delta)
+            trajectory[:, :] += displacement
+            strokes.append(self.D[i] * self.lognormal(t, self.t0[i],
+                                                      self.mu[i],
+                                                      self.sigma[i]))
+        return(trajectory, strokes, t)
+
+    def lognormal(self, x, x0, mu, sigma):
+        ''' 3 parameter lognormal'''
+        x = x - x0
+        x = np.maximum(x, self.log_eps)
+        dist = lognorm(s=sigma, loc=0, scale=np.exp(mu))
+        return dist.pdf(x)
