@@ -39,6 +39,10 @@
 // this step. Here we will use the common Levenberg-Marquardt solver
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 
+// Once the optimized values have been calculated, we can also calculate the marginal covariance
+// of desired variables
+#include <gtsam/nonlinear/Marginals.h>
+
 using namespace std;
 using namespace gtsam;
 using namespace art_skills;
@@ -148,7 +152,7 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   result.print("Final Result:\n");
 
   // Position
-
+  std::cout << "\nPosition" << std::endl;
   SlnStroke stroke1(result.at<Vector2>(p1), result.at<Vector6>(strokeparam1));
   std::cout << stroke1.position(0.03, 0.01) << std::endl;
   std::cout << stroke1.position(0.06, 0.01) << std::endl;
@@ -191,6 +195,15 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   std::cout << stroke3.speed(stroke3.log_impulse(0.43)) << std::endl;
   std::cout << stroke3.speed(stroke3.log_impulse(0.46)) << std::endl;
 
+  // Calculate and print marginal covariances for all variables
+  cout.precision(2);
+  Marginals marginals(graph, result);
+  cout << "p1 covariance:\n" << marginals.marginalCovariance(1) << endl;
+  cout << "p2 covariance:\n" << marginals.marginalCovariance(2) << endl;
+  cout << "p3 covariance:\n" << marginals.marginalCovariance(3) << endl;
+  cout << "s1 covariance:\n" << marginals.marginalCovariance(1) << endl;
+  cout << "s2 covariance:\n" << marginals.marginalCovariance(2) << endl;
+  cout << "s3 covariance:\n" << marginals.marginalCovariance(3) << endl;
 }
 
 
