@@ -61,15 +61,17 @@ TEST(SparseSlnFactor, WholeEnchilada) {
       0.15, 20.21929084, 0.,       //
       0.20, 32.72157755, 0.,       //
       0.25, 42.94530815, 0.;
-
+  // data1 << 0.05, 1.76579, 0.,  //
+  //     0.10, 9.0322, 0.,        //
+  //     0.15, 21.4449, 0.,       //
+  //     0.20, 33.6345, 0.,       //
+  //     0.25, 41.9882, 0.;
   Matrix53 data2;
   data2 << 0.34, 65.78952532, 0.,  //
       0.39, 79.7163996, 0.,      //
       0.44, 89.78552592, 0.,      //
       0.49, 95.47698334, 0.,      //
       0.54, 98.17967079, 0.;
-
-//   Matrix53 data2;
 //   data2 << 0.34, 54.4648483, 0.,  //
 //       0.39, 66.90712126, 0.,      //
 //       0.44, 80.14918063, 0.,      //
@@ -90,7 +92,7 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   EXPECT_LONGS_EQUAL(10, graph.size());
 
   // Print
-  //graph.print("Factor Graph:\n");
+  graph.print("Factor Graph:\n");
 
   // Create (deliberately inaccurate) initial estimate
   Values initialEstimate;
@@ -108,13 +110,10 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   // 0.027, 50, 0, 0, 0.226, -1.076
   sp2 << 0.027, 51.0, 0.2, 0.3, 0.3, -1.0;
   initialEstimate.insert(strokeparam2, sp2);
-  // 0.027, 50, 0, 0, 0.226, -1.076
 //   initialEstimate.insert(
 //       strokeparam2, (Vector6() << 0.027, 51.0, 0.2, 0.3, 0.3, -1.0).finished());
 
-  // regression
-  //EXPECT_DOUBLES_EQUAL(1.525, graph[0]->error(initialEstimate), 1);
-
+  
   // Print
   //initialEstimate.print("Initial Estimate:\n");
 

@@ -64,7 +64,8 @@ TEST(Sln, position) {
   using example::stroke;
   double t1 = 0.01;
   double dt = 0.01;
-  EXPECT(gtsam::assert_equal(gtsam::Point2(0.10923970609042487, 0),
+  // using approximation, no 1:1 trajectory to stroke mapping
+  EXPECT(gtsam::assert_equal(gtsam::Point2(0.14819899, 0),
                              stroke.position(t1, dt)));
 }
 
@@ -78,9 +79,9 @@ TEST(Sln, position2) {
   const double mu = -1.07559856;
   const SlnStroke stroke(p2, t0, D, theta1, theta2, sigma, mu);
 
-  double t2 = 0.03;
+  double t2 = 0.4; // using approximation, no 1:1 trajectory to stroke mapping
   double dt = 0.01;
-  EXPECT(gtsam::assert_equal(gtsam::Point2(50.10923970609042487, 0),
+  EXPECT(gtsam::assert_equal(gtsam::Point2(82.103009, 0),
                              stroke.position(t2, dt)));
 }
 /* ************************************************************************* */

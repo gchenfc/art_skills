@@ -71,13 +71,11 @@ class SlnStroke {
     double lambda = 1 / (sigma * sqrt(2 * M_PI) * (t - t0)) *
                     exp(-(std::pow(log(t - t0) - mu, 2)) / (2 * sigma * sigma));
     return lambda;
-    // return 1 / (sigma * sqrt(2 * M_PI) * (t - t0)) *
-    //        exp(-(std::pow(log(t - t0) - mu, 2)) / (2 * sigma * sigma));
   }
 
   /**
    * Define the speed profile of a stroke.
-   * @param delta the location along the lognormal curve at time t
+   * @param lambda the location along the lognormal curve at time t
    * @return The speed at time t
    */
   double speed(double lambda) const { return D * lambda; }
@@ -107,10 +105,10 @@ class SlnStroke {
       const double lambda = log_impulse(inst_t);
       const double s = speed(lambda);
       const double phi = direction(inst_t);
-      std::cout << "\n t =  " << inst_t << " | lambda = " << lambda
-                << " | v = " << s << " | phi = " << phi << "\n";
+      // std::cout << "\n t =  " << inst_t << " | lambda = " << lambda
+      //           << " | v = " << s << " | phi = " << phi << "\n";
       xy = xy + dt * (s * gtsam::Point2(cos(phi), sin(phi)));
-      std::cout << "xy \n" << xy << "\n ...";
+      // std::cout << "xy \n" << xy << "\n ...";
       // xy = xy + gtsam::Point2(s, s);
       // xy = gtsam::Point2(s, i);
     }

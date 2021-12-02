@@ -51,16 +51,18 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   static Symbol strokeparam1('s', 1);
   static Symbol p1('p', 1);
 
-  // If P02 is supposedto start where stroke1 ends, need a new factor that uses
-  // P02 as position, modified SparseSLNFactor, position is a variable
-
   // Matrix for t, x, y, reference for each position factor
   Matrix53 data1;
-  data1 << 0.05, 1.76579, 0.,  //
-      0.10, 9.0322, 0.,        //
-      0.15, 21.4449, 0.,       //
-      0.20, 33.6345, 0.,       //
-      0.25, 41.9882, 0.;
+  data1 << 0.05, 1.50799612, 0.,  //
+      0.10, 8.11741321, 0.,        //
+      0.15, 20.21929084, 0.,       //
+      0.20, 32.72157755, 0.,       //
+      0.25, 42.94530815, 0.;
+  // data1 << 0.05, 1.76579, 0.,  //
+  //     0.10, 9.0322, 0.,        //
+  //     0.15, 21.4449, 0.,       //
+  //     0.20, 33.6345, 0.,       //
+  //     0.25, 41.9882, 0.;
 
   // create a measurement for both factors (the same in this case)
   auto position_noise =
@@ -70,8 +72,6 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   for (int i = 1; i <= 5; i++) {
     graph.emplace_shared<SparseSlnFactor>(
         strokeparam1, p1, data1(i-1, 0), data1.block<1, 2>(i-1, 1), position_noise);
-    // graph.emplace_shared<SparseSlnFactor>(
-    //     strokeparam2, p2, data2(i-1, 0), data2.block<1, 2>(i-1, 1), position_noise);
   }
   EXPECT_LONGS_EQUAL(5, graph.size());
 
@@ -81,12 +81,13 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   // Create (deliberately inaccurate) initial estimate
   Values initialEstimate;
   // starting with initial control point p0
-  initialEstimate.insert(p1, Vector2(0., 0.));
+  initialEstimate.insert(p1, Vector2(1., 4.));
   
   // Now for param initial guesses (t0, D, th1, th2, sigma, mu)
   // Syntaxes for constructing >4 sized vector:
   Vector6 sp1;
-  sp1 << -0.17, 70.0, 0.5, 0., 0.23, -1.08;
+
+  sp1 << -0.2, 80.0, 0.5, 0., 0.3, -1.;
   initialEstimate.insert(strokeparam1, sp1);
 
   // regression
@@ -102,11 +103,13 @@ TEST(SparseSlnFactor, WholeEnchilada) {
   // Here we will use the default set of parameters.  See the
   // documentation for the full set of parameters.
   LevenbergMarquardtParams params;
-   params.setVerbosity("values"); // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
+   //params.setVerbosity("values"); // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
   LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, params);
   Values result = optimizer.optimize();
   result.print("Final Result:\n");
-
+  // result should be: 
+  // p1: 0, 0
+  // s1: -0.17, 50, 0, 0, 0.23, -1.08
 }
 
 /* ************************************************************************* */

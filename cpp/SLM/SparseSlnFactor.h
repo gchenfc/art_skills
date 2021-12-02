@@ -67,7 +67,7 @@ class SparseSlnFactor
       const Vector6& parameters, const Vector2& p0,  //
       boost::optional<gtsam::Matrix&> H_parameters = boost::none,
       boost::optional<gtsam::Matrix&> H_p0 = boost::none) const override {
-    // lambda function for queryposition but without `t` argument
+    // lambda function for position but without `t` argument
     auto predict = [this](const Vector6& parameters, const Vector2& p0) {
       SlnStroke stroke(p0, parameters);
       return stroke.position(t_, 0.01);

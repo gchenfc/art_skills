@@ -38,15 +38,15 @@ class TrajectoryGenerator:
         strokegen = StrokeGenerator()
         sigma = strokegen.sigma(self.Ac)
         mu = strokegen.mu(sigma, self.T)
-        D, D_adj, theta = strokegen.D_theta(self.t_points, self.delta)
+        D, D_adj, theta, theta_0 = strokegen.D_theta(self.t_points, self.delta)
         t0, t = strokegen.t0_t(self.dt, sigma, mu, self.T, self.delta_t)
-        return(sigma, mu, D, theta, t0, t)
+        return(sigma, mu, D, theta, theta_0, t0, t)
 
-    def trajectory_displacements(self, t, t0, sigma, mu, D, theta, delta):
+    def trajectory_displacements(self, t, t0, sigma, mu, D, theta, theta_0, delta):
         """Use input values to generate a stroke"""
         strokegen = StrokeGenerator()
         weight = strokegen.weight(t, t0, sigma, mu)
-        displacement = strokegen.displacement(self.t_points, weight, D, theta,
+        displacement = strokegen.displacement(self.t_points, weight, D, theta, theta_0,
                                               delta)
         return(displacement)
 
@@ -55,12 +55,12 @@ class TrajectoryGenerator:
         trajectory: the distribution of generated points described by the
                     collection of strokes
         """
-        sigma, mu, D, theta, t0, t = self.trajectory_setup()
+        sigma, mu, D, theta, theta_0, t0, t = self.trajectory_setup()
         trajectory = np.zeros((2, len(t)))
         strokes = []
         for i in range(len(self.t_points[0]) - 1):
             displacement = self.trajectory_displacements(t, t0[i], sigma[i],
-                                                         mu[i], D[i], theta[i],
+                                                         mu[i], D[i], theta[i], theta_0[i],
                                                          self.delta[i])
             trajectory[:, :] += displacement
             strokes.append(D[i] * self.lognormal(t, t0[i], mu[i], sigma[i]))
@@ -96,7 +96,7 @@ class TrajectoryGenerator:
 
 
 class SL_TG:
-    def __init__(self, p0, dt, t0, D, theta1, theta2, theta, sigma, mu):
+    def __init__(self, p0, dt, t0, D, theta1, theta2, theta, theta_0, sigma, mu):
         """Setup the input parameters"""
         self.p0 = p0
         self.dt = dt  # timestep size (sec)
@@ -106,6 +106,7 @@ class SL_TG:
         self.theta1 = theta1
         self.theta2 = theta2
         self.theta = theta
+        self.theta_0 = theta_0
         self.sigma = sigma
         self.mu = mu
         self.log_eps = 1e-15
@@ -117,12 +118,11 @@ class SL_TG:
         t = strokegen.time(self.dt, self.sigma, self.mu, self.t0)
         return(delta, t)
 
-    def trajectory_displacements(self, p0, t, t0, sigma, mu, D, theta, delta):
+    def trajectory_displacements(self, p0, t, t0, sigma, mu, D, theta, theta_0, delta):
         """Use input values to generate a stroke"""
         strokegen = StrokeGenerator()
         weight = strokegen.weight(t, t0, sigma, mu)
-        displacement = strokegen.displacement(p0, weight, D, theta,
-                                              delta)
+        displacement = strokegen.displacement(p0, weight, D, theta, theta_0, delta)
         return(displacement)
 
     def generate_trajectory(self):
@@ -138,6 +138,7 @@ class SL_TG:
                                                          self.sigma[i],
                                                          self.mu[i], self.D[i],
                                                          self.theta[i],
+                                                         self.theta_0[i],
                                                          delta)
             trajectory[:, :] += displacement
             strokes.append(self.D[i] * self.lognormal(t, self.t0[i],

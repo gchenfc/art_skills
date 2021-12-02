@@ -54,7 +54,9 @@ class StrokeGenerator:
             h = (delta/2) / np.sin(delta/2)
             h[np.abs(np.sin(delta)) < self.sensitivity] = 1.
             D_adj = D*h
-        return(D, D_adj, theta)
+        # in Berio17, this is "theta + ..."
+        theta_0 = theta - (math.pi + delta)/2
+        return(D, D_adj, theta, theta_0)
 
     @staticmethod
     def t0_t(dt, sigma, mu, T, delta_t, t_offset=0.):
@@ -123,7 +125,7 @@ class StrokeGenerator:
                                       (sigma*math.sqrt(2))))
         return(weight)
 
-    def displacement(self, t_points, weight, D, theta, delta):
+    def displacement(self, t_points, weight, D, theta, theta_0, delta):
         """
         displacement: displacements between interpolated points, generated
                       between target points
@@ -141,8 +143,6 @@ class StrokeGenerator:
         P0 = t_points.T[0]
         P0 = P0.reshape(-1, 1)
         P0_offset = np.ones((2, len(weight)))*P0
-        # in Berio17, this is "theta + ..."
-        theta_0 = theta - (math.pi + delta)/2
         if abs(delta) > self.sensitivity:
             # in Berio17: trig_fn(th0 - delta*weight) - ...
             d = D*np.vstack([(np.cos(theta_0 + delta*weight) -

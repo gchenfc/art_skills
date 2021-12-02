@@ -30,9 +30,6 @@ class CaptureRenderTrajectory:
         data_a = data['A']
         strokea1 = data_a[1]
         strokea2 = data_a[3]
-        # plt.plot(strokea1[:, 0], strokea1[:, 1])
-        # plt.plot(strokea2[:, 0], strokea2[:, 1])
-        # plt.show()
 
         data_b = data['B']
         strokeb1 = data_b[1]
@@ -46,12 +43,31 @@ class CaptureRenderTrajectory:
         stroked1 = data_d[1]
         stroked2 = data_d[3]
 
+        data_e = data['E']
+        strokee1 = data_e[1]
+
+        data_f = data['F']
+        strokef1 = data_f[1]
+
+        data_g = data['G']
+        strokeg1 = data_g[1]
+
         traj = []
         for input in input_sequence:
             if input == "A":
                 traj.append(np.array([strokea1, strokea2]))
             if input == "B":
                 traj.append(np.array([strokeb1, strokeb2, strokeb3]))
+            if input == "C":
+                traj.append(np.array([strokec1]))
+            if input == "D":
+                traj.append(np.array([stroked1, stroked2]))
+            if input == "E":
+                traj.append(np.array([strokee1]))
+            if input == "F":
+                traj.append(np.array([strokef1]))
+            if input == "G":
+                traj.append(np.array([strokeg1]))
             if input == "Test":  # plot basic test case
                 traj = np.array([[strokea1, strokea2],
                                 [strokeb1, strokeb2, strokeb3],
