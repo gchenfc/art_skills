@@ -48,7 +48,7 @@ const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
 // namespace example
 TEST(Sln, speed) {
   using example::stroke;
-  double t = 0.01;
+  double t = 0.01- example::t0;
   double lambda = stroke.log_impulse(t);
   EXPECT_DOUBLES_EQUAL(0.21847935659224005, lambda, 1e-6);
   EXPECT_DOUBLES_EQUAL(10.9239678296, stroke.speed(lambda), 1e-5);
@@ -56,10 +56,11 @@ TEST(Sln, speed) {
 
 TEST(Sln, direction) {
   using example::stroke;
-  double t = 0.01;
+  double t = 0.01 - example::t0;
   EXPECT_DOUBLES_EQUAL(0., stroke.direction(t), 1e-6);
 }
 
+// TODO: update these values/check they are correct
 TEST(Sln, position) {
   using example::stroke;
   double t1 = 0.01;

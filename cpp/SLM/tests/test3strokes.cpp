@@ -10,7 +10,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- *  @file  jd00_SLN_3strokes.cpp
+ *  @file  test3strokes.cpp
  *  @author Juan-Diego Florez
  *  @author Gerry Chen
  *  @author Frank Dellaert

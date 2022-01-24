@@ -16,7 +16,7 @@
  **/
 
 #pragma once
-
+#include <boost/optional/optional_io.hpp>
 #include <gtsam/base/Testable.h>
 #include <gtsam/base/numericalDerivative.h>
 #include <gtsam/inference/Key.h>
@@ -70,19 +70,24 @@ class SparseSlnFactor
     // lambda function for position but without `t` argument
     auto predict = [this](const Vector6& parameters, const Vector2& p0) {
       SlnStroke stroke(p0, parameters);
-      return stroke.position(t_, 0.01);
+      return stroke.position(t_, 1e-4);
     };
     const Vector2 predicted_xy = predict(parameters, p0);
-
+    // std::cout << "\n\n_________________:\nParam:\n" << H_parameters << std::endl;
     // TODO(Gery+JD): fix this dynamic jacobian stuff
     if (H_parameters) {
       (*H_parameters) = gtsam::numericalDerivative21<Vector2, Vector6, Vector2>(
-          predict, parameters, p0);
+          predict, parameters, p0, 1e-3);
+      // std::cout << "\nH param matrix:\n" << H_parameters << std::endl;
     }
+    
+
     if (H_p0) {
       (*H_p0) = gtsam::numericalDerivative22<Vector2, Vector6, Vector2>(
-          predict, parameters, p0);
+          predict, parameters, p0, 1e-3);
+      // std::cout << "\nH p0 matrix:\n" << H_p0 << std::endl;
     }
+
     return predicted_xy - xy_;
   }
 

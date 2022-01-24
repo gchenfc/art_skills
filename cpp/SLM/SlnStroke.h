@@ -68,8 +68,8 @@ class SlnStroke {
    * @return The xy point in a stroke at trajectory time t
    */
   double log_impulse(double t) const {
-    double lambda = 1 / (sigma * sqrt(2 * M_PI) * (t - t0)) *
-                    exp(-(std::pow(log(t - t0) - mu, 2)) / (2 * sigma * sigma));
+    double lambda = 1 / (sigma * sqrt(2 * M_PI) * (t)) *
+                    exp(-(std::pow(log(t) - mu, 2)) / (2 * sigma * sigma));
     return lambda;
   }
 
@@ -87,7 +87,7 @@ class SlnStroke {
    */
   double direction(double t) const {
     return theta1 + (theta2 - theta1) / 2 *
-                        (1 + erf((log(t - t0) - mu) / (sigma * sqrt(2))));
+                        (1 + erf((log(t) - mu) / (sigma * sqrt(2))));
   }
 
   /**
@@ -101,7 +101,7 @@ class SlnStroke {
     double inst_t = 0;
     // Integrate
     for (size_t i = 1; (dt * i) <= (t - t0); i++) {
-      inst_t = t0 + i * dt;
+      inst_t = i * dt; // stroke-wise instantaneous time, no need to consider t0 here
       const double lambda = log_impulse(inst_t);
       const double s = speed(lambda);
       const double phi = direction(inst_t);

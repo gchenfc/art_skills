@@ -15,6 +15,7 @@ Author: Juan-Diego Florez, Frank Dellaert, Sang-Won Leigh
 """
 
 from art_skills.wSL_stroke_generator import StrokeGenerator
+import math
 import numpy as np
 import scipy.signal
 from scipy.stats import lognorm
@@ -96,7 +97,7 @@ class TrajectoryGenerator:
 
 
 class SL_TG:
-    def __init__(self, p0, dt, t0, D, theta1, theta2, theta, theta_0, sigma, mu):
+    def __init__(self, p0, dt, t0, D, theta1, theta2, theta, sigma, mu):
         """Setup the input parameters"""
         self.p0 = p0
         self.dt = dt  # timestep size (sec)
@@ -106,7 +107,6 @@ class SL_TG:
         self.theta1 = theta1
         self.theta2 = theta2
         self.theta = theta
-        self.theta_0 = theta_0
         self.sigma = sigma
         self.mu = mu
         self.log_eps = 1e-15
@@ -116,13 +116,15 @@ class SL_TG:
         strokegen = StrokeGenerator()
         delta = (self.theta1 + self. theta2)/2
         t = strokegen.time(self.dt, self.sigma, self.mu, self.t0)
-        return(delta, t)
+        theta_0 = self.theta - (math.pi + delta)/2
+        return(delta, t, theta_0)
 
     def trajectory_displacements(self, p0, t, t0, sigma, mu, D, theta, theta_0, delta):
         """Use input values to generate a stroke"""
         strokegen = StrokeGenerator()
         weight = strokegen.weight(t, t0, sigma, mu)
-        displacement = strokegen.displacement(p0, weight, D, theta, theta_0, delta)
+        displacement = strokegen.displacement(
+            p0, weight, D, theta, theta_0, delta)
         return(displacement)
 
     def generate_trajectory(self):
@@ -130,7 +132,7 @@ class SL_TG:
         trajectory: the distribution of generated points described by the
                     collection of strokes
         """
-        delta, t = self.trajectory_setup()
+        delta, t, theta_0 = self.trajectory_setup()
         trajectory = np.zeros((2, len(t)))
         strokes = []
         for i in range(len(self.D)):
@@ -138,7 +140,7 @@ class SL_TG:
                                                          self.sigma[i],
                                                          self.mu[i], self.D[i],
                                                          self.theta[i],
-                                                         self.theta_0[i],
+                                                         theta_0,
                                                          delta)
             trajectory[:, :] += displacement
             strokes.append(self.D[i] * self.lognormal(t, self.t0[i],
