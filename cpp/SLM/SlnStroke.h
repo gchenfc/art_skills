@@ -33,6 +33,7 @@ namespace art_skills {
  */
 class SlnStroke {
   gtsam::Point2 xy;  // point coordinate
+  gtsam::Vector6 p;
   double t0;         // start of impulse in global time
   double D;          // amplitude of stroke (||P[i] - P[i-1]||)
   double theta1;     // initial angular deviation
@@ -42,15 +43,15 @@ class SlnStroke {
 
  public:
   /// Construct from individual parameters
-  SlnStroke(const gtsam::Point2& xy, double t0, double D, double theta1,
-            double theta2, double sigma, double mu)
-      : xy(xy),
-        t0(t0),
-        D(D),
-        theta1(theta1),
-        theta2(theta2),
-        sigma(sigma),
-        mu(mu) {}
+  // SlnStroke(const gtsam::Point2& xy, double t0, double D, double theta1,
+  //           double theta2, double sigma, double mu)
+  //     : xy(xy),
+  //       t0(t0),
+  //       D(D),
+  //       theta1(theta1),
+  //       theta2(theta2),
+  //       sigma(sigma),
+  //       mu(mu) {}
 
   /// Construct from initial point and 6-vector of parameters
   SlnStroke(const gtsam::Point2& xy, const gtsam::Vector6& p)
@@ -86,8 +87,7 @@ class SlnStroke {
    * @return The direction/angle in a stroke at time t
    */
   double direction(double t) const {
-    return theta1 + (theta2 - theta1) / 2 *
-                        (1 + erf((log(t) - mu) / (sigma * sqrt(2))));
+    return theta1 + (theta2 - theta1) / 2 *(1 + erf((log(t) - mu) / (sigma * sqrt(2))));
   }
 
   /**

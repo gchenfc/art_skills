@@ -23,7 +23,8 @@
 
 #include <iostream>
 
-#include "../SlnStroke.h"
+#include "../SlnStrokeExpression.h"
+#include <gtsam/nonlinear/expressionTesting.h>
 
 using namespace std;
 using namespace gtsam;
@@ -35,56 +36,62 @@ using namespace art_skills;
 // the direct approach from the SL method.
 
 namespace example {
-const Point2 xy(0, 0);
-const double t0 = -0.17290046;
-const double theta1 = 0.;
-const double theta2 = 0.;
-const double D = 50;
-const double sigma = 0.22648023;
-const double mu = -1.07559856;
-const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
+const Vector2_ xy(Vector2(0.0, 0.0));
+const Double_ t0 = -0.17290046;
+const Double_ theta1 = 0.;
+const Double_ theta2 = 0.;
+const Double_ D = 50.0;
+const Double_ sigma = 0.22648023;
+const Double_ mu = -1.07559856;
+const SlnStrokeExpression stroke(xy, t0, D, theta1, theta2, sigma, mu);
+const SlnStrokeExpression stroke2(0, Key(1), Key(2), Key(3), Key(4), Key(5), Key(6));
+
 }  // namespace example
 
 // namespace example
 TEST(Sln, speed) {
   using example::stroke;
-  double t = 0.01- example::t0;
-  double lambda = stroke.log_impulse(t);
-  EXPECT_DOUBLES_EQUAL(0.21847935659224005, lambda, 1e-6);
-  EXPECT_DOUBLES_EQUAL(10.9239678296, stroke.speed(lambda), 1e-5);
+  Double_ t = Double_(0.01) - example::t0;
+  Double_ lambda = stroke.log_impulse(t);
+  EXPECT_DOUBLES_EQUAL(0.21847935659224005, lambda.value(Values()),
+                       1e-6);
+  EXPECT_DOUBLES_EQUAL(10.9239678296,
+                       stroke.speed(lambda).value(Values()), 1e-5);
 }
 
 TEST(Sln, direction) {
   using example::stroke;
-  double t = 0.01 - example::t0;
-  EXPECT_DOUBLES_EQUAL(0., stroke.direction(t), 1e-6);
+  Double_ t = Double_(0.01) - example::t0;
+  EXPECT_DOUBLES_EQUAL(0., stroke.direction(t).value(Values()), 1e-6);
 }
 
-// // TODO: update these values/check they are correct
+// TODO: update these values/check they are correct
 // TEST(Sln, position) {
 //   using example::stroke;
 //   double t1 = 0.01;
-//   double dt = 0.01;
+
 //   // using approximation, no 1:1 trajectory to stroke mapping
-//   EXPECT(gtsam::assert_equal(gtsam::Point2(0.14819899, 0),
-//                              stroke.position(t1, dt)));
+//   EXPECT(gtsam::assert_equal(gtsam::Vector2(0.14819899, 0.0),
+//                              stroke.position(t1).value(Values())));
 // }
 
-// TEST(Sln, position2) {
-//   Point2 p2(50, 0);
-//   const double t0 = 0.02709954;
-//   const double D = 50;
-//   const double theta1 = 0;
-//   const double theta2 = 0;
-//   const double sigma = 0.22648023;
-//   const double mu = -1.07559856;
-//   const SlnStroke stroke(p2, t0, D, theta1, theta2, sigma, mu);
+TEST(Sln, jacobian) {
+  using example::stroke2;
+  double t1 = 0.01;
+  Values values;
+  values.insert(0, example::xy.value(Values()));
+  values.insert(1, example::t0.value(Values()));
+  values.insert(2, example::D.value(Values()));
+  values.insert(3, example::theta1.value(Values()));
+  values.insert(4, example::theta2.value(Values()));
+  values.insert(5, example::sigma.value(Values()));
+  values.insert(6, example::mu.value(Values()));
 
-//   double t2 = 0.4; // using approximation, no 1:1 trajectory to stroke mapping
-//   double dt = 0.01;
-//   EXPECT(gtsam::assert_equal(gtsam::Point2(82.103009, 0),
-//                              stroke.position(t2, dt)));
-// }
+  Vector2_ pos = stroke2.position<53>(t1);
+
+  EXPECT_CORRECT_EXPRESSION_JACOBIANS(pos, values, 1e-6, 1e-3);
+}
+
 /* ************************************************************************* */
 int main() {
   TestResult tr;
