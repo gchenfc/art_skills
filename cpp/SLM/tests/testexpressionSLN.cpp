@@ -19,11 +19,11 @@
 
 #include <vector>
 
-#include "../SparseSlnFactor.h"
+#include "../SparseSlnFactorExpression.h"
 
 // We will also try this using an expression factor graph:
-#include <gtsam/slam/expressions.h>
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
+#include <gtsam/slam/expressions.h>
 
 // Each variable in the system (poses and landmarks) must be identified with a
 // unique key. We can either use simple integer keys (1, 2, 3, ...) or symbols
@@ -47,7 +47,7 @@ using namespace std;
 using namespace gtsam;
 using namespace art_skills;
 
-TEST(SparseSlnFactor, ILS) {
+TEST(ExpressionSlnFactor, ILS) {
   // 1. Create a factor graph container and add factors to it
   ExpressionFactorGraph graph;
 
@@ -87,10 +87,12 @@ TEST(SparseSlnFactor, ILS) {
 
   // For loop to create factors for each position, 5 pts per stroke
   for (int i = 1; i <= 5; i++) {
-    graph.addExpressionFactor(x1, Pose2(0, 0, 0), priorNoise);
-    graph.emplace_shared<SparseSlnFactor>(strokeparam1, p1, data1(i - 1, 0),
-                                          data1.block<1, 2>(i - 1, 1),
-                                          position_noise);
+    graph.addExpressionFactor();
+//        graph.addExpressionFactor(x1, Pose2(0, 0, 0), priorNoise);
+
+    // graph.emplace_shared<ExpressionSlnFactor>(
+    //     strokeparam1, p1, data1(i - 1, 0), data1.block<1, 2>(i - 1, 1),
+    //     position_noise);
   }
   // EXPECT_LONGS_EQUAL(6, graph.size());
 
@@ -167,6 +169,7 @@ int main() {
 // TODO: Gerry's wisdom
 // Tune param of numerical derivative?
 // In numerical integration, if dt is 1 second and I do 5.5 sec of integration,
-//    there is 0.5 sec unaccounted for - Check for discrete remainders or account for them.
+//    there is 0.5 sec unaccounted for - Check for discrete remainders or
+//    account for them.
 // Tweak dt EG: t as t - t0, redefince dt = t/round(t/dt)
 // Do real derivative instead of numerical derivative

@@ -87,7 +87,7 @@ TEST(Sln, jacobian) {
   values.insert(5, example::sigma.value(Values()));
   values.insert(6, example::mu.value(Values()));
 
-  Vector2_ pos = stroke2.position<53>(t1);
+  Vector2_ pos = stroke2.position<50>(t1); //53 is the limit
 
   EXPECT_CORRECT_EXPRESSION_JACOBIANS(pos, values, 1e-6, 1e-3);
 }
