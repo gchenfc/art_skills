@@ -53,20 +53,10 @@ TEST(ExpressionSlnFactor, ILS) {
 
   // Create the keys we need for this simple example
   static Symbol strokeparam1('s', 1);
-  static Symbol p1('p', 1);
+  static Symbol p1('x', 0);
 
   // Matrix for t, x, y, reference for each position factor
   Matrix53 data1;
-  // data1 << 0.05, 5.831317245188627, 4.441185357623116,  //
-  //     0.1, 26.48157388186604, 22.725466421452907,       //
-  //     0.15, 42.53795979151706, 40.40680069519366,       //
-  //     0.2, 48.274238955666, 47.68933377015613,          //
-  //     0.25, 49.66918677322847, 49.55249101225169;
-  // data1 << 0.05, 1.76579, 0.,  //
-  //     0.10, 9.0322, 0.,        //
-  //     0.15, 21.4449, 0.,       //
-  //     0.20, 33.6345, 0.,       //
-  //     0.25, 41.9882, 0.;
   data1 << 0.05, 1.50799612, 0.1,  //
       0.10, 8.11741321, 0.3,       //
       0.15, 20.21929084, 0.6,      //
@@ -85,42 +75,44 @@ TEST(ExpressionSlnFactor, ILS) {
   //     strokeparam1, Vector6::Zero(), noiseModel::Isotropic::Sigma(6,
   //     1000.0));
 
-  // For loop to create factors for each position, 5 pts per stroke
-  for (int i = 1; i <= 5; i++) {
-    graph.addExpressionFactor();
-//        graph.addExpressionFactor(x1, Pose2(0, 0, 0), priorNoise);
-
-    // graph.emplace_shared<ExpressionSlnFactor>(
-    //     strokeparam1, p1, data1(i - 1, 0), data1.block<1, 2>(i - 1, 1),
-    //     position_noise);
+  SlnStrokeExpression stroke(p1, strokeparam1);
+  double dt = 0.005;
+  // For loop to create factors for each position
+  for (int i = 0; i < 60; i++) {
+    graph.add(stroke.pos_integration_factor(i, dt));
   }
-  // EXPECT_LONGS_EQUAL(6, graph.size());
+  // For loop to place priors at data/measured points
+  for (int i = 0; i < data1.rows(); i++) {
+    // this is following c++ way to cast to a type
+    size_t timestep = static_cast<size_t>(data1.row(i)(0) / dt);
+    assert_equal(timestep*dt, data1.row(i)(0));
+    graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
+        gtsam::symbol('x', timestep), data1.row(i).tail<2>(), position_noise);
+  }
 
-  // Print
-  // graph.print("Factor Graph:\n");
+  //Print
+  //graph.print("Factor Graph:\n");
 
   // Create (deliberately inaccurate) initial estimate
   Values initialEstimate;
   // starting with initial control point p0
-  initialEstimate.insert(p1, Vector2(1., 1.));
+  //initialEstimate.insert(p1, Vector2(1., 1.));
 
   // Now for param initial guesses (t0, D, th1, th2, sigma, mu)
   // Syntaxes for constructing >4 sized vector:
   Vector6 sp1;
-
-  //  -0.104, 70.711, -0.935, -0.15, 0.226, -1.586 are reference from 0 to 50,
-  //  xy
-  // sp1 << -0.2, 72.0, -0.8, -0.2, 0.3, -1.1;
   sp1 << -0.2, 80.0, 0.5, 0., 0.3, -1.;
   initialEstimate.insert(strokeparam1, sp1);
 
-  // regression
-  // EXPECT_DOUBLES_EQUAL(1.525, graph[0]->error(initialEstimate), 1);
+  // Maybe TODO: initialize this based on data
+  for (int i = 0; i <= 60; i++) {
+    initialEstimate.insert(gtsam::symbol('x', i), Vector2(1.0, 2.0));
+  }
+
 
   // Print
-  initialEstimate.print("Initial Estimate:\n");
-  GaussianFactorGraph gfgi = *graph.linearize(initialEstimate);
-  cout << gfgi.jacobian().first << endl;
+  //GaussianFactorGraph gfgi = *graph.linearize(initialEstimate);
+  //cout << gfgi.jacobian().first << endl;
 
   NonlinearFactorGraph graphLM = graph;
   // Optimize using Levenberg-Marquardt optimization. The optimizer
@@ -130,13 +122,14 @@ TEST(ExpressionSlnFactor, ILS) {
   // Here we will use the default set of parameters.  See the
   // documentation for the full set of parameters.
   LevenbergMarquardtParams paramsLM;
+  paramsLM.setMaxIterations(500);
   paramsLM.setVerbosity(
-      "values");  // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
+      "error");  // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
   LevenbergMarquardtOptimizer optimizerLM(graphLM, initialEstimate, paramsLM);
   Values resultLM = optimizerLM.optimize();
 
-  GaussianFactorGraph gfg = *graph.linearize(resultLM);
-  cout << gfg.jacobian().first << endl;
+  // GaussianFactorGraph gfg = *graph.linearize(resultLM);
+  // cout << gfg.jacobian().first << endl;
   resultLM.print("Final Result:\n");
 
   // NonlinearFactorGraph graphGN = graph;

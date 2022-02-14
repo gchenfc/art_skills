@@ -20,6 +20,7 @@
 
 #include <gtsam/geometry/Point2.h>
 #include <gtsam/nonlinear/Expression.h>
+#include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/expressions.h>
 
 #include <vector>
@@ -179,6 +180,7 @@ inline gtsam::Double_ erfExpression(const gtsam::Double_ z) {
 class SlnStrokeExpression {
   using Double_ = gtsam::Double_;
   using Vector2_ = gtsam::Vector2_;
+  using Vector2 = gtsam::Vector2;
   using Vector6_ = gtsam::Vector6_;
   Vector2_ xy;     // point coordinate
   Double_ t0;      // start of impulse in global time
@@ -250,19 +252,56 @@ class SlnStrokeExpression {
   }  // don't need expression of "t", since t is not a parameter (no 1/dt)
 
   /**
+   * Compute displacment at time t along the stroke
+   * @param inst_t The time the trajectory is being evaluated at
+   * @param dt The timestep used for integration/sampling
+   * @return The xy position in a stroke at time t
+   */
+  Vector2_ displacement(Double_ inst_t, double dt) const {
+    const Double_ lambda = log_impulse(inst_t);
+    const Double_ s = speed(lambda);
+    const Double_ phi = direction(inst_t);
+    return dt *
+           (s * createVectorExpression(cosExpression(phi), sinExpression(phi)));
+  }
+
+  /**
+   * create factor for each displacement point
+   * @param inst_t time in the stroke
+   * @param t0 start time of the stroke (t is trajectory time)
+   * @param dt The timestep used for integration/sampling
+   * @return The xy position in a stroke at time t
+   */
+  gtsam::ExpressionFactor<Vector2> pos_integration_factor(size_t timestep,
+                                                          double dt) const {
+    auto dx = displacement(Double_((timestep + 1) * dt) - t0, dt);
+    // creating vector 2 of symbol xcurrent at timestep (int)
+    Vector2_ xcurrent(gtsam::symbol('x', timestep));
+    Vector2_ xnext(gtsam::symbol('x', timestep + 1));
+    Vector2_ error = xcurrent + dx - xnext;
+    // measurement should be 0, which is ensuring error is 0
+    // return
+    // gtsam::ExpressionFactor<Vector2>(gtsam::noiseModel::Constrained::All(2),
+    // Vector2::Zero(), error);
+    return gtsam::ExpressionFactor<Vector2>(
+        gtsam::noiseModel::Isotropic::Sigma(2, 0.001), Vector2::Zero(), error);
+  }
+
+  /**
    * Compute position at time t along the stroke
    * @param t The time the trajectory is being evaluated at
    * @param dt The timestep used for integration/sampling
    * @return The xy position in a stroke at time t
    */
-  template<int NUM = 100>
+  template <int NUM = 100>
   Vector2_ position(double t) const {
     std::shared_ptr<Vector2_> xy[NUM];
-    xy[0] = std::make_shared<Vector2_>(this->xy);  // initialize to starting point
+    xy[0] =
+        std::make_shared<Vector2_>(this->xy);  // initialize to starting point
     // std::cout<< "xy val start:\n" << xy.value(gtsam::Values())<<std::endl;
-    Double_ dt = (Double_(t) - t0) / Double_(NUM-1.0);
+    Double_ dt = (Double_(t) - t0) / Double_(NUM - 1.0);
     // Integrate
-    for (int i = 0; i < (NUM-1); ++i) {
+    for (int i = 0; i < (NUM - 1); ++i) {
       Double_ inst_t = (i + 1) * dt;  // using right-hand rectangle integration
 
       // std::cout<< "inst_t val: " << inst_t.value(gtsam::Values())<<std::endl;
@@ -281,7 +320,7 @@ class SlnStrokeExpression {
     }
     // std::cout<< "xy val post loop:\n" <<
     // xy.value(gtsam::Values())<<std::endl;
-    return *xy[NUM-1];
+    return *xy[NUM - 1];
   }
 };
 
