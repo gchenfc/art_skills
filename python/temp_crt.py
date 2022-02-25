@@ -1,12 +1,7 @@
 import numpy as np
 from numpy.core.function_base import linspace
 
-# from art_skills.chebyshev_fitter import ChebyshevFit
-
-class CaptureRenderTrajectory:
-    """A class for generating the trajectory from data"""
-
-    def capture_alphabet(self, data_file):
+def capture_alphabet(data_file):
         """Read from mocap data
 
         Args:
@@ -16,13 +11,14 @@ class CaptureRenderTrajectory:
         data = np.load(data_file, allow_pickle=True)
         return(data)
 
-    def parse_trajectory(self, input_sequence):
+def parse_trajectory(input_sequence):
         """Parse trajectory from mocap data
 
         Args:
             alphabet ([.npz]): [a bunch of .npy files]
         """
-        data = self.capture_alphabet("all_letters.npz")
+        data = capture_alphabet("all_letters.npz")
+        print(data)
         traj = []
         # data_a is a list of strokes, where each stroke is an Nx2 numpy array
         data_a = data['A']
@@ -59,7 +55,10 @@ class CaptureRenderTrajectory:
             if input == "C":
                 traj.append(np.array([strokec1]))
             if input == "D":
-                traj.append(np.array([stroked1, stroked2]))
+                t_step = np.empty(len(stroked1))
+                for i in range(len(t_step)):
+                    t_step[i] = 0.0083333333333333*i
+                traj.append(np.array([t_step, stroked1[:,0], stroked1[:,1]]))
             if input == "E":
                 traj.append(np.array([strokee1]))
             if input == "F":
@@ -71,30 +70,3 @@ class CaptureRenderTrajectory:
                                 [strokeb1, strokeb2, strokeb3],
                                 [strokec1], [stroked1, stroked2]])
         return(traj)
-
-    def render_trajectory(self, traj, order):
-        """
-        Render trajectory that reproduces artistic intent.
-
-        Args:
-            traj ([array]): [the letters and strokes of each letter]
-            order ([int]): [the order of chebyshev polynomial]
-        """
-        interp_x = []
-        interp_y = []
-        count_s = 0
-        count_l = 0
-        for letter in traj:
-            for stroke in letter:
-                traj_x = (stroke[:, 0] + count_l*0.7)
-                traj_y = (stroke[:, 1])
-                traj_t = linspace(0, 1, len(traj_x))
-                zipx = zip(traj_t, traj_x)
-                zipy = zip(traj_t, traj_y)
-                data_x = dict(zipx)
-                data_y = dict(zipy)
-                interp_x.append(ChebyshevFit(data_x, traj_t, order))
-                interp_y.append(ChebyshevFit(data_y, traj_t, order))
-                count_s += 1
-            count_l += 1
-        return(interp_x, interp_y)

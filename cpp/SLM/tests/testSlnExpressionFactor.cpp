@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "../SparseSlnFactorExpression.h"
+#include "../SlnStrokeExpression.h"
 
 // We will also try this using an expression factor graph:
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
@@ -56,27 +56,52 @@ TEST(ExpressionSlnFactor, ILS) {
   static Symbol p1('x', 0);
 
   // Matrix for t, x, y, reference for each position factor
-  Matrix53 data1;
-  data1 << 0.05, 1.50799612, 0.1,  //
-      0.10, 8.11741321, 0.3,       //
-      0.15, 20.21929084, 0.6,      //
-      0.20, 32.72157755, 0.9,      //
-      0.25, 42.94530815, 1;
+  Eigen::Matrix<double, 31, 3> data1;
+  // data1 << 0.05, 16.3524, 5.80374,  //
+  //     0.1, 33.2932, 5.46011,        //
+  //     0.15, 42.758, 2.50377,        //
+  //     0.25, 47.3498, 0.226527,      //
+  //     0.3, 47.6301, 0.0669661;      //
+  //     // 0.35, 47.7213, 0.0145406,     //
+  //     // 0.4, 47.7403, 0.00358365;     //
+  data1 << 0.000000000000000000e+00,3.254897368664543267e-01,-8.936601621630331227e-01, //
+8.333333333333300258e-03,3.269525745636264746e-01,-8.900745220853243378e-01, //
+1.666666666666660052e-02,3.291453697577698678e-01,-8.852161029552397808e-01, //
+2.499999999999990077e-02,3.325515378590233051e-01,-8.787672389395526640e-01, //
+3.333333333333320103e-02,3.359679291751946351e-01,-8.703859355971451661e-01, //
+4.166666666666650476e-02,3.399923931724491144e-01,-8.602826055064219934e-01, //
+4.999999999999980155e-02,3.442824786600893194e-01,-8.480163473642363670e-01, //
+5.833333333333309834e-02,3.491627944160899943e-01,-8.333700759417705939e-01, //
+6.666666666666640206e-02,3.539444568538996361e-01,-8.171722977308741864e-01, //
+7.499999999999970579e-02,3.592159525538891618e-01,-7.986980555707734464e-01, //
+8.333333333333300952e-02,3.650546213240065674e-01,-7.787279749159550235e-01, //
+9.166666666666629937e-02,3.714736542000802166e-01,-7.570136703552537982e-01, //
+9.999999999999960310e-02,3.778634091460778555e-01,-7.333904140887657075e-01, //
+1.083333333333329068e-01,3.843281155915927449e-01,-7.087376395403870433e-01, //
+1.166666666666661967e-01,3.909623919130325032e-01,-6.824655080692988429e-01, //
+1.249999999999995004e-01,3.974843175627018055e-01,-6.555879713420276200e-01, //
+1.333333333333328041e-01,4.039229239569012142e-01,-6.276668544291764684e-01, //
+1.416666666666661079e-01,4.105347405162689256e-01,-5.992839591518326348e-01, //
+1.499999999999994116e-01,4.170243715585888467e-01,-5.709676427131310517e-01, //
+1.583333333333327153e-01,4.225962714348362459e-01,-5.424340160626357488e-01, //
+1.666666666666660190e-01,4.286362937160109743e-01,-5.141503176252475438e-01, //
+1.749999999999992950e-01,4.343193225662036472e-01,-4.862841172426772829e-01, //
+1.833333333333325987e-01,4.388840687436094123e-01,-4.590381204102663704e-01, //
+1.916666666666659025e-01,4.427400928215209919e-01,-4.330911887270484373e-01, //
+1.999999999999992062e-01,4.457518663108581691e-01,-4.092233080346499019e-01, //
+2.083333333333325099e-01,4.483554727983301014e-01,-3.883470340886382433e-01, //
+2.166666666666658136e-01,4.505788138762804040e-01,-3.709451157561682866e-01, //
+2.249999999999991174e-01,4.521774015580295458e-01,-3.582143602029230767e-01, //
+2.333333333333323933e-01,4.540392733371415579e-01,-3.502929538788304153e-01, //
+2.416666666666656971e-01,4.553027656528993994e-01,-3.465550328228148569e-01, //
+2.499999999999990008e-01,4.569055513590115636e-01,-3.463931905575849957e-01; //
 
   // create a measurement for both factors (the same in this case)
   auto position_noise =
       noiseModel::Diagonal::Sigmas(Vector2(0.02, 0.02));  // 2cm std on x,y
 
-  // // Place prior factor on p0:
-  // graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
-  //     p1, Vector2(0.0, 0.0), noiseModel::Isotropic::Sigma(2, 1000.0));
-
-  // graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector6>>(
-  //     strokeparam1, Vector6::Zero(), noiseModel::Isotropic::Sigma(6,
-  //     1000.0));
-
   SlnStrokeExpression stroke(p1, strokeparam1);
-  double dt = 0.005;
+  double dt = 0.0042;
   // For loop to create factors for each position
   for (int i = 0; i < 60; i++) {
     graph.add(stroke.pos_integration_factor(i, dt));
@@ -85,34 +110,29 @@ TEST(ExpressionSlnFactor, ILS) {
   for (int i = 0; i < data1.rows(); i++) {
     // this is following c++ way to cast to a type
     size_t timestep = static_cast<size_t>(data1.row(i)(0) / dt);
-    assert_equal(timestep*dt, data1.row(i)(0));
+    assert_equal(timestep * dt, data1.row(i)(0));
     graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
         gtsam::symbol('x', timestep), data1.row(i).tail<2>(), position_noise);
   }
 
-  //Print
-  //graph.print("Factor Graph:\n");
+  // Print
+  graph.print("Factor Graph:\n");
 
   // Create (deliberately inaccurate) initial estimate
   Values initialEstimate;
-  // starting with initial control point p0
-  //initialEstimate.insert(p1, Vector2(1., 1.));
-
-  // Now for param initial guesses (t0, D, th1, th2, sigma, mu)
-  // Syntaxes for constructing >4 sized vector:
   Vector6 sp1;
-  sp1 << -0.2, 80.0, 0.5, 0., 0.3, -1.;
+  // sp1 << -0.15, 50, 0.5, -0.5, 0.25, -1.5;
+  sp1 << 0, 0.5, 0, 0, 0.4, -1.8;
   initialEstimate.insert(strokeparam1, sp1);
 
   // Maybe TODO: initialize this based on data
   for (int i = 0; i <= 60; i++) {
-    initialEstimate.insert(gtsam::symbol('x', i), Vector2(1.0, 2.0));
+    initialEstimate.insert(gtsam::symbol('x', i), Vector2(0.0, 0.0));
   }
 
-
   // Print
-  //GaussianFactorGraph gfgi = *graph.linearize(initialEstimate);
-  //cout << gfgi.jacobian().first << endl;
+  // GaussianFactorGraph gfgi = *graph.linearize(initialEstimate);
+  // cout << gfgi.jacobian().first << endl;
 
   NonlinearFactorGraph graphLM = graph;
   // Optimize using Levenberg-Marquardt optimization. The optimizer
@@ -122,9 +142,9 @@ TEST(ExpressionSlnFactor, ILS) {
   // Here we will use the default set of parameters.  See the
   // documentation for the full set of parameters.
   LevenbergMarquardtParams paramsLM;
-  paramsLM.setMaxIterations(500);
+  paramsLM.setMaxIterations(1000);
   paramsLM.setVerbosity(
-      "error");  // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
+      "SILENT");  // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
   LevenbergMarquardtOptimizer optimizerLM(graphLM, initialEstimate, paramsLM);
   Values resultLM = optimizerLM.optimize();
 
@@ -140,6 +160,8 @@ TEST(ExpressionSlnFactor, ILS) {
   // GaussNewtonOptimizer optimizerGN(graphGN, initialEstimate, paramsGN);
   // Values resultGN = optimizerGN.optimize();
   // resultGN.print("Final Result:\n");
+
+  graph.saveGraph("tstSLN.dot", resultLM);
 
   // Calculate and print marginal covariances for all variables
   cout.precision(2);
@@ -158,11 +180,3 @@ int main() {
   TestResult tr;
   return TestRegistry::runAllTests(tr);
 }
-
-// TODO: Gerry's wisdom
-// Tune param of numerical derivative?
-// In numerical integration, if dt is 1 second and I do 5.5 sec of integration,
-//    there is 0.5 sec unaccounted for - Check for discrete remainders or
-//    account for them.
-// Tweak dt EG: t as t - t0, redefince dt = t/round(t/dt)
-// Do real derivative instead of numerical derivative

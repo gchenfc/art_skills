@@ -32,36 +32,36 @@ namespace art_skills {
  * t0 defines the start time of the stroke along the trajectory
  */
 class SlnStroke {
-  gtsam::Point2 xy;  // point coordinate
-  gtsam::Vector6 p;
-  double t0;         // start of impulse in global time
-  double D;          // amplitude of stroke (||P[i] - P[i-1]||)
-  double theta1;     // initial angular deviation
-  double theta2;     // initial angular deviation
-  double sigma;      // logresponse time
-  double mu;         // logtime delay
+  gtsam::Point2 xy_;  // point coordinate
+  gtsam::Vector6 p_;
+  double t0_;         // start of impulse in global time
+  double D_;          // amplitude of stroke (||P[i] - P[i-1]||)
+  double theta1_;     // initial angular deviation
+  double theta2_;     // initial angular deviation
+  double sigma_;      // logresponse time
+  double mu_;         // logtime delay
 
  public:
-  /// Construct from individual parameters
-  // SlnStroke(const gtsam::Point2& xy, double t0, double D, double theta1,
-  //           double theta2, double sigma, double mu)
-  //     : xy(xy),
-  //       t0(t0),
-  //       D(D),
-  //       theta1(theta1),
-  //       theta2(theta2),
-  //       sigma(sigma),
-  //       mu(mu) {}
+  // Construct from individual parameters
+  SlnStroke(const gtsam::Point2& xy, double t0, double D, double theta1,
+            double theta2, double sigma, double mu)
+      : xy_(xy),
+        t0_(t0),
+        D_(D),
+        theta1_(theta1),
+        theta2_(theta2),
+        sigma_(sigma),
+        mu_(mu) {}
 
-  /// Construct from initial point and 6-vector of parameters
+  // Construct from initial point and 6-vector of parameters
   SlnStroke(const gtsam::Point2& xy, const gtsam::Vector6& p)
-      : xy(xy),
-        t0(p(0)),
-        D(p(1)),
-        theta1(p(2)),
-        theta2(p(3)),
-        sigma(p(4)),
-        mu(p(5)) {}
+      : xy_(xy),
+        t0_(p(0)),
+        D_(p(1)),
+        theta1_(p(2)),
+        theta2_(p(3)),
+        sigma_(p(4)),
+        mu_(p(5)) {}
 
   /**
    * Compiutes lognormal curve of a stroke, i.e., the impulse.
@@ -69,8 +69,8 @@ class SlnStroke {
    * @return The xy point in a stroke at trajectory time t
    */
   double log_impulse(double t) const {
-    double lambda = 1 / (sigma * sqrt(2 * M_PI) * (t)) *
-                    exp(-(std::pow(log(t) - mu, 2)) / (2 * sigma * sigma));
+    double lambda = 1 / (sigma_ * sqrt(2 * M_PI) * (t)) *
+                    exp(-(std::pow(log(t) - mu_, 2)) / (2 * sigma_ * sigma_));
     return lambda;
   }
 
@@ -79,7 +79,7 @@ class SlnStroke {
    * @param lambda the location along the lognormal curve at time t
    * @return The speed at time t
    */
-  double speed(double lambda) const { return D * lambda; }
+  double speed(double lambda) const { return D_ * lambda; }
 
   /**
    * Define the curvilinear evolution of a stroke, i.e., it's direction.
@@ -87,7 +87,7 @@ class SlnStroke {
    * @return The direction/angle in a stroke at time t
    */
   double direction(double t) const {
-    return theta1 + (theta2 - theta1) / 2 *(1 + erf((log(t) - mu) / (sigma * sqrt(2))));
+    return theta1_ + (theta2_ - theta1_) / 2 *(1 + erf((log(t) - mu_) / (sigma_ * sqrt(2))));
   }
 
   /**
@@ -97,20 +97,15 @@ class SlnStroke {
    * @return The xy position in a stroke at time t
    */
   gtsam::Point2 position(double t, double dt) const {
-    gtsam::Point2 xy = this->xy;  // initialize to starting point
+    gtsam::Point2 xy = this->xy_;  // initialize to starting point
     double inst_t = 0;
     // Integrate
-    for (size_t i = 1; (dt * i) <= (t - t0); i++) {
-      inst_t = i * dt; // stroke-wise instantaneous time, no need to consider t0 here
+    for (size_t k = 1; (dt * k) <= (t - t0_); k++) {
+      inst_t = k * dt; // stroke-wise instantaneous time, no need to consider t0 here
       const double lambda = log_impulse(inst_t);
       const double s = speed(lambda);
       const double phi = direction(inst_t);
-      // std::cout << "\n t =  " << inst_t << " | lambda = " << lambda
-      //           << " | v = " << s << " | phi = " << phi << "\n";
       xy = xy + dt * (s * gtsam::Point2(cos(phi), sin(phi)));
-      // std::cout << "xy \n" << xy << "\n ...";
-      // xy = xy + gtsam::Point2(s, s);
-      // xy = gtsam::Point2(s, i);
     }
 
     return xy;

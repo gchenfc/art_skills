@@ -25,8 +25,6 @@
 
 #include <vector>
 
-const double EulerConstant = std::exp(1.0);
-
 namespace art_skills {
 
 // Function to index into a vector for expression variables
@@ -170,6 +168,10 @@ inline gtsam::Double_ erfExpression(const gtsam::Double_ z) {
   return gtsam::Double_(&erfn, z);
 }
 
+static const double k_e = std::exp(1.0);
+static const gtsam::Double_(k_sqrt2pi) =
+    powerExpression(gtsam::Double_(2.0) * gtsam::Double_(M_PI), gtsam::Double_(0.5));
+
 /**
  * SlnStrokeExpression defines a single stroke, the length of which is defined
  * by D along the trajectory. The D of each stroke cannot overlap that of
@@ -219,14 +221,11 @@ class SlnStrokeExpression {
    */
   Double_ log_impulse(Double_ t) const {
     Double_ lambda =
-        Double_(1.0) /
-        (t * sigma *
-         powerExpression(Double_(2.0) * Double_(M_PI), Double_(0.5))) *
-        powerExpression(
-            Double_(EulerConstant),
-            Double_(-1.0) *
-                ((logExpression(t) - mu) * (logExpression(t) - mu)) /
-                (Double_(2.0) * sigma * sigma));
+        Double_(1.0) / (t * sigma * k_sqrt2pi) *
+        powerExpression(Double_(k_e), Double_(-1.0) *
+                                          ((logExpression(t) - mu) *
+                                           (logExpression(t) - mu)) /
+                                          (Double_(2.0) * sigma * sigma));
     return lambda;
   }
 

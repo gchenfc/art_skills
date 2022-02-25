@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../gtsam"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"random": "cpp"
+		}
+	}
+}
