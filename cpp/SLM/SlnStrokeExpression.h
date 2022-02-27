@@ -283,43 +283,7 @@ class SlnStrokeExpression {
     // gtsam::ExpressionFactor<Vector2>(gtsam::noiseModel::Constrained::All(2),
     // Vector2::Zero(), error);
     return gtsam::ExpressionFactor<Vector2>(
-        gtsam::noiseModel::Isotropic::Sigma(2, 0.001), Vector2::Zero(), error);
-  }
-
-  /**
-   * Compute position at time t along the stroke
-   * @param t The time the trajectory is being evaluated at
-   * @param dt The timestep used for integration/sampling
-   * @return The xy position in a stroke at time t
-   */
-  template <int NUM = 100>
-  Vector2_ position(double t) const {
-    std::shared_ptr<Vector2_> xy[NUM];
-    xy[0] =
-        std::make_shared<Vector2_>(this->xy);  // initialize to starting point
-    // std::cout<< "xy val start:\n" << xy.value(gtsam::Values())<<std::endl;
-    Double_ dt = (Double_(t) - t0) / Double_(NUM - 1.0);
-    // Integrate
-    for (int i = 0; i < (NUM - 1); ++i) {
-      Double_ inst_t = (i + 1) * dt;  // using right-hand rectangle integration
-
-      // std::cout<< "inst_t val: " << inst_t.value(gtsam::Values())<<std::endl;
-      const Double_ lambda = log_impulse(inst_t);
-      // std::cout<< "lambda val: " << lambda.value(gtsam::Values())<<std::endl;
-      const Double_ s = speed(lambda);
-      // std::cout<< "speed val: " << s.value(gtsam::Values())<<std::endl;
-      const Double_ phi = direction(inst_t);
-      // std::cout<< "phi val: " << phi.value(gtsam::Values())<<std::endl;
-
-      xy[i + 1] = std::make_shared<Vector2_>(
-          *xy[i] + dt * (s * createVectorExpression(cosExpression(phi),
-                                                    sinExpression(phi))));
-      // std::cout<< "xy val in loop:\n" <<
-      // xy.value(gtsam::Values())<<std::endl;
-    }
-    // std::cout<< "xy val post loop:\n" <<
-    // xy.value(gtsam::Values())<<std::endl;
-    return *xy[NUM - 1];
+        gtsam::noiseModel::Isotropic::Sigma(2, 0.001*sqrt(dt)), Vector2::Zero(), error);
   }
 };
 

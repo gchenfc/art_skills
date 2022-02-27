@@ -100,6 +100,7 @@ class SlnStroke {
     gtsam::Point2 xy = this->xy_;  // initialize to starting point
     double inst_t = 0;
     // Integrate
+    
     for (size_t k = 1; (dt * k) <= (t - t0_); k++) {
       inst_t = k * dt; // stroke-wise instantaneous time, no need to consider t0 here
       const double lambda = log_impulse(inst_t);

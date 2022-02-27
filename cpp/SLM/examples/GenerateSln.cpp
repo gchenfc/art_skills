@@ -15,6 +15,16 @@ int main( int argc, char* argv[] ) {
 
   //Substitute in the results from GTSAM (good estimate):
   const Point2 xy(0.328137741848, -0.891717473651);
+  const double t0 = -0.446723503295;
+  const double D = 0.589139027037;
+  const double theta1 = 1.23570533014;
+  const double theta2 = 1.46710580947;
+  const double sigma = 0.0186252618364;
+  const double mu = 1.31957471217;
+  const double dt = 0.0042;
+
+  //Substitute in the results from GTSAM (good estimate):
+  const Point2 xy(0.328137741848, -0.891717473651);
   const double t0 = -3.59840229207;
   const double D = 0.624518665631;
   const double theta1 = 1.23174322281;
