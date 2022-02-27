@@ -146,7 +146,7 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
 
   int k_data1_limit = data1.rows()*2;
   int k_data2_limit = data2.rows()*2;
-  // int k_data3_limit = data3.rows()*2;
+  int k_data3_limit = data3.rows()*2;
   double dt = (data1.row(1)(0)-data1.row(0)(0))/2;
 
   // Create the keys we need for this simple example
@@ -154,8 +154,8 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
   static Symbol p1('x', 0);
   static Symbol strokeparam2('s', 2);
   static Symbol p2('x', k_data1_limit);
-  // static Symbol strokeparam3('s', 3);
-  // static Symbol p3('x', k_data1_limit+k_data2_limit);
+  static Symbol strokeparam3('s', 3);
+  static Symbol p3('x', k_data1_limit+k_data2_limit);
 
   // create a measurement for both factors (the same in this case)
   auto position_noise =
@@ -163,7 +163,7 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
 
   SlnStrokeExpression stroke1(p1, strokeparam1);
   SlnStrokeExpression stroke2(p2, strokeparam2);
-  //SlnStrokeExpression stroke3(p3, strokeparam3);
+  SlnStrokeExpression stroke3(p3, strokeparam3);
 
   // For loop to create factors for each position
   for (int k = 0; k < k_data1_limit; k++) {
@@ -172,9 +172,9 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
   for (int k = k_data1_limit; k < k_data1_limit+k_data2_limit; k++) {
     graph.add(stroke2.pos_integration_factor(k, dt));
   }
-  // for (int k = k_data1_limit + k_data2_limit; k < k_data1_limit + k_data2_limit+k_data3_limit; k++) {
-  //   graph.add(stroke3.pos_integration_factor(k, dt));
-  // }
+  for (int k = k_data1_limit + k_data2_limit; k < k_data1_limit + k_data2_limit+k_data3_limit; k++) {
+    graph.add(stroke3.pos_integration_factor(k, dt));
+  }
 
   // For loop to place priors at data/measured points
   for (int k = 0; k < data1.rows(); k++) {
@@ -195,13 +195,13 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
         gtsam::symbol('x', timestep), data2.row(k).tail<2>(), position_noise);
   }
-  // for (int k = 0; k < data3.rows(); k++) {
-  //   // this is following c++ way to cast to a type
-  //   size_t timestep = static_cast<size_t>(data3.row(k)(0) / dt);
-  //   assert_equal(timestep * dt, data3.row(k)(0));
-  //   graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
-  //       gtsam::symbol('x', timestep), data3.row(k).tail<2>(), position_noise);
-  // }
+  for (int k = 0; k < data3.rows(); k++) {
+    // this is following c++ way to cast to a type
+    size_t timestep = static_cast<size_t>(data3.row(k)(0) / dt);
+    assert_equal(timestep * dt, data3.row(k)(0));
+    graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
+        gtsam::symbol('x', timestep), data3.row(k).tail<2>(), position_noise);
+  }
 
   // Print
   // graph.print("Factor Graph:\n");
@@ -214,13 +214,12 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
   Vector6 sp2;
   sp2 << -0.3, 0.5, 0*M_PI/180, -10*M_PI/180, 0.4, -1.5;
   initialEstimate.insert(strokeparam2, sp2);
-  // Vector6 sp3;
-  // sp3 << 0.4, 0.4, 0, 0, 0.4, -1.8;
-  // initialEstimate.insert(strokeparam3, sp3);
+  Vector6 sp3;
+  sp3 << -0.3, 0.5, 0*M_PI/180, -10*M_PI/180, 0.4, -1.5;
+  initialEstimate.insert(strokeparam3, sp3);
 
   // TODO: initialize this based on data
-  for (int k = 0; k <= k_data1_limit+k_data2_limit; k++) {
-  // for (int k = 0; k <= k_data1_limit+k_data2_limit+k_data3_limit; k++) {
+  for (int k = 0; k <= k_data1_limit+k_data2_limit+k_data3_limit; k++) {
     initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.0, 0.0));
   }
 
@@ -239,7 +238,7 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
   LevenbergMarquardtOptimizer optimizerLM(graphLM, initialEstimate, paramsLM);
   Values resultLM = optimizerLM.optimize();
 
-  resultLM.print("Final Result:\n");
+  //resultLM.print("Final Result:\n");
 
   // Create the stroke
   {  // const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
@@ -248,7 +247,6 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     Point2 xy1_0 = SlnStroke (Point2::Zero(), params1).position(0,dt);
     std::cout << xy1_0 << std::endl;
     const SlnStroke stroke1(xy1-xy1_0, params1);
-    // populate headers
     std::ofstream myfile1;
     myfile1.open("stroke1_gtsam.csv");
     myfile1 << "time,x,y\n";
@@ -263,7 +261,6 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     Point2 xy2 = resultLM.at<Point2>(p2);
     Point2 xy2_0 = SlnStroke (Point2::Zero(), params2).position(k_data1_limit*dt,dt);
     const SlnStroke stroke2(xy2-xy2_0, params2);
-    // populate headers
     std::ofstream myfile2;
     myfile2.open("stroke2_gtsam.csv");
     myfile2 << "time,x,y\n";
@@ -274,33 +271,35 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     }
     myfile2.close();
 
-    // Vector6 params3 = resultLM.at<Vector6>(strokeparam3);
-    // Point2 xy3 = resultLM.at<Point2>(p3);
-    // Point2 xy3_0 = SlnStroke (Point2::Zero(), params3).position((k_data1_limit+k_data2_limit)*dt,dt);
-    // const SlnStroke stroke3(xy3-xy3_0, params3);
-    // // populate headers
-    // std::ofstream myfile3;
-    // myfile3.open("stroke3_gtsam.csv");
-    // myfile3 << "time,x,y\n";
-    // for (int k = k_data1_limit + k_data2_limit; k < k_data1_limit + k_data2_limit + k_data3_limit; k++) {
-    //   double k_t = k * dt;
-    //   Point2 pt3 = stroke3.position(k_t, dt);
-    //   myfile3 << k_t << "," << pt3(0) << "," << pt3(1) << "\n";
-    // }
-    // myfile3.close();
+    Vector6 params3 = resultLM.at<Vector6>(strokeparam3);
+    Point2 xy3 = resultLM.at<Point2>(p3);
+    Point2 xy3_0 = SlnStroke (Point2::Zero(), params3).position((k_data1_limit+k_data2_limit)*dt,dt);
+    const SlnStroke stroke3(xy3-xy3_0, params3);
+    std::ofstream myfile3;
+    myfile3.open("stroke3_gtsam.csv");
+    myfile3 << "time,x,y\n";
+    for (int k = k_data1_limit + k_data2_limit; k < k_data1_limit + k_data2_limit + k_data3_limit; k++) {
+      double k_t = k * dt;
+      Point2 pt3 = stroke3.position(k_t, dt);
+      myfile3 << k_t << "," << pt3(0) << "," << pt3(1) << "\n";
+    }
+    myfile3.close();
   }
 
   graph.saveGraph("tstSLN.dot", resultLM);
 
   // Calculate and print marginal covariances for all variables
-//   cout.precision(2);
-//   Marginals marginals(graph, resultLM, Marginals::Factorization::QR);
-//   cout << "p1 covariance:\n" << marginals.marginalCovariance(p1) << endl;
-//   cout << "strokeparam1 covariance:\n"
-//        << marginals.marginalCovariance(strokeparam1) << endl;
-//   cout << "p2 covariance:\n" << marginals.marginalCovariance(p2) << endl;
-//   cout << "strokeparam2 covariance:\n"
-//        << marginals.marginalCovariance(strokeparam2) << endl;
+  cout.precision(2);
+  Marginals marginals(graph, resultLM, Marginals::Factorization::QR);
+  cout << "p1 covariance:\n" << marginals.marginalCovariance(p1) << endl;
+  cout << "strokeparam1 covariance:\n"
+       << marginals.marginalCovariance(strokeparam1) << endl;
+  cout << "p2 covariance:\n" << marginals.marginalCovariance(p2) << endl;
+  cout << "strokeparam2 covariance:\n"
+       << marginals.marginalCovariance(strokeparam2) << endl;
+  cout << "p3 covariance:\n" << marginals.marginalCovariance(p3) << endl;
+  cout << "strokeparam3 covariance:\n"
+       << marginals.marginalCovariance(strokeparam3) << endl;
 }
 
 /* ************************************************************************* */
