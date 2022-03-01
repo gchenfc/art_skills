@@ -130,8 +130,8 @@ TEST(ExpressionSlnFactor, ILS) {
   auto position_noise =
       noiseModel::Diagonal::Sigmas(Vector2(0.2, 0.2));  // 2cm std on x,y
 
-  SlnStrokeExpression stroke1(p1, strokeparam1);
-  SlnStrokeExpression stroke2(p2, strokeparam2);
+  SlnStrokeExpression stroke1(strokeparam1);
+  SlnStrokeExpression stroke2(strokeparam2);
   //SlnStrokeExpression stroke3(p3, strokeparam3);
 
   // For loop to create factors for each position
@@ -176,7 +176,6 @@ TEST(ExpressionSlnFactor, ILS) {
 
   // TODO: initialize this based on data
   for (int k = 0; k <= k_data1_limit+k_data2_limit; k++) {
-  // for (int k = 0; k <= k_data1_limit+k_data2_limit+k_data3_limit; k++) {
     initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.0, 0.0));
   }
 
@@ -206,7 +205,7 @@ TEST(ExpressionSlnFactor, ILS) {
     const SlnStroke stroke1(xy1-xy1_0, params1);
     // populate headers
     std::ofstream myfile1;
-    myfile1.open("stroke1_gtsam.csv");
+    myfile1.open("gtsam2_stroke1.csv");
     myfile1 << "time,x,y\n";
     for (int k = 0; k < k_data1_limit; k++) {
       double k_t = k * dt;
@@ -221,7 +220,7 @@ TEST(ExpressionSlnFactor, ILS) {
     const SlnStroke stroke2(xy2-xy2_0, params2);
     // populate headers
     std::ofstream myfile2;
-    myfile2.open("stroke2_gtsam.csv");
+    myfile2.open("gtsam2_stroke2.csv");
     myfile2 << "time,x,y\n";
     for (int k = k_data1_limit; k < k_data1_limit + k_data2_limit; k++) {
       double k_t = k * dt;
@@ -236,10 +235,8 @@ TEST(ExpressionSlnFactor, ILS) {
   // Calculate and print marginal covariances for all variables
   cout.precision(2);
   Marginals marginals(graph, resultLM, Marginals::Factorization::QR);
-  cout << "p1 covariance:\n" << marginals.marginalCovariance(p1) << endl;
   cout << "strokeparam1 covariance:\n"
        << marginals.marginalCovariance(strokeparam1) << endl;
-  cout << "p2 covariance:\n" << marginals.marginalCovariance(p2) << endl;
   cout << "strokeparam2 covariance:\n"
        << marginals.marginalCovariance(strokeparam2) << endl;
 }

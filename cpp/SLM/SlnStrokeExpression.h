@@ -184,7 +184,6 @@ class SlnStrokeExpression {
   using Vector2_ = gtsam::Vector2_;
   using Vector2 = gtsam::Vector2;
   using Vector6_ = gtsam::Vector6_;
-  Vector2_ xy;     // point coordinate
   Double_ t0;      // start of impulse in global time
   Double_ D;       // amplitude of stroke (||P[i] - P[i-1]||)
   Double_ theta1;  // initial angular deviation
@@ -194,10 +193,9 @@ class SlnStrokeExpression {
 
  public:
   /// Construct from individual parameters
-  SlnStrokeExpression(const gtsam::Vector2_& xy, Double_ t0, Double_ D,
+  SlnStrokeExpression(Double_ t0, Double_ D,
                       Double_ theta1, Double_ theta2, Double_ sigma, Double_ mu)
-      : xy(xy),
-        t0(t0),
+      : t0(t0),
         D(D),
         theta1(theta1),
         theta2(theta2),
@@ -205,9 +203,8 @@ class SlnStrokeExpression {
         mu(mu) {}
 
   /// Construct from initial point and 6-vector of parameters
-  SlnStrokeExpression(const Vector2_& xy, const Vector6_& p)
-      : xy(xy),
-        t0(indexVectorExpression<0>(p)),
+  SlnStrokeExpression(const Vector6_& p)
+      : t0(indexVectorExpression<0>(p)),
         D(indexVectorExpression<1>(p)),
         theta1(indexVectorExpression<2>(p)),
         theta2(indexVectorExpression<3>(p)),

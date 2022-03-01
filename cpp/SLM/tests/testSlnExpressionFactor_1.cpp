@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "../SlnStrokeExpression.h"
+#include "../SlnStroke.h"
 
 // We will also try this using an expression factor graph:
 #include <gtsam/nonlinear/ExpressionFactorGraph.h>
@@ -50,10 +51,6 @@ using namespace art_skills;
 TEST(ExpressionSlnFactor, ILS) {
   // 1. Create a factor graph container and add factors to it
   ExpressionFactorGraph graph;
-
-  // Create the keys we need for this simple example
-  static Symbol strokeparam1('s', 1);
-  static Symbol p1('x', 0);
 
   // Matrix for t, x, y, reference for each position factor
   Eigen::Matrix<double, 31, 3> data1;
@@ -89,23 +86,34 @@ TEST(ExpressionSlnFactor, ILS) {
 2.416666666666656971e-01,4.553027656528993994e-01,-3.465550328228148569e-01, //
 2.499999999999990008e-01,4.569055513590115636e-01,-3.463931905575849957e-01; //
 
+  int k_data1_limit = data1.rows()*2;
+  double dt = (data1.row(1)(0)-data1.row(0)(0))/2;
+
+
+  // Create the keys we need for this simple example
+  static Symbol strokeparam1('s', 1);
+  static Symbol p1('x', 0);
+
   // create a measurement for both factors (the same in this case)
   auto position_noise =
       noiseModel::Diagonal::Sigmas(Vector2(0.02, 0.02));  // 2cm std on x,y
 
-  SlnStrokeExpression stroke(p1, strokeparam1);
-  double dt = 0.0042;
-  // For loop to create factors for each position
-  for (int i = 0; i < 60; i++) {
-    graph.add(stroke.pos_integration_factor(i, dt));
+  SlnStrokeExpression stroke1(strokeparam1);
+  for (int k = 0; k < k_data1_limit; k++) {
+    graph.add(stroke1.pos_integration_factor(k, dt));
   }
+
   // For loop to place priors at data/measured points
-  for (int i = 0; i < data1.rows(); i++) {
+  for (int k = 0; k < data1.rows(); k++) {
     // this is following c++ way to cast to a type
-    size_t timestep = static_cast<size_t>(data1.row(i)(0) / dt);
-    assert_equal(timestep * dt, data1.row(i)(0));
+    // we set timestep equal to the time at row(k)/dt
+    size_t timestep = static_cast<size_t>(data1.row(k)(0) / dt);
+    // now we check if timestep*dt is equal to the data time in row k
+    assert_equal(timestep * dt, data1.row(k)(0));
+    // does the assert equal ensure that ONLY matching timesteps get a prior?
     graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
-        gtsam::symbol('x', timestep), data1.row(i).tail<2>(), position_noise);
+        gtsam::symbol('x', timestep), data1.row(k).tail<2>(), position_noise);
+        // TODO: potentially replace with 2*k to place at each actual point
   }
 
   // Print
@@ -114,18 +122,13 @@ TEST(ExpressionSlnFactor, ILS) {
   // Create (deliberately inaccurate) initial estimate
   Values initialEstimate;
   Vector6 sp1;
-  // sp1 << -0.15, 50, 0.5, -0.5, 0.25, -1.5;
-  sp1 << 0, 0.5, 0, 0, 0.4, -1.8;
+  sp1 << -0.2, 0.4, 10*M_PI/180, 0*M_PI/180, 0.5, -1.8;
   initialEstimate.insert(strokeparam1, sp1);
 
   // Maybe TODO: initialize this based on data
-  for (int i = 0; i <= 60; i++) {
-    initialEstimate.insert(gtsam::symbol('x', i), Vector2(0.0, 0.0));
+  for (int k = 0; k <= k_data1_limit; k++) {
+    initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.0, 0.0));
   }
-
-  // Print
-  // GaussianFactorGraph gfgi = *graph.linearize(initialEstimate);
-  // cout << gfgi.jacobian().first << endl;
 
   NonlinearFactorGraph graphLM = graph;
   // Optimize using Levenberg-Marquardt optimization. The optimizer
@@ -141,31 +144,32 @@ TEST(ExpressionSlnFactor, ILS) {
   LevenbergMarquardtOptimizer optimizerLM(graphLM, initialEstimate, paramsLM);
   Values resultLM = optimizerLM.optimize();
 
-  // GaussianFactorGraph gfg = *graph.linearize(resultLM);
-  // cout << gfg.jacobian().first << endl;
   resultLM.print("Final Result:\n");
 
-  // NonlinearFactorGraph graphGN = graph;
-  // Optimize using Gauss Newton optimization.
-  // GaussNewtonParams paramsGN;
-  // paramsGN.setVerbosity("error");  // SILENT, TERMINATION, ERROR, VALUES,
-  // // DELTA, LINEAR
-  // GaussNewtonOptimizer optimizerGN(graphGN, initialEstimate, paramsGN);
-  // Values resultGN = optimizerGN.optimize();
-  // resultGN.print("Final Result:\n");
-
-  graph.saveGraph("tstSLN.dot", resultLM);
+  // Create the stroke
+  {  // const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
+    Vector6 params1 = resultLM.at<Vector6>(strokeparam1);
+    Point2 xy1 = resultLM.at<Point2>(p1);
+    Point2 xy1_0 = SlnStroke (Point2::Zero(), params1).position(0,dt);
+    const SlnStroke stroke1(xy1-xy1_0, params1);
+    // populate headers
+    std::ofstream myfile1;
+    myfile1.open("gtsam1_stroke1.csv");
+    myfile1 << "time,x,y\n";
+    for (int k = 0; k < k_data1_limit; k++) {
+      double k_t = k * dt;
+      Point2 pt1 = stroke1.position(k_t, dt);
+      myfile1 << k_t << "," << pt1(0) << "," << pt1(1) << "\n";
+    }
+    myfile1.close();
+  }
+  //graph.saveGraph("tstSLN.dot", resultLM);
 
   // Calculate and print marginal covariances for all variables
   cout.precision(2);
   Marginals marginals(graph, resultLM, Marginals::Factorization::QR);
-  cout << "p1 covariance:\n" << marginals.marginalCovariance(p1) << endl;
   cout << "strokeparam1 covariance:\n"
        << marginals.marginalCovariance(strokeparam1) << endl;
-  // cout << "p3 covariance:\n" << marginals.marginalCovariance(3) << endl;
-  // cout << "s1 covariance:\n" << marginals.marginalCovariance(1) << endl;
-  // cout << "s2 covariance:\n" << marginals.marginalCovariance(2) << endl;
-  // cout << "s3 covariance:\n" << marginals.marginalCovariance(3) << endl;
 }
 
 /* ************************************************************************* */

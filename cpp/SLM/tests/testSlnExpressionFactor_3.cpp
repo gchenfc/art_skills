@@ -161,9 +161,9 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
   auto position_noise =
       noiseModel::Diagonal::Sigmas(Vector2(0.2, 0.2));  // 2cm std on x,y
 
-  SlnStrokeExpression stroke1(p1, strokeparam1);
-  SlnStrokeExpression stroke2(p2, strokeparam2);
-  SlnStrokeExpression stroke3(p3, strokeparam3);
+  SlnStrokeExpression stroke1(strokeparam1);
+  SlnStrokeExpression stroke2(strokeparam2);
+  SlnStrokeExpression stroke3(strokeparam3);
 
   // For loop to create factors for each position
   for (int k = 0; k < k_data1_limit; k++) {
@@ -248,7 +248,7 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     std::cout << xy1_0 << std::endl;
     const SlnStroke stroke1(xy1-xy1_0, params1);
     std::ofstream myfile1;
-    myfile1.open("stroke1_gtsam.csv");
+    myfile1.open("gtsam3_stroke1.csv");
     myfile1 << "time,x,y\n";
     for (int k = 0; k < k_data1_limit; k++) {
       double k_t = k * dt;
@@ -262,7 +262,7 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     Point2 xy2_0 = SlnStroke (Point2::Zero(), params2).position(k_data1_limit*dt,dt);
     const SlnStroke stroke2(xy2-xy2_0, params2);
     std::ofstream myfile2;
-    myfile2.open("stroke2_gtsam.csv");
+    myfile2.open("gtsam3_stroke2.csv");
     myfile2 << "time,x,y\n";
     for (int k = k_data1_limit; k < k_data1_limit + k_data2_limit; k++) {
       double k_t = k * dt;
@@ -276,7 +276,7 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     Point2 xy3_0 = SlnStroke (Point2::Zero(), params3).position((k_data1_limit+k_data2_limit)*dt,dt);
     const SlnStroke stroke3(xy3-xy3_0, params3);
     std::ofstream myfile3;
-    myfile3.open("stroke3_gtsam.csv");
+    myfile3.open("gtsam3_stroke3.csv");
     myfile3 << "time,x,y\n";
     for (int k = k_data1_limit + k_data2_limit; k < k_data1_limit + k_data2_limit + k_data3_limit; k++) {
       double k_t = k * dt;
