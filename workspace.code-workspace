@@ -6,5 +6,10 @@
 		{
 			"path": "../gtsam"
 		}
-	]
+	],
+	"settings": {
+		"files.associations": {
+			"ostream": "cpp"
+		}
+	}
 }

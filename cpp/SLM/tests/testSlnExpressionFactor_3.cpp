@@ -144,19 +144,17 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
 6.749999999999972689e-01,3.405581808754325479e-01,-8.955195314513393345e-01, //
 6.833333333333305726e-01,3.357094955332409203e-01,-8.967606842995115013e-01;
 
-  int k_data1_limit = data1.rows()*2;
-  int k_data2_limit = data2.rows()*2;
-  int k_data3_limit = data3.rows()*2;
-  double dt = (data1.row(1)(0)-data1.row(0)(0))/2;
+  int multiplier = 2;
+  int k_data1_limit = data1.rows()*multiplier;
+  int k_data2_limit = data2.rows()*multiplier;
+  int k_data3_limit = data3.rows()*multiplier;
+  double dt = (data1.row(1)(0)-data1.row(0)(0))/multiplier;
 
   // Create the keys we need for this simple example
   static Symbol strokeparam1('s', 1);
-  static Symbol p1('x', 0);
   static Symbol strokeparam2('s', 2);
-  static Symbol p2('x', k_data1_limit);
   static Symbol strokeparam3('s', 3);
-  static Symbol p3('x', k_data1_limit+k_data2_limit);
-
+  
   // create a measurement for both factors (the same in this case)
   auto position_noise =
       noiseModel::Diagonal::Sigmas(Vector2(0.2, 0.2));  // 2cm std on x,y
@@ -220,7 +218,25 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
 
   // TODO: initialize this based on data
   for (int k = 0; k <= k_data1_limit+k_data2_limit+k_data3_limit; k++) {
-    initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.0, 0.0));
+    cout << k << endl;
+
+    double x = data1(k,1);
+    
+
+    if (k < k_data1_limit){
+      initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(k,1), data1(k,2)));
+      cout << data1(k,1) << endl;
+    } else{
+      initialEstimate.insert(gtsam::symbol('x', k), Vector2(0., 0.));
+    }
+
+    // if (k >= k_data1_limit && k < k_data2_limit){
+    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(0., 0.));
+    // }
+    // if (k >= k_data2_limit){
+    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(0., 0.));
+    // }
+    
   }
 
   NonlinearFactorGraph graphLM = graph;
@@ -233,15 +249,20 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
   LevenbergMarquardtParams paramsLM;
   paramsLM.setMaxIterations(10000);
   paramsLM.setlambdaUpperBound(1e15);
-  paramsLM.setVerbosity(
-      "ERROR");  // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
+  // SILENT, TERMINATION, ERROR, VALUES, DELTA, LINEAR
+  paramsLM.setVerbosity("ERROR");
   LevenbergMarquardtOptimizer optimizerLM(graphLM, initialEstimate, paramsLM);
   Values resultLM = optimizerLM.optimize();
 
   //resultLM.print("Final Result:\n");
 
   // Create the stroke
-  {  // const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
+  {  
+    static Symbol p1('x', 0);
+    static Symbol p2('x', k_data1_limit);
+    static Symbol p3('x', k_data1_limit+k_data2_limit);
+
+    // const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
     Vector6 params1 = resultLM.at<Vector6>(strokeparam1);
     Point2 xy1 = resultLM.at<Point2>(p1);
     Point2 xy1_0 = SlnStroke (Point2::Zero(), params1).position(0,dt);
@@ -286,18 +307,15 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     myfile3.close();
   }
 
-  graph.saveGraph("tstSLN.dot", resultLM);
+  graph.saveGraph("tstSLN3.dot", resultLM);
 
   // Calculate and print marginal covariances for all variables
   cout.precision(2);
   Marginals marginals(graph, resultLM, Marginals::Factorization::QR);
-  cout << "p1 covariance:\n" << marginals.marginalCovariance(p1) << endl;
   cout << "strokeparam1 covariance:\n"
        << marginals.marginalCovariance(strokeparam1) << endl;
-  cout << "p2 covariance:\n" << marginals.marginalCovariance(p2) << endl;
   cout << "strokeparam2 covariance:\n"
        << marginals.marginalCovariance(strokeparam2) << endl;
-  cout << "p3 covariance:\n" << marginals.marginalCovariance(p3) << endl;
   cout << "strokeparam3 covariance:\n"
        << marginals.marginalCovariance(strokeparam3) << endl;
 }
