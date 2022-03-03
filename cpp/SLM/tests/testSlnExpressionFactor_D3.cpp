@@ -145,7 +145,7 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
 6.833333333333305726e-01,3.357094955332409203e-01,-8.967606842995115013e-01;
 
   int multiplier = 2;
-  int i = 0;
+  //int i = 0;
   int k_data1_limit = data1.rows()*multiplier;
   int k_data2_limit = data2.rows()*multiplier;
   int k_data3_limit = data3.rows()*multiplier;
@@ -188,18 +188,17 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
         // TODO: potentially replace with 2*k to place at each actual point
   }
   for (int k = 0; k < data2.rows(); k++) {
-    // this is following c++ way to cast to a type
     size_t timestep = static_cast<size_t>(data2.row(k)(0) / dt);
     assert_equal(timestep * dt, data2.row(k)(0));
     graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
         gtsam::symbol('x', timestep), data2.row(k).tail<2>(), position_noise);
   }
   for (int k = 0; k < data3.rows(); k++) {
-    // this is following c++ way to cast to a type
     size_t timestep = static_cast<size_t>(data3.row(k)(0) / dt);
     assert_equal(timestep * dt, data3.row(k)(0));
     graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
         gtsam::symbol('x', timestep), data3.row(k).tail<2>(), position_noise);
+    cout << timestep << endl;
   }
 
   // Print
@@ -217,45 +216,32 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
   sp3 << -0.3, 0.5, 0*M_PI/180, -10*M_PI/180, 0.4, -1.5;
   initialEstimate.insert(strokeparam3, sp3);
 
-  // TODO: initialize this based on data
+  // Initialize based on data
   for (int k = 0; k <= k_data1_limit+k_data2_limit+k_data3_limit; k++) {
-    cout << k << endl;
-
-    if (k % multiplier == 0){
-      i = k/multiplier;
-      if (k >= k_data1_limit){
-        i -= k_data1_limit/multiplier;
-      }
-    }
-    if (k < k_data1_limit){
-      initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(i,1), data1(i,2)));
-      cout << Vector2(data1(i,1), data1(i,2)) << endl;
-    }
-    else if (k < k_data1_limit+k_data2_limit){
-      initialEstimate.insert(gtsam::symbol('x', k), Vector2(data2(i,1), data2(i,2)));
-      cout << Vector2(data2(i,1), data1(i,2)) << endl;
-    }
-    // if (k >= k_data1_limit && k < k_data2_limit){
-    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(data2(i,1), data2(i,2)));
+    initialEstimate.insert(gtsam::symbol('x', k), Vector2(0., 0.));
+    // if (k % multiplier == 0){
+    //   i = k/multiplier;
+    //   if (k >= k_data1_limit){
+    //     if (k >= (k_data1_limit+k_data2_limit)){
+    //       i -= (k_data1_limit+k_data2_limit)/multiplier;
+    //     } else {
+    //       i -= k_data1_limit/multiplier;
+    //     }
+    //   }
     // }
-    // if (k >= k_data2_limit){
-    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(data2(i,1), data2(i,2)));
-    // }
-    
     // if (k < k_data1_limit){
-    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(k,1), data1(k,2)));
-    //   cout << data1(k,1) << endl;
-    // } else{
-    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(0., 0.));
+    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(i,1), data1(i,2)));
     // }
-
-    // if (k >= k_data1_limit && k < k_data2_limit){
-    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(0., 0.));
+    // else if (k < k_data1_limit+k_data2_limit){
+    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(data2(i,1), data2(i,2)));
     // }
-    // if (k >= k_data2_limit){
-    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(0., 0.));
+    // else if (k < k_data1_limit+k_data2_limit+k_data3_limit){
+    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(data3(i,1), data3(i,2)));
+    // } else {
+    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.,0.));
+    //   // initialEstimate.insert(gtsam::symbol('x', k), Vector2(data3(data3.rows()-1,1), data3(data3.rows()-1,2)));
+    //   // cout << Vector2(data3(data3.rows()-1,1), data3(data3.rows()-1,2)) << endl;
     // }
-    
   }
 
   NonlinearFactorGraph graphLM = graph;
