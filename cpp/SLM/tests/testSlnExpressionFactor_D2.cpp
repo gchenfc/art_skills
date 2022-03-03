@@ -116,15 +116,15 @@ TEST(ExpressionSlnFactor, ILS) {
 4.583333333333315385e-01,7.450023736799762375e-01,-6.252183404378520715e-01, //
 4.666666666666647867e-01,7.459270263188526595e-01,-6.434319707583902037e-01;
 
-  int k_data1_limit = data1.rows()*2;
-  int k_data2_limit = data2.rows()*2;
-  double dt = (data1.row(1)(0)-data1.row(0)(0))/2;
+  int multiplier = 2;
+  int i = 0;
+  int k_data1_limit = data1.rows()*multiplier;
+  int k_data2_limit = data2.rows()*multiplier;
+  double dt = (data1.row(1)(0)-data1.row(0)(0))/multiplier;
 
   // Create the keys we need for this simple example
   static Symbol strokeparam1('s', 1);
-  static Symbol p1('x', 0);
   static Symbol strokeparam2('s', 2);
-  static Symbol p2('x', k_data1_limit);
 
   // create a measurement for both factors (the same in this case)
   auto position_noise =
@@ -132,7 +132,6 @@ TEST(ExpressionSlnFactor, ILS) {
 
   SlnStrokeExpression stroke1(strokeparam1);
   SlnStrokeExpression stroke2(strokeparam2);
-  //SlnStrokeExpression stroke3(p3, strokeparam3);
 
   // For loop to create factors for each position
   for (int k = 0; k < k_data1_limit; k++) {
@@ -155,7 +154,6 @@ TEST(ExpressionSlnFactor, ILS) {
         // TODO: potentially replace with 2*k to place at each actual point
   }
   for (int k = 0; k < data2.rows(); k++) {
-    // this is following c++ way to cast to a type
     size_t timestep = static_cast<size_t>(data2.row(k)(0) / dt);
     assert_equal(timestep * dt, data2.row(k)(0));
     graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
@@ -174,9 +172,27 @@ TEST(ExpressionSlnFactor, ILS) {
   sp2 << -0.3, 0.5, 0*M_PI/180, -10*M_PI/180, 0.4, -1.5;
   initialEstimate.insert(strokeparam2, sp2);
 
-  // TODO: initialize this based on data
+  // Initialize based on data
   for (int k = 0; k <= k_data1_limit+k_data2_limit; k++) {
-    initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.0, 0.0));
+    // initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.0, 0.0));
+    if (k % multiplier == 0){
+      i = k/multiplier;
+      if (k >= k_data1_limit){
+        if (k >= (k_data1_limit+k_data2_limit)){
+          i -= (k_data1_limit+k_data2_limit)/multiplier;
+        } else {
+          i -= k_data1_limit/multiplier;
+        }
+      }
+    }
+    if (k < k_data1_limit){
+      initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(i,1), data1(i,2)));
+    }
+    else if (k < k_data1_limit+k_data2_limit){
+      initialEstimate.insert(gtsam::symbol('x', k), Vector2(data2(i,1), data2(i,2)));
+    } else {
+      initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.,0.));
+    }
   }
 
   NonlinearFactorGraph graphLM = graph;
@@ -197,7 +213,11 @@ TEST(ExpressionSlnFactor, ILS) {
   resultLM.print("Final Result:\n");
 
   // Create the stroke
-  {  // const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
+  {  
+    static Symbol p1('x', 0);
+    static Symbol p2('x', k_data1_limit);
+
+    // const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
     Vector6 params1 = resultLM.at<Vector6>(strokeparam1);
     Point2 xy1 = resultLM.at<Point2>(p1);
     Point2 xy1_0 = SlnStroke (Point2::Zero(), params1).position(0,dt);

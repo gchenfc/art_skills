@@ -87,14 +87,13 @@ TEST(ExpressionSlnFactor, ILS) {
 2.499999999999990008e-01,4.569055513590115636e-01,-3.463931905575849957e-01; //
 
   int multiplier = 2;
-  //int i = 0;
+  int i = 0;
   int k_data1_limit = data1.rows()*multiplier;
   double dt = (data1.row(1)(0)-data1.row(0)(0))/2;
 
 
   // Create the keys we need for this simple example
   static Symbol strokeparam1('s', 1);
-  static Symbol p1('x', 0);
 
   // create a measurement for both factors (the same in this case)
   auto position_noise =
@@ -129,15 +128,15 @@ TEST(ExpressionSlnFactor, ILS) {
 
   // Maybe TODO: initialize this based on data
   for (int k = 0; k <= k_data1_limit; k++) {
-    initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.0, 0.0));
-    // if (k % multiplier == 0){
-    //   i = k/multiplier;
-    // }
-    // if (k < k_data1_limit){
-    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(i,1), data1(i,2)));
-    // } else{
-    //   initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(data1.rows()-1,1), data1(data1.rows()-1,2)));
-    // }
+    //initialEstimate.insert(gtsam::symbol('x', k), Vector2(0.0, 0.0));
+    if (k % multiplier == 0){
+      i = k/multiplier;
+    }
+    if (k < k_data1_limit){
+      initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(i,1), data1(i,2)));
+    } else{
+      initialEstimate.insert(gtsam::symbol('x', k), Vector2(data1(data1.rows()-1,1), data1(data1.rows()-1,2)));
+    }
   }
 
   NonlinearFactorGraph graphLM = graph;
@@ -157,7 +156,10 @@ TEST(ExpressionSlnFactor, ILS) {
   resultLM.print("Final Result:\n");
 
   // Create the stroke
-  {  // const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
+  {  
+    static Symbol p1('x', 0);
+
+    // const SlnStroke stroke(xy, t0, D, theta1, theta2, sigma, mu);
     Vector6 params1 = resultLM.at<Vector6>(strokeparam1);
     Point2 xy1 = resultLM.at<Point2>(p1);
     Point2 xy1_0 = SlnStroke (Point2::Zero(), params1).position(0,dt);

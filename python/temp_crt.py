@@ -49,20 +49,35 @@ def parse_trajectory(input_sequence):
         traj = []
         for input in input_sequence:
             if input == "A":
-                traj.append(np.array([strokea1, strokea2]))
+                t_step = np.empty(len(strokea1))
+                for i in range(len(t_step)):
+                    t_step[i] = 1/120*i
+                traj.append(np.array([t_step, strokea1[:,0], strokea1[:,1]]))
             if input == "B":
-                traj.append(np.array([strokeb1, strokeb2, strokeb3]))
+                t_step = np.empty(len(strokeb1))
+                for i in range(len(t_step)):
+                    t_step[i] = 1/120*i
+                traj.append(np.array([t_step, strokeb1[:,0], strokeb1[:,1]]))
             if input == "C":
-                traj.append(np.array([strokec1]))
+                t_step = np.empty(len(strokec1))
+                for i in range(len(t_step)):
+                    t_step[i] = 1/120*i
+                traj.append(np.array([t_step, strokec1[:,0], strokec1[:,1]]))
             if input == "D":
                 t_step = np.empty(len(stroked1))
                 for i in range(len(t_step)):
-                    t_step[i] = 0.0083333333333333*i
+                    t_step[i] = 1/120*i
                 traj.append(np.array([t_step, stroked1[:,0], stroked1[:,1]]))
             if input == "E":
-                traj.append(np.array([strokee1]))
+                t_step = np.empty(len(strokee1))
+                for i in range(len(t_step)):
+                    t_step[i] = 1/120*i
+                traj.append(np.array([t_step, strokee1[:,0], strokee1[:,1]]))
             if input == "F":
-                traj.append(np.array([strokef1]))
+                t_step = np.empty(len(strokef1))
+                for i in range(len(t_step)):
+                    t_step[i] = 1/120*i
+                traj.append(np.array([t_step, strokef1[:,0], strokef1[:,1]]))
             if input == "G":
                 traj.append(np.array([strokeg1]))
             if input == "Test":  # plot basic test case

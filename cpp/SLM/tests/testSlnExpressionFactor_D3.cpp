@@ -198,7 +198,6 @@ data3 <<4.749999999999980904e-01,7.445173488755695290e-01,-6.615477980016800652e
     assert_equal(timestep * dt, data3.row(k)(0));
     graph.emplace_shared<gtsam::PriorFactor<gtsam::Vector2>>(
         gtsam::symbol('x', timestep), data3.row(k).tail<2>(), position_noise);
-    cout << timestep << endl;
   }
 
   // Print
