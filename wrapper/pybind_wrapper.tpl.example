@@ -14,7 +14,7 @@
 
 {holder_type}
 
-//#include "python/preamble.h"
+#include "art_skills/preamble/art_skills.h"
 
 using namespace std;
 
@@ -25,7 +25,7 @@ PYBIND11_MODULE({module_name}, m_) {{
 
 {wrapped_namespace}
 
-#include "python/specializations.h"
+#include "art_skills/specializations/art_skills.h"
 
 }}
 
