@@ -262,29 +262,28 @@ class SlnStrokeExpression {
   }
 
   /**
-   * create factor for each displacement point
-   * @param inst_t time in the stroke
-   * @param t0 start time of the stroke (t is trajectory time)
+   * Creates a factor that enforces the relationship between the "current" point
+   * and the "next" point given the stroke parameters, by enforcing x2 = x1 +
+   * v2*dt, where v2 is calculated using the stroke parameters.
+   * @param timestep The time step index of the "current" point.
    * @param dt The timestep used for integration/sampling
-   * @return The xy position in a stroke at time t
+   * @param noise The noise model to use (defaults to Isotropic sigma=0.001).
+   * @return The factor enforcing the displacement relationship.
    */
-  gtsam::NonlinearFactor::shared_ptr pos_integration_factor(size_t timestep,
-                                                          double dt) const {
+  gtsam::NonlinearFactor::shared_ptr pos_integration_factor(
+      size_t timestep, double dt,
+      gtsam::noiseModel::Base::shared_ptr noise =
+          gtsam::noiseModel::Isotropic::Sigma(2, 0.001)) const {
     auto dx = displacement(Double_((timestep + 1) * dt) - t0, dt);
     // creating vector 2 of symbol xcurrent at timestep (int)
     Vector2_ xcurrent(gtsam::symbol('x', timestep));
     Vector2_ xnext(gtsam::symbol('x', timestep + 1));
     Vector2_ error = xcurrent + dx - xnext;
     // measurement should be 0, which is ensuring error is 0
-    // return
-    // gtsam::ExpressionFactor<Vector2>(gtsam::noiseModel::Constrained::All(2),
-    // Vector2::Zero(), error);
-    // return gtsam::ExpressionFactor<Vector2>(
-    //     gtsam::noiseModel::Isotropic::Sigma(2, 0.001*sqrt(dt)), Vector2::Zero(), error);
+    // Create an expression factor and return in the form of a shared pointer.
     return boost::static_pointer_cast<gtsam::NonlinearFactor>(
         boost::make_shared<gtsam::ExpressionFactor<Vector2>>(
-            gtsam::noiseModel::Isotropic::Sigma(2, 0.001 * sqrt(dt)),
-            Vector2::Zero(), error));
+            noise, Vector2::Zero(), error));
   }
 };
 
