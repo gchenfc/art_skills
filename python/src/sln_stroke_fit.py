@@ -11,7 +11,7 @@ class SlnStrokeFit:
 
     def __init__(self,
                  dt,
-                 integration_noise_model=gtsam.noiseModel.Isotropic.Sigma(2, 1.0),
+                 integration_noise_model=gtsam.noiseModel.Constrained.All(2),
                  data_prior_noise_model=gtsam.noiseModel.Isotropic.Sigma(2, 1.0)):
         self.dt = dt
         self.integration_noise_model = integration_noise_model
@@ -57,7 +57,8 @@ class SlnStrokeFit:
         return graph
 
     def create_initial_values(self, graph: gtsam.Values):
-        """Automatically create the initialization values for a given graph by inserting dummy values with the correct data type according to the symbol character.
+        """Automatically create the initialization values for a given graph by inserting dummy
+        values with the correct data type according to the symbol character.
 
         Args:
             graph: Factor graph that you want to solve.
@@ -72,22 +73,39 @@ class SlnStrokeFit:
                 # init.insert(key, np.array([0, 0]))
                 init.insert(key, np.zeros(2))
             elif sym.chr() == ord('p'):
-                init.insert(key, np.array([-1, 1, 0, 0, 1, 1]))
+                init.insert(key, np.array([-1., 1., 0., 0., 0.2, 0.1]))
             else:
                 raise RuntimeError('Symbol with unknown character encountered: ', key, sym)
         return init
 
     @staticmethod
-    def create_params(**kwargs):
+    def create_params(verbosityLM: str = 'SUMMARY',
+                      verbosity: str = 'SILENT',
+                      maxIterations: int = 100,
+                      relativeErrorTol: float = 1e-5,
+                      absoluteErrorTol: float = 1e-5,
+                      errorTol: float = 0):
         params = gtsam.LevenbergMarquardtParams()
-        params.setVerbosityLM("SUMMARY")
+        params.setVerbosityLM(verbosityLM)
+        params.setVerbosity(verbosity)
+        params.setMaxIterations(maxIterations)
+        params.setRelativeErrorTol(relativeErrorTol)
+        params.setAbsoluteErrorTol(absoluteErrorTol)
+        params.setErrorTol(errorTol)
         return params
 
-    def solve(self, graph: gtsam.Values, params: gtsam.LevenbergMarquardtParams = None):
+    def solve(self,
+              graph: gtsam.NonlinearFactorGraph,
+              initial_values: gtsam.Values = None,
+              params: gtsam.LevenbergMarquardtParams = None):
+        if initial_values is None:
+            initial_values = self.create_initial_values(graph)
         if params is None:
             params = self.create_params()
-        return gtsam.LevenbergMarquardtOptimizer(graph, self.create_initial_values(graph),
-                                                 params).optimize()
+        return gtsam.LevenbergMarquardtOptimizer(graph, initial_values, params).optimize()
 
     def query_estimate_at(self, values, t):
         return values.atPoint2(X(self.t2k(t)))
+
+    def query_parameters(self, values, stroke_index):
+        return values.atVector(P(stroke_index))
