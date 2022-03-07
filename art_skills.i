@@ -21,10 +21,16 @@ class SlnStrokeExpression {
   SlnStrokeExpression(gtsam::Key t0, gtsam::Key D, gtsam::Key theta1,
                       gtsam::Key theta2, gtsam::Key sigma, gtsam::Key mu);
   SlnStrokeExpression(gtsam::Key p);
+  SlnStrokeExpression(double t0, double D, double theta1, double theta2,
+                      double sigma, double mu);
+  SlnStrokeExpression(gtsam::Vector6 p);
   gtsam::NonlinearFactor::shared_ptr pos_integration_factor(
       size_t timestep, double dt,
       gtsam::noiseModel::Base::shared_ptr noise =
           gtsam::noiseModel::Isotropic::Sigma(2, 0.001));
+
+  double speed(double t, bool is_absolute_time = true,
+               gtsam::Values values = gtsam::Values());
 };
 
 }  // namespace art_skills

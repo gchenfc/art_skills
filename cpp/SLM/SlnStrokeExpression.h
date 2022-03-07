@@ -169,8 +169,8 @@ inline gtsam::Double_ erfExpression(const gtsam::Double_ z) {
 }
 
 static const double k_e = std::exp(1.0);
-static const gtsam::Double_(k_sqrt2pi) =
-    powerExpression(gtsam::Double_(2.0) * gtsam::Double_(M_PI), gtsam::Double_(0.5));
+static const gtsam::Double_(k_sqrt2pi) = powerExpression(
+    gtsam::Double_(2.0) * gtsam::Double_(M_PI), gtsam::Double_(0.5));
 
 /**
  * SlnStrokeExpression defines a single stroke, the length of which is defined
@@ -193,14 +193,9 @@ class SlnStrokeExpression {
 
  public:
   /// Construct from individual parameters
-  SlnStrokeExpression(Double_ t0, Double_ D,
-                      Double_ theta1, Double_ theta2, Double_ sigma, Double_ mu)
-      : t0(t0),
-        D(D),
-        theta1(theta1),
-        theta2(theta2),
-        sigma(sigma),
-        mu(mu) {}
+  SlnStrokeExpression(Double_ t0, Double_ D, Double_ theta1, Double_ theta2,
+                      Double_ sigma, Double_ mu)
+      : t0(t0), D(D), theta1(theta1), theta2(theta2), sigma(sigma), mu(mu) {}
 
   /// Construct from initial point and 6-vector of parameters
   SlnStrokeExpression(const Vector6_& p)
@@ -285,6 +280,24 @@ class SlnStrokeExpression {
         boost::make_shared<gtsam::ExpressionFactor<Vector2>>(
             noise, Vector2::Zero(), error));
   }
+
+  /** @defgroup query_functions Functions to call the SLN function with known
+   * values
+   *  @{
+   */
+
+  /** Returns the speed at a given time.
+   */
+  double speed(double t, bool is_absolute_time = true,
+               const gtsam::Values& values = gtsam::Values()) const {
+    Double_ expr =
+        speed(log_impulse(is_absolute_time ? (Double_(t) - t0) : Double_(t)));
+    return expr.value(values);
+  }
+
+  // TODO(gerry): add the other functions
+
+  /** @} */  // end of query_functions
 };
 
 }  // namespace art_skills

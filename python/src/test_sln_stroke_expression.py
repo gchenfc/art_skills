@@ -27,6 +27,16 @@ class TestSlnStrokeExpression(GtsamTestCase):
         stroke = SlnStrokeExpression(params_key)
         factor = stroke.pos_integration_factor(12345, 0.01)
 
+    def test_query_speed(self):
+        t0, D, th1, th2, sigma, mu = -0.1, 1.123, 9.876, 8.765, 1.432, 0.432
+        stroke = SlnStrokeExpression(np.array([t0, D, th1, th2, sigma, mu]))
+        t = 0.1
+        expected_speed = D / (sigma * np.sqrt(2 * np.pi) *
+                              (t - t0)) * np.exp(-np.square(np.log(t - t0) - mu) /
+                                                 (2 * sigma * sigma))
+        self.assertAlmostEqual(stroke.speed(t), expected_speed, 10)
+        self.assertAlmostEqual(stroke.speed(t - t0, False), expected_speed, 10)
+
     def test_factor_correctness(self):
         params_key = P(1)
         stroke = SlnStrokeExpression(params_key)
