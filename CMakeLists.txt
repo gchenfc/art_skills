@@ -100,9 +100,9 @@ file(COPY "${PROJECT_SOURCE_DIR}/wrapper/preamble/art_skills.h"
 file(COPY "${PROJECT_SOURCE_DIR}/wrapper/specializations/art_skills.h"
      DESTINATION "${PROJECT_BINARY_DIR}/art_skills/specializations/")
 
-# Copy all the tests files to module folder.
-file(COPY "${PROJECT_SOURCE_DIR}/python/tests"
-     DESTINATION "${GTSAM_MODULE_PATH}")
+# # Copy all the tests files to module folder.
+# file(COPY "${PROJECT_SOURCE_DIR}/python/tests"
+#      DESTINATION "${GTSAM_MODULE_PATH}")
 
 # We print out our configuration for an easy visual check
 message("========== Configuration Options ==========")

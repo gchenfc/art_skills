@@ -5,8 +5,8 @@ All Rights Reserved
 
 See LICENSE for the license information
 
-Unit tests for the entire project, end-end
-Author: Frank Dellaert, Sang-Won Leigh, JD Florez-Castillo
+Unit test python wrapper for SlnStrokeExpression
+Author: Gerry Chen
 """
 
 import unittest
