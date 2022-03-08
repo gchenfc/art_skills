@@ -51,7 +51,6 @@ class SlnStrokeFit:
             gtsam.NonlinearFactorGraph: graph containing priors.
         """
         graph = gtsam.NonlinearFactorGraph()
-        print(data.shape)
         for t, x, y in data:
             graph.addPriorPoint2(X(self.t2k(t)), np.array([x, y]), self.data_prior_noise_model)
         return graph
@@ -73,7 +72,7 @@ class SlnStrokeFit:
                 # init.insert(key, np.array([0, 0]))
                 init.insert(key, np.zeros(2))
             elif sym.chr() == ord('p'):
-                init.insert(key, np.array([-1., 1., 0., 0., 0.2, 0.1]))
+                init.insert(key, np.array([-0.1, 1., 0., 0., 0.2, -0.9]))
             else:
                 raise RuntimeError('Symbol with unknown character encountered: ', key, sym)
         return init
@@ -84,7 +83,9 @@ class SlnStrokeFit:
                       maxIterations: int = 100,
                       relativeErrorTol: float = 1e-5,
                       absoluteErrorTol: float = 1e-5,
-                      errorTol: float = 0):
+                      errorTol: float = 0,
+                      lambdaUpperBound:float = 1e9
+                      ):
         params = gtsam.LevenbergMarquardtParams()
         params.setVerbosityLM(verbosityLM)
         params.setVerbosity(verbosity)
@@ -92,6 +93,7 @@ class SlnStrokeFit:
         params.setRelativeErrorTol(relativeErrorTol)
         params.setAbsoluteErrorTol(absoluteErrorTol)
         params.setErrorTol(errorTol)
+        params.setlambdaUpperBound(lambdaUpperBound)
         return params
 
     def solve(self,
