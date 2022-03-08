@@ -122,9 +122,13 @@ inline gtsam::Double_ powerExpression(const gtsam::Double_ x,
 
 // Function to use log in expressions
 inline double logE(const double& x, gtsam::OptionalJacobian<1, 1> Hx) {
-  if (Hx) {
-    *Hx = gtsam::Vector1(1 / x);
+  static constexpr double kLogThreshold = 1e-8;
+  if (x < kLogThreshold) { // approximate as a very steep line when x <= 0
+    if (Hx) *Hx = gtsam::Vector1(1/kLogThreshold);
+    return kLogThreshold + (1 / kLogThreshold) * (x - kLogThreshold);
   }
+
+  if (Hx) *Hx = gtsam::Vector1(1 / x);
   return std::log(x);
 }
 // Expression version of scalar product, using above function.
