@@ -29,8 +29,10 @@ class SlnStrokeExpression {
       gtsam::noiseModel::Base::shared_ptr noise =
           gtsam::noiseModel::Isotropic::Sigma(2, 0.001));
 
+  gtsam::Vector2 displacement(double t, double dt, bool is_absolute_time = true,
+                              const gtsam::Values& values = gtsam::Values());
   double speed(double t, bool is_absolute_time = true,
-               gtsam::Values values = gtsam::Values());
+               const gtsam::Values& values = gtsam::Values());
 };
 
 }  // namespace art_skills

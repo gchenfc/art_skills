@@ -290,12 +290,22 @@ class SlnStrokeExpression {
    *  @{
    */
 
-  /** Returns the speed at a given time.
-   */
+  /** Converts absolute time to strokewise time. */
+  Double_ time(double t, bool is_absolute_time) const {
+    return is_absolute_time ? Double_(t) - t0 : Double_(t);
+  }
+
+  /** Returns the displacement at a given time. */
+  gtsam::Vector2 displacement(
+      double t, double dt, bool is_absolute_time = true,
+      const gtsam::Values& values = gtsam::Values()) const {
+    return displacement(time(t, is_absolute_time), dt).value(values);
+  }
+
+  /** Returns the speed at a given time. */
   double speed(double t, bool is_absolute_time = true,
                const gtsam::Values& values = gtsam::Values()) const {
-    Double_ expr =
-        speed(log_impulse(is_absolute_time ? (Double_(t) - t0) : Double_(t)));
+    Double_ expr = speed(log_impulse(time(t, is_absolute_time)));
     return expr.value(values);
   }
 
