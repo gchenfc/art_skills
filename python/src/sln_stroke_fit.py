@@ -2,6 +2,21 @@ import numpy as np
 import gtsam
 from art_skills import SlnStrokeExpression
 from gtsam.symbol_shorthand import P, X
+from typing import Iterable
+import tqdm
+import dataclasses
+import contextlib
+
+
+@dataclasses.dataclass
+class OptimizationLoggingParams:
+    print_progress: bool = True
+    log_optimization_values: bool = False
+    progress_bar_description: str = 'Fitting Stroke'
+    progress_bar_class: type[tqdm.tqdm] = tqdm.tqdm
+
+    def __bool__(self):
+        return self.print_progress or self.log_optimization_values
 
 
 class SlnStrokeFit:
@@ -16,7 +31,6 @@ class SlnStrokeFit:
         self.dt = dt
         self.integration_noise_model = integration_noise_model
         self.data_prior_noise_model = data_prior_noise_model
-        self.optimizer = None  # this is to give access to the optimizer for the iteration_hook
 
     def t2k(self, t):
         k = np.round(t / self.dt, 0).astype(int)
@@ -82,13 +96,13 @@ class SlnStrokeFit:
 
     def create_initial_values_from_params(self, x0, params_values: gtsam.Values, stroke_indices):
         init = gtsam.Values(params_values)
-        init.insert(X(0), x0)
+        init.insert_or_assign(X(0), x0)
         for strokei, (kstart, kend) in stroke_indices.items():
             params = params_values.atVector(P(strokei))
             stroke = SlnStrokeExpression(params)
             for k in range(kstart, kend):
                 dx = stroke.displacement((k + 1) * self.dt, self.dt)
-                init.insert(X(k + 1), init.atPoint2(X(k)) + dx)
+                init.insert_or_assign(X(k + 1), init.atPoint2(X(k)) + dx)
         return init
 
     @staticmethod
@@ -98,8 +112,7 @@ class SlnStrokeFit:
                       relativeErrorTol: float = 1e-5,
                       absoluteErrorTol: float = 1e-5,
                       errorTol: float = 0,
-                      lambdaUpperBound:float = 1e9
-                      ):
+                      lambdaUpperBound: float = 1e9):
         params = gtsam.LevenbergMarquardtParams()
         params.setVerbosityLM(verbosityLM)
         params.setVerbosity(verbosity)
@@ -113,17 +126,37 @@ class SlnStrokeFit:
     def solve(self,
               graph: gtsam.NonlinearFactorGraph,
               initial_values: gtsam.Values = gtsam.Values(),
-              params: gtsam.LevenbergMarquardtParams = None):
+              params: gtsam.LevenbergMarquardtParams = None,
+              logging_params: OptimizationLoggingParams = OptimizationLoggingParams()):
         initial_values = self.create_initial_values(graph, initial_values)
         if params is None:
             params = self.create_params()
 
-        self.optimizer = gtsam.LevenbergMarquardtOptimizer(graph, initial_values, params)
-        if params.iterationHook is not None:
-            params.iterationHook(0, graph.error(initial_values), graph.error(initial_values))
-        ret = self.optimizer.optimize()
-        self.optimizer = None
-        return ret
+        optim_history = []
+        if logging_params:
+
+            def iteration_hook(iter, error_before, error_after):
+                # Python is magical and lets us use progress & optimizer before they are defined
+                if logging_params.print_progress:
+                    progress.update(1)
+                    progress.set_description(logging_params.progress_bar_description)
+                    progress.set_postfix(error='{:.2e}'.format(error_after),
+                                         change_abs='{:.2e}'.format(error_before - error_after),
+                                         change_rel='{:.2e}'.format(
+                                             (error_before - error_after) / error_before),
+                                         Lambda=optimizer.lambda_())
+                if logging_params.log_optimization_values:
+                    optim_history.append(gtsam.Values(optimizer.values()))
+
+            params.iterationHook = iteration_hook
+
+        optimizer = gtsam.LevenbergMarquardtOptimizer(graph, initial_values, params)
+
+        with logging_params.progress_bar_class(total=params.getMaxIterations() + 1) \
+                if logging_params.print_progress else contextlib.nullcontext() as progress:
+            if logging_params:
+                params.iterationHook(0, graph.error(initial_values), graph.error(initial_values))
+            return optimizer.optimize(), optim_history
 
     def stroke_indices(self, strokes):
         stroke_indices = {}
@@ -134,12 +167,16 @@ class SlnStrokeFit:
         # correct for if there are time indices between the stroke data points (i.e. dt < strokedt)
         k_between_strokes = int((strokes[0][1, 0] - strokes[0][0, 0] + 1e-9) / self.dt)
         for strokei in range(len(strokes) - 1):
-            if (stroke_indices[strokei+1][0] - stroke_indices[strokei][1]) < k_between_strokes:
+            if (stroke_indices[strokei + 1][0] - stroke_indices[strokei][1]) < k_between_strokes:
                 stroke_indices[strokei] = (stroke_indices[strokei][0],
                                            stroke_indices[strokei + 1][0])
         return stroke_indices
 
-    def fit_stroke(self, strokes, initial_values=gtsam.Values(), params=None):
+    def fit_stroke(self,
+                   strokes: Iterable[np.ndarray],
+                   initial_values: gtsam.Values = gtsam.Values(),
+                   params: gtsam.LevenbergMarquardtParams = None,
+                   logging_params: OptimizationLoggingParams = OptimizationLoggingParams()):
         graph = gtsam.NonlinearFactorGraph()
 
         stroke_indices = self.stroke_indices(strokes)
@@ -149,8 +186,8 @@ class SlnStrokeFit:
 
         return (self.solve(graph,
                            initial_values=initial_values,
-                           params=params if params is not None else self.create_params()),
-                stroke_indices)
+                           params=params if params is not None else self.create_params(),
+                           logging_params=logging_params), stroke_indices)
 
     def query_estimate_at(self, values, t):
         return values.atPoint2(X(self.t2k(t)))
