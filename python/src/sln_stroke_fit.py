@@ -33,7 +33,7 @@ class SlnStrokeFit:
         self.data_prior_noise_model = data_prior_noise_model
 
     def t2k(self, t):
-        k = np.round(t / self.dt, 0).astype(int)
+        k = np.round((t + 1e-12) / self.dt, 0).astype(int)
         assert k * self.dt == t, \
             f"t didn't fall on a discretization point: {t = }, {self.dt = }, {k = }"
         return k
