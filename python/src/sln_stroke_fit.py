@@ -131,6 +131,12 @@ class SlnStrokeFit:
             kstart = int((stroke[0, 0] + 1e-9) / self.dt)
             kend = int((stroke[-1, 0] + 1e-9) / self.dt) + 1
             stroke_indices[strokei] = (kstart, kend)
+        # correct for if there are time indices between the stroke data points (i.e. dt < strokedt)
+        k_between_strokes = int((strokes[0][1, 0] - strokes[0][0, 0] + 1e-9) / self.dt)
+        for strokei in range(len(strokes) - 1):
+            if (stroke_indices[strokei+1][0] - stroke_indices[strokei][1]) < k_between_strokes:
+                stroke_indices[strokei] = (stroke_indices[strokei][0],
+                                           stroke_indices[strokei + 1][0])
         return stroke_indices
 
     def fit_stroke(self, strokes, initial_values=gtsam.Values(), params=None):
