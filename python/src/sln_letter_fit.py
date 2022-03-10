@@ -83,7 +83,44 @@ def fit_letter(
     initial_values = gtsam.Values()
     if fit_params.initialization_strategy_params == 'default':
         for i in range(len(strokes)):
-            initial_values.insert(P(i), np.array([0.0, 1., 0., 0., 0.5, -0.5]))
+            initial_values.insert(P(i), np.array([-0.3, 1., 0., 0., 0.5, -0.5]))
+            # initial_values.insert(P(i), np.array([-.3, 1., 1.57, -4.7, 0.5, -0.5]))
+            # initial_values.insert(P(i),
+            #                       np.array([0.0, 1., (i) * 0.75, (i + 1) * 0.75, 0.5, -0.5]))
+    elif fit_params.initialization_strategy_params == ' :D ':
+        for i, stroke in enumerate(strokes):
+            # TODO(gerry): clean this up
+            v = np.diff(stroke[:, 1:], axis=0) / np.diff(stroke[:, 0]).reshape(-1, 1)
+            angles = np.arctan2(v[:, 1], v[:, 0])
+            th1 = np.mean(angles[:10])
+            th2 = np.mean(angles[-10:])
+            sigma = 0.4
+            speed = np.sqrt(np.sum(np.square(v), axis=1))
+            duration = stroke[-1, 0] - stroke[0, 0]
+            """
+            in order to get our curve to capture ~95% of the velocity profile, we want:
+                argument_of_exp = -(1/2) * (ln(t-t0) - mu)^2 / sigma^2
+                2*sigma == ln(t-t0) - mu
+            assume t0 = 0, then
+                2*sigma == ln(duration) - mu
+                mu = ln(duration) - 2*sigma
+                duration = exp(2*sigma + mu)
+            """
+            mu = np.log(duration) - 0.9  # for sigma = 0.4
+
+            peak_speed_i = np.argmax(speed)
+            tpeak = stroke[peak_speed_i, 0]
+            t0 = stroke[0, 0]
+            t0alt = tpeak - np.exp(mu - sigma * sigma)
+
+            tpeak_alt = np.exp(mu - sigma * sigma)
+            predicted_peak_speed = 1 / (sigma * np.sqrt(2 * np.pi) *
+                                        (tpeak_alt)) * np.exp(-0.5 * sigma * sigma)
+            D = speed[peak_speed_i] / predicted_peak_speed
+
+            # print('initial values are: ', np.array([t0, D, th1, th2, sigma, mu]))
+
+            initial_values.insert(P(i), np.array([t0, D, th1, th2, sigma, mu]))
     else:
         raise NotImplementedError('The parameter initialization strategy is not yet implemented')
 
