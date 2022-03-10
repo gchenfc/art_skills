@@ -162,7 +162,7 @@ class SlnStrokeFit:
         stroke_indices = {}
         for strokei, stroke in enumerate(strokes):
             kstart = int((stroke[0, 0] + 1e-9) / self.dt)
-            kend = int((stroke[-1, 0] + 1e-9) / self.dt) + 1
+            kend = int((stroke[-1, 0] + 1e-9) / self.dt) + (1 if strokei < len(strokes) - 1 else 0)
             stroke_indices[strokei] = (kstart, kend)
         # correct for if there are time indices between the stroke data points (i.e. dt < strokedt)
         k_between_strokes = int((strokes[0][1, 0] - strokes[0][0, 0] + 1e-9) / self.dt)

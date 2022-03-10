@@ -11,11 +11,7 @@ Author: Gerry Chen
 
 import unittest
 import numpy as np
-import art_skills
-# import .. import src
-from sln_stroke_fit import SlnStrokeFit
-# from . import src
-# # from src.sln_stroke_fit import SlnStrokeFit
+from sln_stroke_fit import SlnStrokeFit, OptimizationLoggingParams
 import gtsam
 from gtsam.utils.test_case import GtsamTestCase
 from gtsam.symbol_shorthand import X, P
@@ -57,13 +53,14 @@ class TestSlnStrokeFit(GtsamTestCase):
         # TODO(gerry): understand loss landscape
         initial_values = fitter.create_initial_values(graph)
         initial_values.update(P(0), np.array([-0.1, 1., 0., 0., 0.2, -0.9]))
-        sol = fitter.solve(graph,
-                           initial_values=initial_values,
-                           params=fitter.create_params(verbosityLM='SILENT',
-                                                       maxIterations=300,
-                                                       relativeErrorTol=0,
-                                                       absoluteErrorTol=0,
-                                                       errorTol=0))
+        sol, _ = fitter.solve(graph,
+                              initial_values=initial_values,
+                              params=fitter.create_params(verbosityLM='SILENT',
+                                                          maxIterations=300,
+                                                          relativeErrorTol=0,
+                                                          absoluteErrorTol=0,
+                                                          errorTol=0),
+                              logging_params=OptimizationLoggingParams(print_progress=False))
 
         # test fit quality
         for t, x, y in data:

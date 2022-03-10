@@ -39,8 +39,7 @@ class TestSlnLetterFit(GtsamTestCase):
             optimization_logging_params=OptimizationLoggingParams(print_progress=False,
                                                                   log_optimization_values=False))
 
-        estimated_trajectory = fitter.compute_trajectory_from_parameters(
-            sol['txy'][0, 1:], sol['params'], stroke_indices)
+        estimated_trajectory = sol['txy_from_params'][:, 1:]
 
         # debug
         if False:
@@ -48,6 +47,7 @@ class TestSlnLetterFit(GtsamTestCase):
             plt.plot(estimated_trajectory[:, 0], estimated_trajectory[:, 1])
             for stroke in strokes:
                 plt.plot(stroke[:, 1], stroke[:, 2], '.')
+            plt.axis('equal')
             plt.show()
 
         # test fit quality
