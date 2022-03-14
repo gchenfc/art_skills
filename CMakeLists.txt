@@ -94,15 +94,15 @@ configure_file(${PROJECT_SOURCE_DIR}/wrapper/pybind_wrapper.tpl.example
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 
 # Copy over C++ headers to use for wrapping
-file(COPY "${PROJECT_SOURCE_DIR}/wrapper/preamble.h"
-     DESTINATION "${PROJECT_BINARY_DIR}/python")
+file(COPY "${PROJECT_SOURCE_DIR}/wrapper/preamble/art_skills.h"
+     DESTINATION "${PROJECT_BINARY_DIR}/art_skills/preamble/")
 
-file(COPY "${PROJECT_SOURCE_DIR}/wrapper/specializations.h"
-     DESTINATION "${PROJECT_BINARY_DIR}/python")
+file(COPY "${PROJECT_SOURCE_DIR}/wrapper/specializations/art_skills.h"
+     DESTINATION "${PROJECT_BINARY_DIR}/art_skills/specializations/")
 
-# Copy all the tests files to module folder.
-file(COPY "${PROJECT_SOURCE_DIR}/python/tests"
-     DESTINATION "${GTSAM_MODULE_PATH}")
+# # Copy all the tests files to module folder.
+# file(COPY "${PROJECT_SOURCE_DIR}/python/tests"
+#      DESTINATION "${GTSAM_MODULE_PATH}")
 
 # We print out our configuration for an easy visual check
 message("========== Configuration Options ==========")

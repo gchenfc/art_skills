@@ -122,9 +122,13 @@ inline gtsam::Double_ powerExpression(const gtsam::Double_ x,
 
 // Function to use log in expressions
 inline double logE(const double& x, gtsam::OptionalJacobian<1, 1> Hx) {
-  if (Hx) {
-    *Hx = gtsam::Vector1(1 / x);
+  static constexpr double kLogThreshold = 1e-8;
+  if (x < kLogThreshold) { // approximate as a very steep line when x <= 0
+    if (Hx) *Hx = gtsam::Vector1(1/kLogThreshold);
+    return kLogThreshold + (1 / kLogThreshold) * (x - kLogThreshold);
   }
+
+  if (Hx) *Hx = gtsam::Vector1(1 / x);
   return std::log(x);
 }
 // Expression version of scalar product, using above function.
@@ -169,8 +173,8 @@ inline gtsam::Double_ erfExpression(const gtsam::Double_ z) {
 }
 
 static const double k_e = std::exp(1.0);
-static const gtsam::Double_(k_sqrt2pi) =
-    powerExpression(gtsam::Double_(2.0) * gtsam::Double_(M_PI), gtsam::Double_(0.5));
+static const gtsam::Double_(k_sqrt2pi) = powerExpression(
+    gtsam::Double_(2.0) * gtsam::Double_(M_PI), gtsam::Double_(0.5));
 
 /**
  * SlnStrokeExpression defines a single stroke, the length of which is defined
@@ -193,14 +197,9 @@ class SlnStrokeExpression {
 
  public:
   /// Construct from individual parameters
-  SlnStrokeExpression(Double_ t0, Double_ D,
-                      Double_ theta1, Double_ theta2, Double_ sigma, Double_ mu)
-      : t0(t0),
-        D(D),
-        theta1(theta1),
-        theta2(theta2),
-        sigma(sigma),
-        mu(mu) {}
+  SlnStrokeExpression(Double_ t0, Double_ D, Double_ theta1, Double_ theta2,
+                      Double_ sigma, Double_ mu)
+      : t0(t0), D(D), theta1(theta1), theta2(theta2), sigma(sigma), mu(mu) {}
 
   /// Construct from initial point and 6-vector of parameters
   SlnStrokeExpression(const Vector6_& p)
@@ -262,26 +261,57 @@ class SlnStrokeExpression {
   }
 
   /**
-   * create factor for each displacement point
-   * @param inst_t time in the stroke
-   * @param t0 start time of the stroke (t is trajectory time)
+   * Creates a factor that enforces the relationship between the "current" point
+   * and the "next" point given the stroke parameters, by enforcing x2 = x1 +
+   * v2*dt, where v2 is calculated using the stroke parameters.
+   * @param timestep The time step index of the "current" point.
    * @param dt The timestep used for integration/sampling
-   * @return The xy position in a stroke at time t
+   * @param noise The noise model to use (defaults to Isotropic sigma=0.001).
+   * @return The factor enforcing the displacement relationship.
    */
-  gtsam::ExpressionFactor<Vector2> pos_integration_factor(size_t timestep,
-                                                          double dt) const {
+  gtsam::NonlinearFactor::shared_ptr pos_integration_factor(
+      size_t timestep, double dt,
+      gtsam::noiseModel::Base::shared_ptr noise =
+          gtsam::noiseModel::Isotropic::Sigma(2, 0.001)) const {
     auto dx = displacement(Double_((timestep + 1) * dt) - t0, dt);
     // creating vector 2 of symbol xcurrent at timestep (int)
     Vector2_ xcurrent(gtsam::symbol('x', timestep));
     Vector2_ xnext(gtsam::symbol('x', timestep + 1));
     Vector2_ error = xcurrent + dx - xnext;
     // measurement should be 0, which is ensuring error is 0
-    // return
-    // gtsam::ExpressionFactor<Vector2>(gtsam::noiseModel::Constrained::All(2),
-    // Vector2::Zero(), error);
-    return gtsam::ExpressionFactor<Vector2>(
-        gtsam::noiseModel::Isotropic::Sigma(2, 0.001*sqrt(dt)), Vector2::Zero(), error);
+    // Create an expression factor and return in the form of a shared pointer.
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        boost::make_shared<gtsam::ExpressionFactor<Vector2>>(
+            noise, Vector2::Zero(), error));
   }
+
+  /** @defgroup query_functions Functions to call the SLN function with known
+   * values
+   *  @{
+   */
+
+  /** Converts absolute time to strokewise time. */
+  Double_ time(double t, bool is_absolute_time) const {
+    return is_absolute_time ? Double_(t) - t0 : Double_(t);
+  }
+
+  /** Returns the displacement at a given time. */
+  gtsam::Vector2 displacement(
+      double t, double dt, bool is_absolute_time = true,
+      const gtsam::Values& values = gtsam::Values()) const {
+    return displacement(time(t, is_absolute_time), dt).value(values);
+  }
+
+  /** Returns the speed at a given time. */
+  double speed(double t, bool is_absolute_time = true,
+               const gtsam::Values& values = gtsam::Values()) const {
+    Double_ expr = speed(log_impulse(time(t, is_absolute_time)));
+    return expr.value(values);
+  }
+
+  // TODO(gerry): add the other functions
+
+  /** @} */  // end of query_functions
 };
 
 }  // namespace art_skills
