@@ -24,6 +24,18 @@ class SlnStrokeExpression {
   SlnStrokeExpression(double t0, double D, double theta1, double theta2,
                       double sigma, double mu);
   SlnStrokeExpression(gtsam::Vector6 p);
+
+  static SlnStrokeExpression CreateSlnStrokeExpressionReparameterized(
+      gtsam::Key t0, gtsam::Key logD, gtsam::Key theta1, gtsam::Key theta2,
+      gtsam::Key logSigma, gtsam::Key mu);
+  static SlnStrokeExpression CreateSlnStrokeExpressionReparameterized(
+      gtsam::Key p);
+  static SlnStrokeExpression CreateSlnStrokeExpressionReparameterized(
+      double t0, double logD, double theta1, double theta2, double logSigma,
+      double mu);
+  static SlnStrokeExpression CreateSlnStrokeExpressionReparameterized(
+      gtsam::Vector6 p);
+
   gtsam::NonlinearFactor::shared_ptr pos_integration_factor(
       size_t timestep, double dt,
       gtsam::noiseModel::Base::shared_ptr noise =
