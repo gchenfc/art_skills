@@ -10,7 +10,7 @@ Author: Gerry Chen
 """
 
 import dataclasses
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Union, Tuple
 import numpy as np
 import matplotlib
 import tqdm
@@ -38,7 +38,7 @@ def fit_trajectory(
     strokes: Strokes,
     fit_params: FitParams = FitParams(),
     optimization_logging_params: OptimizationLoggingParams = OptimizationLoggingParams()
-) -> tuple[Solution, History, SlnStrokeFit, StrokeIndices]:
+) -> Tuple[Solution, History, SlnStrokeFit, StrokeIndices]:
     """Fits a sequence of SLN strokes to letter data.
     The letter data should be given as a list of stroke datas.
 
@@ -204,7 +204,7 @@ def fit_and_plot_trajectories(
     log_history=False,
     animate=False,
     **animate_kwargs
-) -> Union[LetterSolutionAndHistory, tuple[LetterSolutionAndHistory,
+) -> Union[LetterSolutionAndHistory, Tuple[LetterSolutionAndHistory,
                                            matplotlib.animation.Animation]]:
     """
     Returns:

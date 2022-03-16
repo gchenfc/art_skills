@@ -2,7 +2,7 @@ import numpy as np
 import gtsam
 from art_skills import SlnStrokeExpression
 from gtsam.symbol_shorthand import P, X
-from typing import Iterable
+from typing import Iterable, Type
 import tqdm
 import dataclasses
 import contextlib
@@ -13,7 +13,7 @@ class OptimizationLoggingParams:
     print_progress: bool = True
     log_optimization_values: bool = False
     progress_bar_description: str = 'Fitting Stroke'
-    progress_bar_class: type[tqdm.tqdm] = tqdm.tqdm
+    progress_bar_class: Type[tqdm.tqdm] = tqdm.tqdm
 
     def __bool__(self):
         return self.print_progress or self.log_optimization_values
