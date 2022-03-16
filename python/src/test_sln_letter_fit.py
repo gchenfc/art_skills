@@ -25,7 +25,7 @@ class TestSlnLetterFit(GtsamTestCase):
         # parse the letter 'D' (mocap data)
         with np.load("../all_letters.npz", allow_pickle=True) as data:
             trajectory = data['D'][1]
-            dt = 1./120
+            dt = 1. / 120
             t = np.arange(0, trajectory.shape[0] * dt, dt).reshape(-1, 1)
             trajectory = np.hstack((t, trajectory))
         stroke1 = trajectory[0:31, :]  # Y = -0.34639319
@@ -34,7 +34,7 @@ class TestSlnLetterFit(GtsamTestCase):
         strokes = [stroke1, stroke2, stroke3]
 
         # do fit
-        sol, _, fitter, stroke_indices = sln_letter_fit.fit_letter(
+        sol, _, fitter, stroke_indices = sln_letter_fit.fit_trajectory(
             strokes,
             optimization_logging_params=OptimizationLoggingParams(print_progress=False,
                                                                   log_optimization_values=False))

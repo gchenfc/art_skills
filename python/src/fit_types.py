@@ -22,11 +22,13 @@ Segment = Union[Stroke, Trajectory]
 Segments = Union[Strokes, Trajectories]
 
 # Fit result types
+ChebyshevStrokeParameters = tuple[int, np.ndarray, np.ndarray]
 SlnStrokeParameters = np.ndarray  # 6-vector
+StrokeParameters = Union[ChebyshevStrokeParameters, SlnStrokeParameters]
 StrokeIndices = dict[int, tuple[int, int]]
 Solution = TypedDict(
     'Solution',
-    params=Iterable[SlnStrokeParameters],
+    params=Iterable[StrokeParameters],
     txy=np.ndarray,  # Nx3
     txy_from_params=np.ndarray,  # Nx3
     stroke_indices=StrokeIndices,

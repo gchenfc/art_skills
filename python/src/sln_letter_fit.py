@@ -17,7 +17,8 @@ import tqdm
 import gtsam
 from sln_stroke_fit import SlnStrokeFit, OptimizationLoggingParams
 from gtsam.symbol_shorthand import X, P
-from fit_types import Strokes, SolutionAndHistory, LetterSolutionAndHistory
+from fit_types import Strokes
+from fit_types import Solution, History, SolutionAndHistory, LetterSolutionAndHistory, StrokeIndices
 import loader, plotting
 
 
@@ -33,10 +34,11 @@ class FitParams:
     initialization_strategy_points: str = 'from params'  # Other possible values: 'zero', 'random'
 
 
-def fit_letter(
-    strokes: Iterable[np.ndarray],
+def fit_trajectory(
+    strokes: Strokes,
     fit_params: FitParams = FitParams(),
-    optimization_logging_params: OptimizationLoggingParams = OptimizationLoggingParams()):
+    optimization_logging_params: OptimizationLoggingParams = OptimizationLoggingParams()
+) -> tuple[Solution, History, SlnStrokeFit, StrokeIndices]:
     """Fits a sequence of SLN strokes to letter data.
     The letter data should be given as a list of stroke datas.
 
@@ -163,14 +165,14 @@ def fit_letter(
 # Convenience functions to both fit and plot at the same time
 def fit_and_plot_trajectory(ax, strokes: Strokes, max_iters: int, log_history: bool,
                             pbar_description: str) -> SolutionAndHistory:
-    sol, history, fitter, _ = fit_letter(strokes,
-                                         fit_params=FitParams(
-                                             max_iters=max_iters,
-                                             initialization_strategy_params=' :D '),
-                                         optimization_logging_params=OptimizationLoggingParams(
-                                             log_optimization_values=log_history,
-                                             progress_bar_class=tqdm.tqdm_notebook,
-                                             progress_bar_description=pbar_description))
+    sol, history, fitter, _ = fit_trajectory(strokes,
+                                             fit_params=FitParams(
+                                                 max_iters=max_iters,
+                                                 initialization_strategy_params=' :D '),
+                                             optimization_logging_params=OptimizationLoggingParams(
+                                                 log_optimization_values=log_history,
+                                                 progress_bar_class=tqdm.tqdm_notebook,
+                                                 progress_bar_description=pbar_description))
     plotting.plot_trajectory(ax, strokes, sol)
     return sol, history
 
