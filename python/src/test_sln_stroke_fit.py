@@ -44,7 +44,8 @@ class TestSlnStrokeFit(GtsamTestCase):
         # Since we expect a perfect fit to the data, any noise model should result in 0 error
         fitter = SlnStrokeFit(0.01,
                               integration_noise_model=gtsam.noiseModel.Unit.Create(2),
-                              data_prior_noise_model=gtsam.noiseModel.Unit.Create(2))
+                              data_prior_noise_model=gtsam.noiseModel.Unit.Create(2),
+                              reparameterize=False)
         graph.push_back(fitter.stroke_factors(0, 0, int(0.6 / fitter.dt)))
         graph.push_back(fitter.data_prior_factors(data))
 

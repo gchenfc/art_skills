@@ -27,10 +27,14 @@ class SlnStrokeFit:
     def __init__(self,
                  dt,
                  integration_noise_model=gtsam.noiseModel.Constrained.All(2),
-                 data_prior_noise_model=gtsam.noiseModel.Isotropic.Sigma(2, 1.0)):
+                 data_prior_noise_model=gtsam.noiseModel.Isotropic.Sigma(2, 1.0),
+                 reparameterize: bool = True):
         self.dt = dt
         self.integration_noise_model = integration_noise_model
         self.data_prior_noise_model = data_prior_noise_model
+        self.reparameterize = reparameterize
+        self.SlnStrokeExpression = (SlnStrokeExpression if not reparameterize else
+                                    SlnStrokeExpression.CreateSlnStrokeExpressionReparameterized)
 
     def t2k(self, t):
         k = np.round((t + 1e-12) / self.dt, 0).astype(int)
@@ -52,7 +56,7 @@ class SlnStrokeFit:
             gtsam.NonlinearFactorGraph: graph representing the computation constraints.
         """
         graph = gtsam.NonlinearFactorGraph()
-        stroke = SlnStrokeExpression(P(stroke_index))
+        stroke = self.SlnStrokeExpression(P(stroke_index))
         for k in range(k_start, k_end):
             graph.add(stroke.pos_integration_factor(k, self.dt, self.integration_noise_model))
         return graph
@@ -95,15 +99,36 @@ class SlnStrokeFit:
         return init
 
     def create_initial_values_from_params(self, x0, params_values: gtsam.Values, stroke_indices):
+        """Initialize X(k) variables using the SLN stroke parameters
+
+        Args:
+            x0 (np.ndarray): Trajectory starting location as a Point2
+            params_values (gtsam.Values): SLN stroke parameters
+            stroke_indices (Dict[int, Tuple[int, int]]): Indices where each stroke starts/ends.
+
+        Returns:
+            gtsam.Values: The initializing values.
+        """
         init = gtsam.Values(params_values)
         init.insert_or_assign(X(0), x0)
         for strokei, (kstart, kend) in stroke_indices.items():
             params = params_values.atVector(P(strokei))
-            stroke = SlnStrokeExpression(params)
+            stroke = SlnStrokeExpression(params)  # always use non-parameterized parameters
             for k in range(kstart, kend):
                 dx = stroke.displacement((k + 1) * self.dt, self.dt)
                 init.insert_or_assign(X(k + 1), init.atPoint2(X(k)) + dx)
         return init
+
+    def reparameterize_values(self, values: gtsam.Values, inplace: bool = True):
+        if not inplace:
+            values = gtsam.Values(values)
+        if self.reparameterize:
+            for key in filter(lambda key: gtsam.Symbol(key).chr() == ord('p'), values.keys()):
+                param = values.atVector(key)
+                param[1] = np.log(param[1])
+                param[4] = np.log(param[4])
+                values.update(key, param)
+        return values
 
     @staticmethod
     def create_params(verbosityLM: str = 'SILENT',
@@ -128,7 +153,7 @@ class SlnStrokeFit:
               initial_values: gtsam.Values = gtsam.Values(),
               params: gtsam.LevenbergMarquardtParams = None,
               logging_params: OptimizationLoggingParams = OptimizationLoggingParams()):
-        initial_values = self.create_initial_values(graph, initial_values)
+        initial_values = self.create_initial_values(graph, gtsam.Values(initial_values))
         if params is None:
             params = self.create_params()
 
@@ -150,6 +175,7 @@ class SlnStrokeFit:
 
             params.iterationHook = iteration_hook
 
+        self.reparameterize_values(initial_values, inplace=True)
         optimizer = gtsam.LevenbergMarquardtOptimizer(graph, initial_values, params)
 
         with logging_params.progress_bar_class(total=params.getMaxIterations() + 1) \
@@ -193,7 +219,11 @@ class SlnStrokeFit:
         return values.atPoint2(X(self.t2k(t)))
 
     def query_parameters(self, values, stroke_index):
-        return values.atVector(P(stroke_index))
+        params = values.atVector(P(stroke_index))
+        if self.reparameterize:
+            params[1] = np.exp(params[1])
+            params[4] = np.exp(params[4])
+        return params
 
     def compute_trajectory_from_parameters(self, x0, params, stroke_indices):
         displacements = []

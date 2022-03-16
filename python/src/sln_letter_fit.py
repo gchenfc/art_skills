@@ -10,7 +10,7 @@ Author: Gerry Chen
 """
 
 import dataclasses
-from typing import Iterable, Optional, Union, Tuple
+from typing import Any, Dict, Iterable, Optional, Union, Tuple
 import numpy as np
 import matplotlib
 import tqdm
@@ -26,11 +26,12 @@ import loader, plotting
 class FitParams:
     noise_integration_std: float = 0.01
     noise_data_prior_std: float = 1
+    reparameterize: bool = True
     dt: Optional[float] = None
     dt_oversampling: Optional[int] = 1
     max_iters: Optional[int] = 150
     params: Optional[gtsam.LevenbergMarquardtParams] = None
-    initialization_strategy_params: str = 'default'  # Other possible values: 'random'
+    initialization_strategy_params: str = ' :D '  # Other possible values: 'default', 'random'
     initialization_strategy_points: str = 'from params'  # Other possible values: 'zero', 'random'
 
 
@@ -72,7 +73,8 @@ def fit_trajectory(
     noise = lambda std: gtsam.noiseModel.Isotropic.Sigma(2, std)
     fitter = SlnStrokeFit(dt,
                           integration_noise_model=noise(fit_params.noise_integration_std),
-                          data_prior_noise_model=noise(fit_params.noise_data_prior_std))
+                          data_prior_noise_model=noise(fit_params.noise_data_prior_std),
+                          reparameterize=fit_params.reparameterize)
 
     # Optimization Parameters
     if fit_params.params is not None:
@@ -165,16 +167,21 @@ def fit_trajectory(
 def fit_letter(trajectories: Letter,
                max_iters: int = 100,
                log_history: bool = False,
-               pbar_description_prefix: str = 'Fitting Letter') -> LetterSolutionAndHistory:
+               pbar_description_prefix: str = 'Fitting Letter',
+               fit_params_kwargs: Dict[str, Any] = {},
+               optimization_logging_kwargs: Dict[str, Any] = {}) -> LetterSolutionAndHistory:
     all_sols_and_histories = []
     for traji, strokes in enumerate(trajectories):
         sol, history, _, _ = fit_trajectory(
             strokes,
-            fit_params=FitParams(max_iters=max_iters, initialization_strategy_params=' :D '),
+            fit_params=FitParams(max_iters=max_iters,
+                                 initialization_strategy_params=' :D ',
+                                 **fit_params_kwargs),
             optimization_logging_params=OptimizationLoggingParams(
                 log_optimization_values=log_history,
                 progress_bar_class=tqdm.tqdm_notebook,
-                progress_bar_description=pbar_description_prefix + ', traj {:}'.format(traji)),
+                progress_bar_description=pbar_description_prefix + ', traj {:}'.format(traji),
+                **optimization_logging_kwargs),
         )
         all_sols_and_histories.append((sol, history))
     return all_sols_and_histories
@@ -203,6 +210,8 @@ def fit_and_plot_trajectories(
     max_iters=100,
     log_history=False,
     animate=False,
+    fit_params_kwargs: Dict[str, Any] = {},
+    optimization_logging_kwargs: Dict[str, Any] = {},
     **animate_kwargs
 ) -> Union[LetterSolutionAndHistory, Tuple[LetterSolutionAndHistory,
                                            matplotlib.animation.Animation]]:
@@ -221,7 +230,9 @@ def fit_and_plot_trajectories(
     all_sols_and_histories = fit_letter(all_trajectories,
                                         max_iters=max_iters,
                                         log_history=log_history or animate,
-                                        pbar_description_prefix='Fitting Letter ' + letter)
+                                        pbar_description_prefix='Fitting Letter ' + letter,
+                                        fit_params_kwargs=fit_params_kwargs,
+                                        optimization_logging_kwargs=optimization_logging_kwargs)
 
     if animate:
         return all_sols_and_histories, plotting.animate_trajectories(ax,
