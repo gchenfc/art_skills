@@ -17,7 +17,7 @@ import tqdm
 import gtsam
 from sln_stroke_fit import SlnStrokeFit, OptimizationLoggingParams
 from gtsam.symbol_shorthand import X, P
-from fit_types import Strokes
+from fit_types import Strokes, Letter
 from fit_types import Solution, History, SolutionAndHistory, LetterSolutionAndHistory, StrokeIndices
 import loader, plotting
 
@@ -82,7 +82,7 @@ def fit_trajectory(
             verbosityLM='SILENT',
             relativeErrorTol=0,
             absoluteErrorTol=1e-10,
-            maxIterations=fit_params.max_iters if fit_params.max_iters else 100)
+            maxIterations=fit_params.max_iters if fit_params.max_iters is not None else 100)
 
     # Initial values
     initial_values = gtsam.Values()
@@ -162,6 +162,24 @@ def fit_trajectory(
     return extract(sol), tuple(extract(est) for est in history), fitter, stroke_indices
 
 
+def fit_letter(trajectories: Letter,
+               max_iters: int = 100,
+               log_history: bool = False,
+               pbar_description_prefix: str = 'Fitting Letter') -> LetterSolutionAndHistory:
+    all_sols_and_histories = []
+    for traji, strokes in enumerate(trajectories):
+        sol, history, _, _ = fit_trajectory(
+            strokes,
+            fit_params=FitParams(max_iters=max_iters, initialization_strategy_params=' :D '),
+            optimization_logging_params=OptimizationLoggingParams(
+                log_optimization_values=log_history,
+                progress_bar_class=tqdm.tqdm_notebook,
+                progress_bar_description=pbar_description_prefix + ', traj {:}'.format(traji)),
+        )
+        all_sols_and_histories.append((sol, history))
+    return all_sols_and_histories
+
+
 # Convenience functions to both fit and plot at the same time
 def fit_and_plot_trajectory(ax, strokes: Strokes, max_iters: int, log_history: bool,
                             pbar_description: str) -> SolutionAndHistory:
@@ -197,21 +215,20 @@ def fit_and_plot_trajectories(
     all_trajectories = loader.load_segments(letter, index=None)
     if trajectory_indices is not None:
         all_trajectories = [all_trajectories[i] for i in trajectory_indices]
-    all_returns = []
-    for traji, strokes in enumerate(all_trajectories):
-        if num_strokes is None:
-            num_strokes = len(strokes)
-        sol, history = fit_and_plot_trajectory(
-            ax,
-            strokes[:num_strokes],
-            max_iters,
-            log_history or animate,
-            pbar_description='Fitting Letter {:}, traj {:}'.format(letter, traji))
-        all_returns.append((sol, history))
+    if num_strokes is not None:
+        all_trajectories = [trajectory[:num_strokes] for trajectory in all_trajectories]
+
+    all_sols_and_histories = fit_letter(all_trajectories,
+                                        max_iters=max_iters,
+                                        log_history=log_history or animate,
+                                        pbar_description_prefix='Fitting Letter ' + letter)
+
     if animate:
-        return all_returns, plotting.animate_trajectories(ax,
-                                                          all_trajectories,
-                                                          all_returns,
-                                                          is_notebook=True,
-                                                          **animate_kwargs)
-    return all_returns
+        return all_sols_and_histories, plotting.animate_trajectories(ax,
+                                                                     all_trajectories,
+                                                                     all_sols_and_histories,
+                                                                     is_notebook=True,
+                                                                     **animate_kwargs)
+    else:
+        plotting.plot_letter(ax, all_trajectories, (sol for sol, _ in all_sols_and_histories))
+        return all_sols_and_histories
