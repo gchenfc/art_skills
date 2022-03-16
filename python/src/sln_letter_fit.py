@@ -94,13 +94,19 @@ def fit_trajectory(
             # initial_values.insert(P(i), np.array([-.3, 1., 1.57, -4.7, 0.5, -0.5]))
             # initial_values.insert(P(i),
             #                       np.array([0.0, 1., (i) * 0.75, (i + 1) * 0.75, 0.5, -0.5]))
-    elif fit_params.initialization_strategy_params == ' :D ':
+    elif ' :D ' in fit_params.initialization_strategy_params:
         for i, stroke in enumerate(strokes):
             # TODO(gerry): clean this up
             v = np.diff(stroke[:, 1:], axis=0) / np.diff(stroke[:, 0]).reshape(-1, 1)
             angles = np.arctan2(v[:, 1], v[:, 0])
             th1 = np.mean(angles[:10])
-            th2 = np.mean(angles[-10:])
+            if 'old' in fit_params.initialization_strategy_params:
+                th2 = np.mean(angles[-10:])
+            else:
+                angular_displacements = np.diff(angles)
+                angular_displacements = np.arctan2(np.sin(angular_displacements),
+                                                np.cos(angular_displacements))
+                th2 = th1 + np.sum(angular_displacements[9:])
             sigma = 0.4
             speed = np.sqrt(np.sum(np.square(v), axis=1))
             duration = stroke[-1, 0] - stroke[0, 0]
