@@ -10,12 +10,15 @@ Author: Gerry Chen
 """
 
 import dataclasses
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 import numpy as np
+import matplotlib
 import tqdm
 import gtsam
 from sln_stroke_fit import SlnStrokeFit, OptimizationLoggingParams
 from gtsam.symbol_shorthand import X, P
+from fit_types import Strokes, SolutionAndHistory, LetterSolutionAndHistory
+import loader, plotting
 
 
 @dataclasses.dataclass
@@ -155,3 +158,58 @@ def fit_letter(
         }
 
     return extract(sol), tuple(extract(est) for est in history), fitter, stroke_indices
+
+
+# Convenience functions to both fit and plot at the same time
+def fit_and_plot_trajectory(ax, strokes: Strokes, max_iters: int, log_history: bool,
+                            pbar_description: str) -> SolutionAndHistory:
+    sol, history, fitter, _ = fit_letter(strokes,
+                                         fit_params=FitParams(
+                                             max_iters=max_iters,
+                                             initialization_strategy_params=' :D '),
+                                         optimization_logging_params=OptimizationLoggingParams(
+                                             log_optimization_values=log_history,
+                                             progress_bar_class=tqdm.tqdm_notebook,
+                                             progress_bar_description=pbar_description))
+    plotting.plot_trajectory(ax, strokes, sol)
+    return sol, history
+
+
+def fit_and_plot_trajectories(
+    ax,
+    letter: str,
+    num_strokes=None,
+    trajectory_indices=(0,),
+    max_iters=100,
+    log_history=False,
+    animate=False,
+    **animate_kwargs
+) -> Union[LetterSolutionAndHistory, tuple[LetterSolutionAndHistory,
+                                           matplotlib.animation.Animation]]:
+    """
+    Returns:
+        sols_and_histories:
+            For each trajectory,
+                Returns 2-tuple of sol, history
+    """
+    all_trajectories = loader.load_segments(letter, index=None)
+    if trajectory_indices is not None:
+        all_trajectories = [all_trajectories[i] for i in trajectory_indices]
+    all_returns = []
+    for traji, strokes in enumerate(all_trajectories):
+        if num_strokes is None:
+            num_strokes = len(strokes)
+        sol, history = fit_and_plot_trajectory(
+            ax,
+            strokes[:num_strokes],
+            max_iters,
+            log_history or animate,
+            pbar_description='Fitting Letter {:}, traj {:}'.format(letter, traji))
+        all_returns.append((sol, history))
+    if animate:
+        return all_returns, plotting.animate_trajectories(ax,
+                                                          all_trajectories,
+                                                          all_returns,
+                                                          is_notebook=True,
+                                                          **animate_kwargs)
+    return all_returns
