@@ -28,13 +28,15 @@ class SlnStrokeFit:
                  dt,
                  integration_noise_model=gtsam.noiseModel.Constrained.All(2),
                  data_prior_noise_model=gtsam.noiseModel.Isotropic.Sigma(2, 1.0),
-                 reparameterize: bool = True):
+                 reparameterize: bool = False,
+                 flip_parameters_at_end: bool = True):
         self.dt = dt
         self.integration_noise_model = integration_noise_model
         self.data_prior_noise_model = data_prior_noise_model
         self.reparameterize = reparameterize
         self.SlnStrokeExpression = (SlnStrokeExpression if not reparameterize else
                                     SlnStrokeExpression.CreateSlnStrokeExpressionReparameterized)
+        self.flip_parameters_at_end = flip_parameters_at_end
 
     def t2k(self, t):
         k = np.round((t + 1e-12) / self.dt, 0).astype(int)
@@ -223,6 +225,19 @@ class SlnStrokeFit:
         if self.reparameterize:
             params[1] = np.exp(params[1])
             params[4] = np.exp(params[4])
+        if self.flip_parameters_at_end:
+            D, th1, th2, sigma = params[1:5]
+            flips = 0
+            if D < 0:
+                D = -D
+                flips += 1
+            if sigma < 0:
+                sigma = -sigma
+                flips += 1
+            if flips % 2:
+                th1 += np.pi
+                th2 += np.pi
+            params[1:5] = [D, th1, th2, sigma]
         return params
 
     def compute_trajectory_from_parameters(self, x0, params, stroke_indices):

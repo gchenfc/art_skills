@@ -26,7 +26,8 @@ import loader, plotting
 class FitParams:
     noise_integration_std: float = 0.01
     noise_data_prior_std: float = 1
-    reparameterize: bool = True
+    reparameterize: bool = False
+    flip_parameters_at_end: bool = True
     dt: Optional[float] = None
     dt_oversampling: Optional[int] = 1
     max_iters: Optional[int] = 150
@@ -74,7 +75,8 @@ def fit_trajectory(
     fitter = SlnStrokeFit(dt,
                           integration_noise_model=noise(fit_params.noise_integration_std),
                           data_prior_noise_model=noise(fit_params.noise_data_prior_std),
-                          reparameterize=fit_params.reparameterize)
+                          reparameterize=fit_params.reparameterize,
+                          flip_parameters_at_end=fit_params.flip_parameters_at_end)
 
     # Optimization Parameters
     if fit_params.params is not None:
@@ -176,13 +178,12 @@ def fit_letter(trajectories: Letter,
                pbar_description_prefix: str = 'Fitting Letter',
                fit_params_kwargs: Dict[str, Any] = {},
                optimization_logging_kwargs: Dict[str, Any] = {}) -> LetterSolutionAndHistory:
+    fit_params_kwargs.setdefault('initialization_strategy_params', ' :D ')
     all_sols_and_histories = []
     for traji, strokes in enumerate(trajectories):
         sol, history, _, _ = fit_trajectory(
             strokes,
-            fit_params=FitParams(max_iters=max_iters,
-                                 initialization_strategy_params=' :D ',
-                                 **fit_params_kwargs),
+            fit_params=FitParams(max_iters=max_iters, **fit_params_kwargs),
             optimization_logging_params=OptimizationLoggingParams(
                 log_optimization_values=log_history,
                 progress_bar_class=tqdm.tqdm_notebook,
