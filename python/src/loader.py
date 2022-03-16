@@ -3,25 +3,12 @@
 @author Gerry Chen
 @author JD Florez
 @brief This file contains utility functions for loading and formatting mocap data of letters.
-Terminology:
-    stroke: A single "agonist-antagonist" motion.  When the speed hits a local minimum, that should
-        be a new stroke.
-    trajectory: A continuous collection of strokes that break when the "pen" lifts.
-    letter: A collection of trajectories that makes up a letter.
-    segment: Either a stroke or trajectory depending on the context.
 """
 
-from typing import Iterable, Union
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
-
-# Declare types
-Stroke = np.ndarray
-Trajectory = Strokes = Iterable[Stroke]
-Letter = Trajectories = Iterable[Trajectory]
-Segment = Union[Stroke, Trajectory]
-Segments = Union[Strokes, Trajectories]
+from fit_types import Stroke, Strokes, Trajectory, Trajectories, Letter, Segment, Segments
 
 DT = 1. / 120
 
