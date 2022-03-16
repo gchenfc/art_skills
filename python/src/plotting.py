@@ -5,7 +5,8 @@ import matplotlib.offsetbox
 from matplotlib.axes import Axes
 import tqdm
 from fit_types import Stroke, Strokes, Trajectory, Trajectories, Letter, Segment, Segments
-from fit_types import Solution, History, LetterSolutionAndHistory, LetterSolution
+from fit_types import (Solution, History, LetterSolutionAndHistory, LetterSolution,
+                       SlnStrokeParameters, ChebyshevStrokeParameters)
 
 
 def plot_trajectory(ax: Axes,
@@ -16,6 +17,8 @@ def plot_trajectory(ax: Axes,
     Args:
         iteration_number: The iteration number is printed on the plot for reference.
     """
+    if ax is None:
+        _, ax = plt.subplots()
     txy_gt = np.vstack(strokes)
     txy_params = sol['txy_from_params']
     ax.plot(txy_gt[:, 1], txy_gt[:, 2], 'k.', label='Mocap data')
@@ -37,7 +40,14 @@ def plot_trajectory(ax: Axes,
     if iteration_number is not None:
         ax.text(0.05, 0.9, 'Iter {:}'.format(iteration_number), transform=ax.transAxes)
     # Display params on plot:
-    text = '\n'.join('params: {:}'.format(np.round(params, 2)) for params in sol['params'])
+    if isinstance(sol['params'][0], SlnStrokeParameters):
+        text = '\n'.join('params: {:}'.format(np.round(params, 2)) for params in sol['params'])
+    elif isinstance(sol['params'][0], tuple):  # can't do isinstance with ChebyshevStrokeParameters
+        text = '\n'.join(
+            'params: {:}: {:} - {:}'.format(order, np.round(xfit, 2), np.round(yfit, 2))
+            for order, xfit, yfit in sol['params'])
+    else:
+        raise TypeError('Unknown Solution type')
     text_box = matplotlib.offsetbox.AnchoredText(text,
                                                  frameon=True,
                                                  loc='lower right',
