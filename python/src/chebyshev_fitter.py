@@ -13,7 +13,8 @@ Chebyshev fitting
 from typing import Iterable
 import numpy as np
 import gtsam
-from fit_types import Strokes, Solution, History, StrokeIndices, ChebyshevStrokeParameters
+from fit_types import (Strokes, Letter, Solution, History, StrokeIndices, ChebyshevStrokeParameters,
+                       LetterSolutionAndHistory)
 
 
 def stroke_indices(self, strokes):
@@ -38,12 +39,25 @@ def fit_trajectory(strokes: Strokes,
     params = []
     for stroke in strokes:
         noise = gtsam.noiseModel.Unit.Create(1)
-        fit_x = gtsam.FitBasisChebyshev1Basis(arr2dict(stroke[:, [0, 1]]), noise, p_order + 1)
-        fit_y = gtsam.FitBasisChebyshev1Basis(arr2dict(stroke[:, [0, 2]]), noise, p_order + 1)
-        params.append((p_order, fit_x.parameters(), fit_y.parameters()))
+        try:
+            fit_x = gtsam.FitBasisChebyshev1Basis(arr2dict(stroke[:, [0, 1]]), noise, p_order + 1)
+            fit_y = gtsam.FitBasisChebyshev1Basis(arr2dict(stroke[:, [0, 2]]), noise, p_order + 1)
+            params.append((p_order, fit_x.parameters(), fit_y.parameters()))
+        except RuntimeError:
+            print('ERROR: fit failed')
+            params.append((p_order, np.nan * np.zeros(p_order + 1), np.nan * np.zeros(p_order + 1)))
     txy = evaluate_parameters(np.vstack(strokes)[:, 0], params, stroke_indices)
     return Solution(params=params, txy=txy, txy_from_params=txy,
                     stroke_indices=stroke_indices), None, None, stroke_indices
+
+
+def fit_letter(trajectories: Letter,
+               p_order: int = 3) -> LetterSolutionAndHistory:
+    all_sols_and_histories = []
+    for strokes in trajectories:
+        sol, history, _, _ = fit_trajectory(strokes, p_order=p_order)
+        all_sols_and_histories.append((sol, history))
+    return all_sols_and_histories
 
 
 def evaluate_parameter(t: np.ndarray, params: ChebyshevStrokeParameters) -> np.ndarray:

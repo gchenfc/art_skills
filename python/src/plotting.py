@@ -65,6 +65,7 @@ def plot_letter(ax: Axes, trajectories: Trajectories, sols: LetterSolution) -> N
     """Plots all the trajectories in a letter."""
     for strokes, sol in zip(trajectories, sols):
         plot_trajectory(ax, strokes, sol)
+    ax.axis('equal')
     ax.get_legend().remove()
 
 
