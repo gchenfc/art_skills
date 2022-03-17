@@ -17,24 +17,14 @@ from fit_types import (Strokes, Letter, Solution, History, StrokeIndices, Chebys
                        LetterSolutionAndHistory)
 
 
-def stroke_indices(self, strokes):
-    stroke_indices = {}
-    for strokei, stroke in enumerate(strokes):
-        kstart = int((stroke[0, 0] + 1e-9) / self.dt)
-        kend = int((stroke[-1, 0] + 1e-9) / self.dt) + (1 if strokei < len(strokes) - 1 else 0)
-        stroke_indices[strokei] = (kstart, kend)
-    # correct for if there are time indices between the stroke data points (i.e. dt < strokedt)
-    k_between_strokes = int((strokes[0][1, 0] - strokes[0][0, 0] + 1e-9) / self.dt)
-    for strokei in range(len(strokes) - 1):
-        if (stroke_indices[strokei + 1][0] - stroke_indices[strokei][1]) < k_between_strokes:
-            stroke_indices[strokei] = (stroke_indices[strokei][0], stroke_indices[strokei + 1][0])
-    return stroke_indices
+def compute_stroke_indices(strokes):
+    inds = np.cumsum([stroke.shape[0] for stroke in strokes])
+    return {i: v for i, v in enumerate(zip(np.concatenate(([0], inds[:-1])), inds))}
 
 
 def fit_trajectory(strokes: Strokes,
                    p_order: int = 3) -> tuple[Solution, History, None, StrokeIndices]:
-    inds = np.cumsum([stroke.shape[0] for stroke in strokes])
-    stroke_indices = {i: v for i, v in enumerate(zip(np.concatenate(([0], inds[:-1])), inds))}
+    stroke_indices = compute_stroke_indices(strokes)
     arr2dict = lambda arr: {k: v for k, v in arr}
     params = []
     for stroke in strokes:
