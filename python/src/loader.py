@@ -15,7 +15,7 @@ DT = 1. / 120
 
 def load_letter(letter='D'):
     """Load the data for a single letter."""
-    with np.load('../all_letters.npz', allow_pickle=True) as data:
+    with np.load('../all_letters_jules.npz', allow_pickle=True) as data:
         return data[letter]
 
 
