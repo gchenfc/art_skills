@@ -136,6 +136,17 @@ inline gtsam::Double_ logExpression(const gtsam::Double_ x) {
   return gtsam::Double_(&logE, x);
 }
 
+// Expression version of scalar exponentiation
+inline gtsam::Double_ exp(const gtsam::Double_ x) {
+  return gtsam::Double_(
+      [](double x, gtsam::OptionalJacobian<1, 1> Hx) {
+        double exp_x = std::exp(x);
+        if (Hx) *Hx = gtsam::Vector1(exp_x);
+        return exp_x;
+      },
+      x);
+}
+
 // Function to use cos in expressions
 inline double cosE(const double& x, gtsam::OptionalJacobian<1, 1> Hx) {
   if (Hx) {
@@ -163,7 +174,7 @@ inline gtsam::Double_ sinExpression(const gtsam::Double_ x) {
 // Function to use exponents in expressions
 inline double erfn(const double& z, gtsam::OptionalJacobian<1, 1> Hz) {
   if (Hz) {
-    *Hz = gtsam::Vector1(2 / sqrt(M_PI) * exp(-(z * z)));
+    *Hz = gtsam::Vector1(2 / sqrt(M_PI) * std::exp(-(z * z)));
   }
   return erf(z);
 }
@@ -197,8 +208,9 @@ class SlnStrokeExpression {
 
  public:
   /// Construct from individual parameters
-  SlnStrokeExpression(Double_ t0, Double_ D, Double_ theta1, Double_ theta2,
-                      Double_ sigma, Double_ mu)
+  SlnStrokeExpression(const Double_& t0, const Double_& D,
+                      const Double_& theta1, const Double_& theta2,
+                      const Double_& sigma, const Double_& mu)
       : t0(t0), D(D), theta1(theta1), theta2(theta2), sigma(sigma), mu(mu) {}
 
   /// Construct from initial point and 6-vector of parameters
@@ -209,6 +221,20 @@ class SlnStrokeExpression {
         theta2(indexVectorExpression<3>(p)),
         sigma(indexVectorExpression<4>(p)),
         mu(indexVectorExpression<5>(p)) {}
+
+  static SlnStrokeExpression CreateSlnStrokeExpressionReparameterized(
+      const Double_& t0, const Double_& logD, const Double_& theta1,
+      const Double_& theta2, const Double_& logSigma, const Double_& mu) {
+    return SlnStrokeExpression(t0, exp(logD), theta1, theta2, exp(logSigma),
+                               mu);
+  }
+  static SlnStrokeExpression CreateSlnStrokeExpressionReparameterized(
+      const Vector6_& params) {
+    return CreateSlnStrokeExpressionReparameterized(
+        indexVectorExpression<0>(params), indexVectorExpression<1>(params),
+        indexVectorExpression<2>(params), indexVectorExpression<3>(params),
+        indexVectorExpression<4>(params), indexVectorExpression<5>(params));
+  }
 
   /**
    * Compiutes lognormal curve of a stroke, i.e., the impulse.
