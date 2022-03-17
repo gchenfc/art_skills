@@ -212,6 +212,7 @@ def fit_and_plot_trajectory(ax, strokes: Strokes, max_iters: int, log_history: b
 def fit_and_plot_trajectories(
     ax,
     letter: str,
+    artist: str = 'max',
     num_strokes=None,
     trajectory_indices=(0,),
     max_iters=100,
@@ -228,7 +229,7 @@ def fit_and_plot_trajectories(
             For each trajectory,
                 Returns 2-tuple of sol, history
     """
-    all_trajectories = loader.load_segments(letter, index=None)
+    all_trajectories = loader.load_segments(letter, index=None, artist=artist)
     if trajectory_indices is not None:
         all_trajectories = [all_trajectories[i] for i in trajectory_indices]
     if num_strokes is not None:

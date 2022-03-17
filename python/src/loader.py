@@ -13,9 +13,10 @@ from fit_types import Stroke, Strokes, Trajectory, Trajectories, Letter, Segment
 DT = 1. / 120
 
 
-def load_letter(letter='D'):
+def load_letter(letter='D', artist='max'):
+    fname = 'data/all_letters_{:}.npz'.format(artist)
     """Load the data for a single letter."""
-    with np.load('../all_letters_jules.npz', allow_pickle=True) as data:
+    with np.load(fname, allow_pickle=True) as data:
         return data[letter]
 
 
@@ -57,7 +58,7 @@ def trajectory2strokes(trajectory: np.ndarray, debug: bool = False) -> Strokes:
     return split_trajectory(np.hstack((t, trajectory)), debug=debug)
 
 
-def load_segments(letter: str = 'D', index: int = 1, debug: bool = False) -> Segments:
+def load_segments(letter: str = 'D', index: int = 1, artist='max', debug: bool = False) -> Segments:
     """Loads the data for a letter, where a letter is composed of multiple trajectories (pen-lift)
     and each trajectory is composed of multiple strokes.
     Args:

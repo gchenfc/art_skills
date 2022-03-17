@@ -8,7 +8,8 @@ import sln_letter_fit
 from sln_letter_fit import FitParams, OptimizationLoggingParams
 import loader, plotting
 
-fname_format = 'data/2022-03-16/jules_optim_{:}_noReparam_yesFlip_newInit'
+artist = 'max'
+fname_format = 'result/2022-03-16/noReparam_yesFlip_newInit_' + artist + '_{:}'
 
 for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     fbase = fname_format.format(letter)
@@ -16,6 +17,7 @@ for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     sols_and_histories, anim = sln_letter_fit.fit_and_plot_trajectories(
         ax,
         letter,
+        artist=artist,
         num_strokes=None,
         # trajectory_indices=(0,),
         trajectory_indices=None,
