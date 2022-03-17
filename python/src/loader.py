@@ -29,7 +29,11 @@ def split_trajectory(trajectory: np.ndarray, debug: bool = False) -> Strokes:
     """
     v = np.diff(trajectory[:, 1:], axis=0)
     speed2 = np.sum(np.square(v), axis=1)
-    speed2_smooth = scipy.signal.savgol_filter(speed2, 5, 1)
+    try:
+        speed2_smooth = scipy.signal.savgol_filter(speed2, 5, 1)
+    except ValueError:
+        print('Warning: Trajectory too short to smooth speed for local minima checking: ', speed2)
+        speed2_smooth = speed2
     # find local minima in speeds
     splits, _ = scipy.signal.find_peaks(-speed2_smooth, width=0.02 * 120)
     splits = list(filter(lambda i: i > 0.05 * 120, splits))
@@ -68,7 +72,7 @@ def load_segments(letter: str = 'D', index: int = 1, artist='max', debug: bool =
     Returns:
         Segments: List of strokes or list of trajectories, depending on index.
     """
-    letter_data = load_letter(letter)
+    letter_data = load_letter(letter, artist=artist)
     if index is None:  # return all strokes
         return [
             trajectory2strokes(letter_data[i], debug=debug) for i in range(1, len(letter_data), 2)
