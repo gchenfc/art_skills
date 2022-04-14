@@ -111,14 +111,17 @@ class SlnStrokeFit:
         Returns:
             gtsam.Values: The initializing values.
         """
+        existing_keys = params_values.keys()
         init = gtsam.Values(params_values)
-        init.insert_or_assign(X(0), x0)
+        if X(0) not in existing_keys:
+            init.insert(X(0), x0)
         for strokei, (kstart, kend) in stroke_indices.items():
             params = params_values.atVector(P(strokei))
             stroke = SlnStrokeExpression(params)  # always use non-parameterized parameters
             for k in range(kstart, kend):
                 dx = stroke.displacement((k + 1) * self.dt, self.dt)
-                init.insert_or_assign(X(k + 1), init.atPoint2(X(k)) + dx)
+                if X(k + 1) not in existing_keys:
+                    init.insert_or_assign(X(k + 1), init.atPoint2(X(k)) + dx)
         return init
 
     def reparameterize_values(self, values: gtsam.Values, inplace: bool = True):

@@ -33,7 +33,8 @@ class FitParams:
     max_iters: Optional[int] = 150
     params: Optional[gtsam.LevenbergMarquardtParams] = None
     initialization_strategy_params: str = ' :D '  # Other possible values: 'default', 'random'
-    initialization_strategy_points: str = 'from params'  # Other possible values: 'zero', 'random'
+    initialization_strategy_points: str = 'from params'  # Other possible values: 'zero', 'random',
+                                                         # 'from params enhanced'
 
 
 def fit_trajectory(
@@ -90,7 +91,7 @@ def fit_trajectory(
 
     # Initial values
     initial_values = gtsam.Values()
-    if fit_params.initialization_strategy_params == 'default':
+    if 'default' == fit_params.initialization_strategy_params:
         for i in range(len(strokes)):
             initial_values.insert(P(i), np.array([-0.3, 1., 0., 0., 0.5, -0.5]))
             # initial_values.insert(P(i), np.array([-.3, 1., 1.57, -4.7, 0.5, -0.5]))
@@ -139,9 +140,14 @@ def fit_trajectory(
     else:
         raise NotImplementedError('The parameter initialization strategy is not yet implemented')
 
-    if fit_params.initialization_strategy_points == 'from params':
+    if 'from params' in fit_params.initialization_strategy_points:
+        stroke_indices = fitter.stroke_indices(strokes)
+        # "enhanced" this doesn't seem to work as well for some reason
+        if 'enhanced' in fit_params.initialization_strategy_points:
+            for (begin, _), stroke in zip(stroke_indices.values(), strokes):
+                initial_values.insert(X(begin), stroke[0, 1:])
         initial_values = fitter.create_initial_values_from_params(strokes[0][0, 1:], initial_values,
-                                                                  fitter.stroke_indices(strokes))
+                                                                  stroke_indices)
     elif fit_params.initialization_strategy_points == 'zero':
         tmax = max(stroke[-1, 0] for stroke in strokes)
         for k in range(fitter.t2k(tmax) + 1):
