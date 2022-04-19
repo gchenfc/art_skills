@@ -244,11 +244,11 @@ class SlnStrokeFit:
         return params
 
     def compute_trajectory_from_parameters(self, x0, params, stroke_indices):
-        displacements = []
+        displacements = [x0]
         for strokei, param in enumerate(params):
             stroke = SlnStrokeExpression(param)
             displacements += [
                 stroke.displacement((k + 1) * self.dt, self.dt)
                 for k in range(*stroke_indices[strokei])
             ]
-        return np.vstack((np.zeros((1, 2)), np.cumsum(displacements, axis=0))) + x0
+        return np.cumsum(displacements, axis=0)
