@@ -97,6 +97,8 @@ def fit_trajectory(
             # initial_values.insert(P(i), np.array([-.3, 1., 1.57, -4.7, 0.5, -0.5]))
             # initial_values.insert(P(i),
             #                       np.array([0.0, 1., (i) * 0.75, (i + 1) * 0.75, 0.5, -0.5]))
+    elif isinstance(fit_params.initialization_strategy_params, gtsam.Values):
+        initial_values.insert(fit_params.initialization_strategy_params)
     elif ' :D ' in fit_params.initialization_strategy_params:
         for i, stroke in enumerate(strokes):
             # TODO(gerry): clean this up
@@ -148,6 +150,10 @@ def fit_trajectory(
                 initial_values.insert(X(begin), stroke[0, 1:])
         initial_values = fitter.create_initial_values_from_params(strokes[0][0, 1:], initial_values,
                                                                   stroke_indices)
+    elif isinstance(fit_params.initialization_strategy_points, gtsam.Values):
+        initial_values.insert_or_assign(fit_params.initialization_strategy_points)
+    elif 'from data' in fit_params.initialization_strategy_points:
+        raise NotImplementedError('This initialization strategy hasnt been implemented yet.')
     elif fit_params.initialization_strategy_points == 'zero':
         tmax = max(stroke[-1, 0] for stroke in strokes)
         for k in range(fitter.t2k(tmax) + 1):
@@ -178,39 +184,91 @@ def fit_trajectory(
     return extract(sol), tuple(extract(est) for est in history), fitter, stroke_indices
 
 
+def fit_trajectory_2_stage(
+        strokes: Strokes,
+        fit_params: FitParams = FitParams(),
+        optimization_logging_params: OptimizationLoggingParams = OptimizationLoggingParams(),
+        stage1_iters: int = 15) -> Tuple[Solution, History, SlnStrokeFit, StrokeIndices]:
+    """Fits a trajectory by first optimizing velocity-wise, then position-wise.  Args are the same
+    as `fit_trajectory`.
+
+    Args:
+        stage1_iters (int, Optional): number of iterations for stage1. Defaults to 15
+
+    Returns:
+        Tuple[Solution, History, SlnStrokeFit, StrokeIndices]: _description_
+    """
+    # TODO(gerry): append "stage 1/2" to the optimization_logging_params prefix
+    sol1, history1, _, _ = fit_trajectory(strokes,
+                                          fit_params=dataclasses.replace(fit_params,
+                                                                         noise_integration_std=1e2,
+                                                                         max_iters=15),
+                                          optimization_logging_params=optimization_logging_params)
+    param_inits = gtsam.Values()
+    for parami, param in enumerate(sol1['params']):
+        param_inits.insert(P(parami), param)
+    sol2, history2, fitter, stroke_indices = fit_trajectory(
+        strokes,
+        fit_params=dataclasses.replace(fit_params,
+                                       max_iters=max(0, fit_params.max_iters - 15),
+                                       initialization_strategy_params=param_inits),
+        optimization_logging_params=optimization_logging_params)
+    if optimization_logging_params.log_optimization_values:
+        history2 = history1 + history2[1:]
+    return sol2, history2, fitter, stroke_indices
+
+
 def fit_letter(trajectories: Letter,
                max_iters: int = 100,
                log_history: bool = False,
                pbar_description_prefix: str = 'Fitting Letter',
                fit_params_kwargs: Dict[str, Any] = {},
-               optimization_logging_kwargs: Dict[str, Any] = {}) -> LetterSolutionAndHistory:
+               optimization_logging_kwargs: Dict[str, Any] = {},
+               use_2_stage: bool = True,
+               stage1_iters: int = 15) -> LetterSolutionAndHistory:
+    # Setup fitter kwargs
     fit_params_kwargs.setdefault('initialization_strategy_params', ' :D ')
+    kwargs = {
+        'fit_params':
+            FitParams(max_iters=max_iters, **fit_params_kwargs),
+        'optimization_logging_params':
+            OptimizationLoggingParams(log_optimization_values=log_history,
+                                      progress_bar_class=utils.tqdm_class(),
+                                      **optimization_logging_kwargs)
+    }
+    # Setup 2-stage vs 1-stage solvers
+    if use_2_stage:
+        kwargs['stage1_iters'] = stage1_iters
+        fit_traj = fit_trajectory_2_stage
+    else:
+        fit_traj = fit_trajectory
+
+    # Solve each Trajectory
     all_sols_and_histories = []
     for traji, strokes in enumerate(trajectories):
-        sol, history, _, _ = fit_trajectory(
-            strokes,
-            fit_params=FitParams(max_iters=max_iters, **fit_params_kwargs),
-            optimization_logging_params=OptimizationLoggingParams(
-                log_optimization_values=log_history,
-                progress_bar_class=utils.tqdm_class(),
-                progress_bar_description=pbar_description_prefix + ', traj {:}'.format(traji),
-                **optimization_logging_kwargs),
-        )
+        kwargs['optimization_logging_params'].progress_bar_description = (
+            pbar_description_prefix + ', traj {:}'.format(traji))
+        sol, history, _, _ = fit_traj(strokes, **kwargs)
         all_sols_and_histories.append((sol, history))
     return all_sols_and_histories
 
 
 # Convenience functions to both fit and plot at the same time
-def fit_and_plot_trajectory(ax, strokes: Strokes, max_iters: int, log_history: bool,
-                            pbar_description: str) -> SolutionAndHistory:
-    sol, history, fitter, _ = fit_trajectory(strokes,
+def fit_and_plot_trajectory(ax,
+                            strokes: Strokes,
+                            max_iters: int,
+                            log_history: bool,
+                            pbar_description: str,
+                            use_2_stage: bool = True) -> SolutionAndHistory:
+    sol, history, _, _ = fit_trajectory(strokes,
                                              fit_params=FitParams(
                                                  max_iters=max_iters,
                                                  initialization_strategy_params=' :D '),
                                              optimization_logging_params=OptimizationLoggingParams(
                                                  log_optimization_values=log_history,
                                                  progress_bar_class=utils.tqdm_class(),
-                                                 progress_bar_description=pbar_description))
+                                                 progress_bar_description=pbar_description),
+                                             use_2_stage=use_2_stage)
     plotting.plot_trajectory(ax, strokes, sol)
     return sol, history
 
@@ -226,6 +284,7 @@ def fit_and_plot_trajectories(
     animate=False,
     fit_params_kwargs: Dict[str, Any] = {},
     optimization_logging_kwargs: Dict[str, Any] = {},
+    use_2_stage: bool = True,
     **animate_kwargs
 ) -> Union[LetterSolutionAndHistory, Tuple[LetterSolutionAndHistory,
                                            matplotlib.animation.Animation]]:
@@ -246,7 +305,8 @@ def fit_and_plot_trajectories(
                                         log_history=log_history or animate,
                                         pbar_description_prefix='Fitting Letter ' + letter,
                                         fit_params_kwargs=fit_params_kwargs,
-                                        optimization_logging_kwargs=optimization_logging_kwargs)
+                                        optimization_logging_kwargs=optimization_logging_kwargs,
+                                        use_2_stage=use_2_stage)
 
     if animate:
         return all_sols_and_histories, plotting.animate_trajectories(

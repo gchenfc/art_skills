@@ -9,7 +9,7 @@ from sln_letter_fit import FitParams, OptimizationLoggingParams
 import loader, plotting
 
 artist = 'max'
-fname_format = 'result/2022-03-16/noReparam_yesFlip_newInit_' + artist + '_{:}'
+fname_format = 'result/2022-04-26/2stage_' + artist + '_{:}'
 
 for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     fbase = fname_format.format(letter)
@@ -30,7 +30,8 @@ for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
         log_history=True,
         animate=True,
         save_animation_fname=fbase + '.mp4',
-        animation_oversample=1)
+        animation_oversample=1,
+        use_2_stage=True)
     plt.close(fig)
 
     np.save(fbase, np.array(sols_and_histories, dtype=object), allow_pickle=True)

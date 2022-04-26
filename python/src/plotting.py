@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.offsetbox
 from matplotlib.axes import Axes
 import tqdm
+import tqdm.notebook
 from fit_types import Stroke, Strokes, Trajectory, Trajectories, Letter, Segment, Segments
 from fit_types import (Solution, History, LetterSolutionAndHistory, LetterSolution,
                        SlnStrokeParameters, ChebyshevStrokeParameters)
@@ -25,18 +26,19 @@ def plot_trajectory(ax: Axes,
     colors = 'rgb'
     for i, (begin, end) in enumerate(sol['stroke_indices'].values()):
         color = colors[i % 3]
+        ax.plot(sol['txy'][begin:end, 1], sol['txy'][begin:end, 2], color + '.', markersize=3)
         ax.plot(txy_params[begin:end, 1], txy_params[begin:end, 2], color + '-', \
                 label='Optimized SLN curve', linewidth=1)
-        ax.plot(sol['txy'][begin:end, 1], sol['txy'][begin:end, 2], color + '.')
 
     def expand_range(vec, padding=0.1):
         l, h = np.min(vec), np.max(vec)
         return l - (h - l) * padding, h + (h - l) * padding
 
     ax.axis('equal')
-    ax.set_xlim(*expand_range(txy_gt[:, 1]))
-    ax.set_ylim(*expand_range(txy_gt[:, 2]))
-    # ax.set_aspect('equal', adjustable='box')
+    # ax.set_xlim(*expand_range(txy_gt[:, 1]))
+    # ax.set_ylim(*expand_range(txy_gt[:, 2]))
+    ax.set(xlim=expand_range(txy_gt[:, 1]), ylim=expand_range(txy_gt[:, 2]))
+    ax.set_aspect('equal', adjustable='box')
     if iteration_number is not None:
         ax.text(0.05, 0.9, 'Iter {:}'.format(iteration_number), transform=ax.transAxes)
     # Display params on plot:
