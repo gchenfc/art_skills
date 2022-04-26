@@ -97,3 +97,21 @@ def animate_trajectories(
     progress_bar = tqdm_.trange(0, max_iterations, animation_oversample)
     progress_bar.set_description('Displaying Animation')
     return matplotlib.animation.FuncAnimation(ax.figure, update, frames=progress_bar)
+
+
+def plot_residuals(ax: Axes, strokes: Trajectory, history: History, relative=False):
+    strokes_ = np.vstack(strokes)
+    def residual(txy_from_params):
+        residuals = strokes_[:, 1:] - txy_from_params[strokes_[:, 0] == txy_from_params[:, 0], 1:]
+        # residuals = np.hstack((strokes_[:, 0].reshape(-1, 1), residuals))
+        return np.sum(np.square(residuals[:, 1:]))
+    residuals = np.array([residual(sol['txy_from_params']) for sol in history])
+    if relative:
+        ax.semilogy(np.arange(1, len(history)),
+                    residuals[1:] / residuals[:-1],
+                    'b*-',
+                    label='Relative Residuals')
+    else:
+        ax.semilogy(np.arange(len(history)), residuals, 'k*-', label='Residuals')
+    ax.set_xlabel('Iteration \#')
+    ax.set_ylabel('Residuals (SSE) (m$^2$)')
