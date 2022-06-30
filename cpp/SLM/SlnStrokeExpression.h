@@ -22,170 +22,11 @@
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/ExpressionFactor.h>
 #include <gtsam/nonlinear/expressions.h>
+#include "expressions.h"
 
 #include <vector>
 
 namespace art_skills {
-
-// Function to index into a vector for expression variables
-// Getting jacobian of indexing into the vector, across all vars should be an
-// identity matrix (stacked)
-template <int I>
-inline double indexVector(const gtsam::Vector6& s,
-                          gtsam::OptionalJacobian<1, 6> Hs) {
-  if (Hs) {
-    gtsam::Vector6 mat = gtsam::Vector6::Zero();
-    mat[I] = 1;
-    *Hs = mat;
-  }
-  return s[I];
-}
-// Expression version of indexing into vect, using above function.
-template <int I>
-inline gtsam::Double_ indexVectorExpression(const gtsam::Vector6_& v) {
-  return gtsam::Double_(&indexVector<I>, v);
-}
-
-// Function to populate a vector for expression variables
-inline gtsam::Vector2 createVector(const double& a, const double& b,
-                                   gtsam::OptionalJacobian<2, 1> Ha,
-                                   gtsam::OptionalJacobian<2, 1> Hb) {
-  if (Ha) {
-    *Ha = gtsam::Matrix21::Zero();
-    *Ha << 1, 0;
-  }
-  if (Hb) {
-    *Hb = gtsam::Matrix21::Zero();
-    *Hb << 0, 1;
-  }
-  return gtsam::Vector2(a, b);
-}
-// Expression version of scalar product, using above function.
-inline gtsam::Vector2_ createVectorExpression(const gtsam::Double_ a,
-                                              const gtsam::Double_ b) {
-  return gtsam::Vector2_(&createVector, a, b);
-}
-
-// Function to "divide" expressions
-inline double Divide(const double& n, const double& d,
-                     gtsam::OptionalJacobian<1, 1> Hn,
-                     gtsam::OptionalJacobian<1, 1> Hd) {
-  if (Hn) {
-    *Hn = gtsam::Vector1(1 / d);
-  }
-  if (Hd) {
-    *Hd = gtsam::Vector1(-n / d / d);
-  }
-  return n / d;
-}
-// Expression version of scalar product, using above function.
-inline gtsam::Double_ operator/(const gtsam::Double_ n,
-                                const gtsam::Double_ d) {
-  return gtsam::Double_(&Divide, n, d);
-}
-
-// Function to "product" 2 expressions
-inline gtsam::Vector2 prodE(const double& n, const gtsam::Vector2& d,
-                            gtsam::OptionalJacobian<2, 1> Hn,
-                            gtsam::OptionalJacobian<2, 2> Hd) {
-  if (Hn) {
-    *Hn = d;
-  }
-  if (Hd) {
-    *Hd = gtsam::I_2x2 * n;
-  }
-  return n * d;
-}
-// Expression version of scalar product, using above function.
-inline gtsam::Vector2_ operator*(const gtsam::Double_ n,
-                                 const gtsam::Vector2_ d) {
-  return gtsam::Vector2_(&prodE, n, d);
-}
-
-// Function to use exponents in expressions
-inline double power(const double& x, const double& p,
-                    gtsam::OptionalJacobian<1, 1> Hx,
-                    gtsam::OptionalJacobian<1, 1> Hp) {
-  if (Hx) {
-    *Hx = gtsam::Vector1(p * std::pow(x, p - 1));
-  }
-  if (Hp) {
-    *Hp = gtsam::Vector1(std::pow(x, p) * log(x));
-  }
-  return std::pow(x, p);
-}
-// Expression version of scalar product, using above function.
-inline gtsam::Double_ powerExpression(const gtsam::Double_ x,
-                                      const gtsam::Double_ p) {
-  return gtsam::Double_(&power, x, p);
-}
-
-// Function to use log in expressions
-inline double logE(const double& x, gtsam::OptionalJacobian<1, 1> Hx) {
-  static constexpr double kLogThreshold = 1e-8;
-  if (x < kLogThreshold) { // approximate as a very steep line when x <= 0
-    if (Hx) *Hx = gtsam::Vector1(1/kLogThreshold);
-    return kLogThreshold + (1 / kLogThreshold) * (x - kLogThreshold);
-  }
-
-  if (Hx) *Hx = gtsam::Vector1(1 / x);
-  return std::log(x);
-}
-// Expression version of scalar product, using above function.
-inline gtsam::Double_ logExpression(const gtsam::Double_ x) {
-  return gtsam::Double_(&logE, x);
-}
-
-// Expression version of scalar exponentiation
-inline gtsam::Double_ exp(const gtsam::Double_ x) {
-  return gtsam::Double_(
-      [](double x, gtsam::OptionalJacobian<1, 1> Hx) {
-        double exp_x = std::exp(x);
-        if (Hx) *Hx = gtsam::Vector1(exp_x);
-        return exp_x;
-      },
-      x);
-}
-
-// Function to use cos in expressions
-inline double cosE(const double& x, gtsam::OptionalJacobian<1, 1> Hx) {
-  if (Hx) {
-    *Hx = gtsam::Vector1(-std::sin(x));
-  }
-  return std::cos(x);
-}
-// Expression version of cos(x), using above function.
-inline gtsam::Double_ cosExpression(const gtsam::Double_ x) {
-  return gtsam::Double_(&cosE, x);
-}
-
-// Function to use sin in expressions
-inline double sinE(const double& x, gtsam::OptionalJacobian<1, 1> Hx) {
-  if (Hx) {
-    *Hx = gtsam::Vector1(std::cos(x));
-  }
-  return std::sin(x);
-}
-// Expression version of sin(x), using above function.
-inline gtsam::Double_ sinExpression(const gtsam::Double_ x) {
-  return gtsam::Double_(&sinE, x);
-}
-
-// Function to use exponents in expressions
-inline double erfn(const double& z, gtsam::OptionalJacobian<1, 1> Hz) {
-  if (Hz) {
-    *Hz = gtsam::Vector1(2 / sqrt(M_PI) * std::exp(-(z * z)));
-  }
-  return erf(z);
-}
-// Expression version of scalar product, using above function.
-inline gtsam::Double_ erfExpression(const gtsam::Double_ z) {
-  return gtsam::Double_(&erfn, z);
-}
-
-static const double k_e = std::exp(1.0);
-static const gtsam::Double_(k_sqrt2pi) = powerExpression(
-    gtsam::Double_(2.0) * gtsam::Double_(M_PI), gtsam::Double_(0.5));
 
 /**
  * SlnStrokeExpression defines a single stroke, the length of which is defined
@@ -215,12 +56,12 @@ class SlnStrokeExpression {
 
   /// Construct from initial point and 6-vector of parameters
   SlnStrokeExpression(const Vector6_& p)
-      : t0(indexVectorExpression<0>(p)),
-        D(indexVectorExpression<1>(p)),
-        theta1(indexVectorExpression<2>(p)),
-        theta2(indexVectorExpression<3>(p)),
-        sigma(indexVectorExpression<4>(p)),
-        mu(indexVectorExpression<5>(p)) {}
+      : t0(indexVector<0>(p)),
+        D(indexVector<1>(p)),
+        theta1(indexVector<2>(p)),
+        theta2(indexVector<3>(p)),
+        sigma(indexVector<4>(p)),
+        mu(indexVector<5>(p)) {}
 
   static SlnStrokeExpression CreateSlnStrokeExpressionReparameterized(
       const Double_& t0, const Double_& logD, const Double_& theta1,
@@ -231,9 +72,8 @@ class SlnStrokeExpression {
   static SlnStrokeExpression CreateSlnStrokeExpressionReparameterized(
       const Vector6_& params) {
     return CreateSlnStrokeExpressionReparameterized(
-        indexVectorExpression<0>(params), indexVectorExpression<1>(params),
-        indexVectorExpression<2>(params), indexVectorExpression<3>(params),
-        indexVectorExpression<4>(params), indexVectorExpression<5>(params));
+        indexVector<0>(params), indexVector<1>(params), indexVector<2>(params),
+        indexVector<3>(params), indexVector<4>(params), indexVector<5>(params));
   }
 
   /**
@@ -244,10 +84,8 @@ class SlnStrokeExpression {
   Double_ log_impulse(Double_ t) const {
     Double_ lambda =
         Double_(1.0) / (t * sigma * k_sqrt2pi) *
-        powerExpression(Double_(k_e), Double_(-1.0) *
-                                          ((logExpression(t) - mu) *
-                                           (logExpression(t) - mu)) /
-                                          (Double_(2.0) * sigma * sigma));
+        power(Double_(k_e), Double_(-1.0) * ((log(t) - mu) * (log(t) - mu)) /
+                                (Double_(2.0) * sigma * sigma));
     return lambda;
   }
 
@@ -266,10 +104,9 @@ class SlnStrokeExpression {
    * @return The direction/angle in a stroke at time t
    */
   Double_ direction(Double_ t) const {
-    return theta1 +
-           0.5 * (theta2 - theta1) *
-               (Double_(1.0) + erfExpression((logExpression(t) - mu) /
-                                             (sigma * Double_(sqrt(2.0)))));
+    return theta1 + 0.5 * (theta2 - theta1) *
+                        (Double_(1.0) +
+                         erf((log(t) - mu) / (sigma * Double_(sqrt(2.0)))));
   }  // don't need expression of "t", since t is not a parameter (no 1/dt)
 
   /**
@@ -282,8 +119,7 @@ class SlnStrokeExpression {
     const Double_ lambda = log_impulse(inst_t);
     const Double_ s = speed(lambda);
     const Double_ phi = direction(inst_t);
-    return dt *
-           (s * createVectorExpression(cosExpression(phi), sinExpression(phi)));
+    return dt * (s * createVector(cos(phi), sin(phi)));
   }
 
   /**
