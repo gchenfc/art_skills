@@ -16,6 +16,8 @@
  *  @author Frank Dellaert
  **/
 
+#pragma once
+
 #include <gtsam/nonlinear/Expression.h>
 #include <gtsam/nonlinear/expressions.h>
 
@@ -91,7 +93,7 @@ inline double logE(const double& x, gtsam::OptionalJacobian<1, 1> Hx) {
   static constexpr double kLogThreshold = 1e-8;
   if (x < kLogThreshold) {  // approximate as a very steep line when x <= 0
     if (Hx) *Hx = gtsam::Vector1(1 / kLogThreshold);
-    return kLogThreshold + (1 / kLogThreshold) * (x - kLogThreshold);
+    return std::log(kLogThreshold) + (1 / kLogThreshold) * (x - kLogThreshold);
   }
 
   if (Hx) *Hx = gtsam::Vector1(1 / x);
@@ -145,6 +147,19 @@ inline gtsam::Double_ operator/(const gtsam::Double_ n,
 inline gtsam::Vector2_ operator*(const gtsam::Double_ n,
                                  const gtsam::Vector2_ d) {
   return gtsam::Vector2_(&internal::prodE, n, d);
+}
+
+/// Expression version of negation
+template <typename T>
+inline gtsam::Expression<T> operator-(const gtsam::Expression<T> x) {
+  return gtsam::Expression<T>(
+      [](T x, typename gtsam::MakeOptionalJacobian<T, T>::type H) {
+        if (H)
+          *H = -Eigen::Matrix<double, gtsam::traits<T>::dimension,
+                              gtsam::traits<T>::dimension>::Identity();
+        return -x;
+      },
+      x);
 }
 
 /// Expression version of scalar product

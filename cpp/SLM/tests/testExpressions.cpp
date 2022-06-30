@@ -82,9 +82,17 @@ TEST(expressions, multiply_scalar_vector) {
   EXPECT_JACOBIANS(a_ * x_);
 }
 
+TEST(expressions, negation) {
+  EXPECT(equal(Vector2(-4., -5.), get(-x), 1e-9));
+  EXPECT_JACOBIANS(-x_);
+}
+
 TEST(expressions, basic_double_arithmetic) {
   EXPECT_DOUBLES_EQUAL(2. / 3., get(a / b), 1e-9);
   EXPECT_JACOBIANS(a_ / b_);
+
+  EXPECT_DOUBLES_EQUAL(-2., get(-a), 1e-9);
+  EXPECT_JACOBIANS(-a_);
 
   EXPECT_DOUBLES_EQUAL(8., get(power(a, b)), 1e-9);
   EXPECT_JACOBIANS(power(a_, b_));
