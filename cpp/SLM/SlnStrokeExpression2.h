@@ -86,11 +86,15 @@ class SlnStrokeExpression2 {
     return theta1 + (theta2 - theta1) * s;
   }
 
-  Vector2_ pos(const Double_& t) const {
-    Double_ s_ = s(t), th = theta(s_);
-    return D / (theta2 - theta1) *
-           (createVector(sin(th), -cos(th)) -
-            createVector(sin(theta1), -cos(theta1)));
+  Vector2_ pos(const Double_& t, const Vector2_& x0 = Vector2_(Vector2::Zero()),
+               double eps = 1e-8) const {
+    Double_ s_ = s(t);
+    Double_ s_dth = s_ * (theta2 - theta1);  // = theta(s) - theta1
+    Double_ cth = cos(theta1), sth = sin(theta1);
+    Double_ x_unrot = s_ * sinc(s_dth, eps), y_unrot = s_ * cosc(s_dth, eps);
+    return D * createVector(cth * x_unrot - sth * y_unrot,  //
+                            sth * x_unrot + cth * y_unrot) +
+           x0;
   }
 
   Double_ speed(const Double_& t) const {
@@ -111,8 +115,9 @@ class SlnStrokeExpression2 {
 
   /** Returns the displacement at a given time. */
   gtsam::Vector2 pos(double t, bool is_absolute_time = true,
+                     const gtsam::Vector2& x0 = gtsam::Vector2::Zero(),
                      const gtsam::Values& values = gtsam::Values()) const {
-    return pos(time(t, is_absolute_time)).value(values);
+    return pos(time(t, is_absolute_time), x0).value(values);
   }
 
   /** Returns the speed at a given time. */

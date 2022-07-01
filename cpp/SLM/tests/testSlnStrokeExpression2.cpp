@@ -95,6 +95,13 @@ TEST(Sln, pos) {
                get(stroke.pos(Double_(0.1681930692))), 1e-5));
   EXPECT(equal(5.0 * Vector2(std::sin(10.0), 1 - std::cos(10.0)),
                get(stroke.pos(Double_(999999999999.0))), 1e-5));
+  Vector2 x0 = Vector2(1.1, 2.1);
+  EXPECT(equal(Vector2::Zero() + x0, get(stroke.pos(Double_(-0.17290046), x0)),
+               1e-5));
+  EXPECT(equal(5.0 * Vector2(std::sin(5.0), 1 - std::cos(5.0)) + x0,
+               get(stroke.pos(Double_(0.1681930692), x0)), 1e-5));
+  EXPECT(equal(5.0 * Vector2(std::sin(10.0), 1 - std::cos(10.0)) + x0,
+               get(stroke.pos(Double_(999999999999.0), x0)), 1e-5));
 }
 
 TEST(Sln, time) {

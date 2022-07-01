@@ -23,6 +23,9 @@
 
 namespace art_skills {
 
+using gtsam::Expression;
+using gtsam::ExpressionFactor;
+
 namespace internal {
 
 // Function to index into a vector for expression variables
@@ -56,13 +59,17 @@ inline gtsam::Vector2 createVector(const double& a, const double& b,
 inline double Divide(const double& n, const double& d,
                      gtsam::OptionalJacobian<1, 1> Hn,
                      gtsam::OptionalJacobian<1, 1> Hd) {
+  double d_ = d;
+  if (abs(d) < 1e-9) {
+    d_ = (d > 0) ? 1e-9 : -1e-9;
+  }
   if (Hn) {
-    *Hn = gtsam::Vector1(1 / d);
+    *Hn = gtsam::Vector1(1 / d_);
   }
   if (Hd) {
-    *Hd = gtsam::Vector1(-n / d / d);
+    *Hd = gtsam::Vector1(-n / d_ / d_);
   }
-  return n / d;
+  return n / d_;
 }
 // Function to "product" 2 expressions
 inline gtsam::Vector2 prodE(const double& n, const gtsam::Vector2& d,
@@ -132,28 +139,28 @@ inline gtsam::Double_ indexVector(const VectorN_<N>& v) {
 }
 
 /// Expression version of scalar product
-inline gtsam::Vector2_ createVector(const gtsam::Double_ a,
-                                    const gtsam::Double_ b) {
+inline gtsam::Vector2_ createVector(const gtsam::Double_& a,
+                                    const gtsam::Double_& b) {
   return gtsam::Vector2_(&internal::createVector, a, b);
 }
 
 /// Expression version of scalar product
-inline gtsam::Double_ operator/(const gtsam::Double_ n,
-                                const gtsam::Double_ d) {
+inline gtsam::Double_ operator/(const gtsam::Double_& n,
+                                const gtsam::Double_& d) {
   return gtsam::Double_(&internal::Divide, n, d);
 }
 
 /// Expression version of scalar product
-inline gtsam::Vector2_ operator*(const gtsam::Double_ n,
-                                 const gtsam::Vector2_ d) {
+inline gtsam::Vector2_ operator*(const gtsam::Double_& n,
+                                 const gtsam::Vector2_& d) {
   return gtsam::Vector2_(&internal::prodE, n, d);
 }
 
 /// Expression version of negation
 template <typename T>
-inline gtsam::Expression<T> operator-(const gtsam::Expression<T> x) {
+inline gtsam::Expression<T> operator-(const gtsam::Expression<T>& x) {
   return gtsam::Expression<T>(
-      [](T x, typename gtsam::MakeOptionalJacobian<T, T>::type H) {
+      [](const T& x, typename gtsam::MakeOptionalJacobian<T, T>::type H) {
         if (H)
           *H = -Eigen::Matrix<double, gtsam::traits<T>::dimension,
                               gtsam::traits<T>::dimension>::Identity();
@@ -163,17 +170,17 @@ inline gtsam::Expression<T> operator-(const gtsam::Expression<T> x) {
 }
 
 /// Expression version of scalar product
-inline gtsam::Double_ power(const gtsam::Double_ x, const gtsam::Double_ p) {
+inline gtsam::Double_ power(const gtsam::Double_& x, const gtsam::Double_& p) {
   return gtsam::Double_(&internal::power, x, p);
 }
 
 /// Expression version of scalar product
-inline gtsam::Double_ log(const gtsam::Double_ x) {
+inline gtsam::Double_ log(const gtsam::Double_& x) {
   return gtsam::Double_(&internal::logE, x);
 }
 
 /// Expression version of scalar exponentiation
-inline gtsam::Double_ exp(const gtsam::Double_ x) {
+inline gtsam::Double_ exp(const gtsam::Double_& x) {
   return gtsam::Double_(
       [](double x, gtsam::OptionalJacobian<1, 1> Hx) {
         double exp_x = std::exp(x);
@@ -184,18 +191,48 @@ inline gtsam::Double_ exp(const gtsam::Double_ x) {
 }
 
 /// Expression version of cos(x)
-inline gtsam::Double_ cos(const gtsam::Double_ x) {
+inline gtsam::Double_ cos(const gtsam::Double_& x) {
   return gtsam::Double_(&internal::cosE, x);
 }
 
 /// Expression version of sin(x)
-inline gtsam::Double_ sin(const gtsam::Double_ x) {
+inline gtsam::Double_ sin(const gtsam::Double_& x) {
   return gtsam::Double_(&internal::sinE, x);
 }
 
 /// Expression version of scalar product
-inline gtsam::Double_ erf(const gtsam::Double_ z) {
+inline gtsam::Double_ erf(const gtsam::Double_& z) {
   return gtsam::Double_(&internal::erf, z);
+}
+
+/// Expression version of (1 - cos(x)) / x
+inline gtsam::Double_ cosc(const gtsam::Double_& x, double eps = 1e-8) {
+  return gtsam::Double_(
+      [&eps](double x, gtsam::OptionalJacobian<1, 1> H) {
+        if (std::abs(x) < eps) {
+          if (H) *H = gtsam::Vector1(0.5);
+          return x / 2;
+        }
+        double ret = (1 - std::cos(x)) / x;
+        if (H) *H = gtsam::Vector1((std::sin(x) - ret) / x);
+        return ret;
+      },
+      x);
+}
+
+/// Expression version of sinc(x) = sinx / x
+inline gtsam::Double_ sinc(const gtsam::Double_& x, double eps = 1e-8) {
+  return gtsam::Double_(
+      [&eps](double x, gtsam::OptionalJacobian<1, 1> H) {
+        if (std::abs(x) < eps) {
+          if (H) *H = gtsam::Vector1(-x / 3);
+          return 1 - x * x / 6;
+        }
+        double ret = std::sin(x) / x;
+        if (H) *H = gtsam::Vector1((std::cos(x) - ret) / x);
+        return ret;
+      },
+      x);
 }
 
 static const double k_e = std::exp(1.0);

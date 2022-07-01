@@ -35,6 +35,7 @@ const Double_ a = 2.0, b = 3.0, a_(Key(1)), b_(Key(2));
 const Vector2_ x(Vector2(4.0, 5.0)), x_(Key(3));
 const Vector6_ p((Vector6() << 6., 7., 8., 9., 10., 11.).finished()),
     p_(Key(4));
+const Double_ z = 1e-9, z_(Key(5));
 
 // begin helpers
 template <typename T>
@@ -48,6 +49,7 @@ Values values() {
   values.insert(2, get(b));
   values.insert(3, get(x));
   values.insert(4, get(p));
+  values.insert(5, get(z));
   return values;
 }
 
@@ -111,6 +113,16 @@ TEST(expressions, basic_double_arithmetic) {
 
   EXPECT_DOUBLES_EQUAL(0.995322265, get(erf(a)), 1e-9);
   EXPECT_JACOBIANS(erf(a_));
+
+  EXPECT_DOUBLES_EQUAL(0.4546487134, get(sinc(a)), 1e-9);
+  EXPECT_JACOBIANS(sinc(a_));
+  EXPECT_DOUBLES_EQUAL(0.9999999999999999998333333, get(sinc(z)), 1e-21);
+  EXPECT_JACOBIANS(sinc(z_));
+
+  EXPECT_DOUBLES_EQUAL(0.7080734183, get(cosc(a)), 1e-9);
+  EXPECT_JACOBIANS(cosc(a_));
+  EXPECT_DOUBLES_EQUAL(4.99999999e-10, get(cosc(z)), 1e-15);
+  EXPECT_JACOBIANS(cosc(z_));
 }
 
 /* ************************************************************************* */
