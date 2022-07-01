@@ -11,8 +11,10 @@ Terminology:
     segment: Either a stroke or trajectory depending on the context.
 """
 
-from typing import Iterable, TypedDict, Union, Tuple, Dict
+from typing import Iterable, TypedDict, Union, Tuple, Dict, Optional
 import numpy as np
+import dataclasses
+import gtsam
 
 # Letter data types
 Stroke = np.ndarray
@@ -38,3 +40,18 @@ SolutionAndHistory = Tuple[Solution, History]
 LetterSolution = Iterable[Solution]
 LetterHistory = Iterable[History]
 LetterSolutionAndHistory = Iterable[SolutionAndHistory]
+
+# Fit optimization parameters
+@dataclasses.dataclass
+class FitParams:
+    noise_integration_std: float = 0.01
+    noise_data_prior_std: float = 1
+    reparameterize: bool = False
+    flip_parameters_at_end: bool = True
+    dt: Optional[float] = None
+    dt_oversampling: Optional[int] = 1
+    max_iters: Optional[int] = 150
+    params: Optional[gtsam.LevenbergMarquardtParams] = None
+    initialization_strategy_params: str = ' :D '  # Other possible values: 'default', 'random'
+    initialization_strategy_points: str = 'from params'  # Other possible values: 'zero', 'random',
+    # 'from params enhanced'

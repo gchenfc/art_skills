@@ -13,8 +13,8 @@ import unittest
 import numpy as np
 from gtsam.utils.test_case import GtsamTestCase
 from gtsam.symbol_shorthand import X, P
-from sln_stroke_fit import OptimizationLoggingParams
-import sln_letter_fit
+from sln_stroke_fit_2 import OptimizationLoggingParams
+import sln_letter_fit_2 as sln_letter_fit
 
 
 class TestSlnLetterFit(GtsamTestCase):
@@ -34,7 +34,7 @@ class TestSlnLetterFit(GtsamTestCase):
         strokes = [stroke1, stroke2, stroke3]
 
         # do fit
-        sol, _, fitter, stroke_indices = sln_letter_fit.fit_trajectory(
+        sol, _ = sln_letter_fit.fit_trajectory(
             strokes,
             optimization_logging_params=OptimizationLoggingParams(print_progress=False,
                                                                   log_optimization_values=False))
@@ -51,9 +51,7 @@ class TestSlnLetterFit(GtsamTestCase):
             plt.show()
 
         # test fit quality
-        for stroke in strokes:
-            for t, x, y in stroke:
-                self.gtsamAssertEquals(estimated_trajectory[fitter.t2k(t)], np.array([x, y]), 0.03)
+        self.gtsamAssertEquals(sol['txy'], np.vstack(strokes), 0.03)
 
 
 if __name__ == "__main__":

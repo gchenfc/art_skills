@@ -10,17 +10,18 @@ Author: Gerry Chen
 """
 
 import dataclasses
-from typing import Any, Dict, Iterable, Optional, Union, Tuple
+from typing import Any, Dict, Union, Tuple
 import numpy as np
 import matplotlib
 import tqdm
+import copy
 import gtsam
-from sln_stroke_fit import SlnStrokeFit, OptimizationLoggingParams
+from sln_stroke_fit_2 import SlnStrokeFit, OptimizationLoggingParams
 from gtsam.symbol_shorthand import X, P
-from fit_types import Strokes, Letter
+from fit_types import Stroke, Strokes, Letter
 from fit_types import Solution, History, SolutionAndHistory, LetterSolutionAndHistory, StrokeIndices
 from fit_types import FitParams
-import loader, plotting, utils
+import loader, plotting, utils, initialize_utils
 
 
 def fit_trajectory(
@@ -56,118 +57,47 @@ def fit_trajectory(
         dt = (strokes[0][1, 0] - strokes[0][0, 0]) / fit_params.dt_oversampling
     else:
         raise ValueError('Either dt or dt_oversampling must be set in FitParams')
-
-    # Fitter object
     noise = lambda std: gtsam.noiseModel.Isotropic.Sigma(2, std)
-    fitter = SlnStrokeFit(dt,
-                          integration_noise_model=noise(fit_params.noise_integration_std),
-                          data_prior_noise_model=noise(fit_params.noise_data_prior_std),
-                          reparameterize=fit_params.reparameterize,
-                          flip_parameters_at_end=fit_params.flip_parameters_at_end)
 
-    # Optimization Parameters
-    if fit_params.params is not None:
-        params = fit_params.params
-    else:
-        params = fitter.create_params(
-            verbosityLM='SILENT',
-            relativeErrorTol=0,
-            absoluteErrorTol=1e-10,
-            maxIterations=fit_params.max_iters if fit_params.max_iters is not None else 100)
+    # Fit each stroke
+    sol = Solution(params=[], txy=np.zeros((0, 3)), txy_from_params=np.zeros((0, 3)))
+    history = []
+    for i, stroke in enumerate(strokes):
+        fitter = SlnStrokeFit(i,
+                              data_prior_noise_model=noise(fit_params.noise_data_prior_std),
+                              reparameterize=fit_params.reparameterize,
+                              flip_parameters_at_end=fit_params.flip_parameters_at_end)
 
-    # Initial values
-    initial_values = gtsam.Values()
-    if 'default' == fit_params.initialization_strategy_params:
-        for i in range(len(strokes)):
-            initial_values.insert(P(i), np.array([-0.3, 1., 0., 0., 0.5, -0.5]))
-            # initial_values.insert(P(i), np.array([-.3, 1., 1.57, -4.7, 0.5, -0.5]))
-            # initial_values.insert(P(i),
-            #                       np.array([0.0, 1., (i) * 0.75, (i + 1) * 0.75, 0.5, -0.5]))
-    elif isinstance(fit_params.initialization_strategy_params, gtsam.Values):
-        initial_values.insert(fit_params.initialization_strategy_params)
-    elif ' :D ' in fit_params.initialization_strategy_params:
-        for i, stroke in enumerate(strokes):
-            # TODO(gerry): clean this up
-            v = np.diff(stroke[:, 1:], axis=0) / np.diff(stroke[:, 0]).reshape(-1, 1)
-            angles = np.arctan2(v[:, 1], v[:, 0])
-            th1 = np.mean(angles[:10])
-            if 'old' in fit_params.initialization_strategy_params:
-                th2 = np.mean(angles[-10:])
-            else:
-                angular_displacements = np.diff(angles)
-                angular_displacements = np.arctan2(np.sin(angular_displacements),
-                                                np.cos(angular_displacements))
-                th2 = th1 + np.sum(angular_displacements[9:])
-            sigma = 0.4
-            speed = np.sqrt(np.sum(np.square(v), axis=1))
-            duration = stroke[-1, 0] - stroke[0, 0]
-            """
-            in order to get our curve to capture ~95% of the velocity profile, we want:
-                argument_of_exp = -(1/2) * (ln(t-t0) - mu)^2 / sigma^2
-                2*sigma == ln(t-t0) - mu
-            assume t0 = 0, then
-                2*sigma == ln(duration) - mu
-                mu = ln(duration) - 2*sigma
-                duration = exp(2*sigma + mu)
-            """
-            mu = np.log(duration) - 0.9  # for sigma = 0.4
+        # Optimization Parameters
+        if fit_params.params is not None:
+            params = fit_params.params
+        else:
+            params = fitter.create_params(
+                verbosityLM='SILENT',
+                relativeErrorTol=0,
+                absoluteErrorTol=1e-10,
+                maxIterations=fit_params.max_iters if fit_params.max_iters is not None else 100)
 
-            peak_speed_i = np.argmax(speed)
-            tpeak = stroke[peak_speed_i, 0]
-            t0 = stroke[0, 0]
-            t0alt = tpeak - np.exp(mu - sigma * sigma)
+        # Solve
+        init = initialize_utils.create_init_values_2(fit_params, stroke, i)
+        s, h = fitter.fit_stroke(stroke,
+                                 initial_values=init,
+                                 params=params,
+                                 logging_params=optimization_logging_params)
 
-            tpeak_alt = np.exp(mu - sigma * sigma)
-            predicted_peak_speed = 1 / (sigma * np.sqrt(2 * np.pi) *
-                                        (tpeak_alt)) * np.exp(-0.5 * sigma * sigma)
-            D = speed[peak_speed_i] / predicted_peak_speed
+        # Join to solution / history
+        def append_to_sol(sol, stroke: Stroke, fitter: SlnStrokeFit, values_new: gtsam.Values):
+            sol['params'].append(fitter.query_parameters(values_new))
+            sol['txy'] = np.vstack((sol['txy'], fitter.query_trajectory(values_new, stroke[:, 0])))
+            sol['txy_from_params'] = sol['txy']
 
-            # print('initial values are: ', np.array([t0, D, th1, th2, sigma, mu]))
+        append_to_sol(sol, stroke, fitter, s)
+        while len(history) < len(h):  # don't use zip_longest since fillvalue isn't recomputed
+            history.append(copy.copy(history[-1]))
+        for h1, h2 in zip(history, h):
+            append_to_sol(h1, stroke, fitter, h2)
 
-            initial_values.insert(P(i), np.array([t0, D, th1, th2, sigma, mu]))
-    else:
-        raise NotImplementedError('The parameter initialization strategy is not yet implemented')
-
-    if 'from params' in fit_params.initialization_strategy_points:
-        stroke_indices = fitter.stroke_indices(strokes)
-        # "enhanced" this doesn't seem to work as well for some reason
-        if 'enhanced' in fit_params.initialization_strategy_points:
-            for (begin, _), stroke in zip(stroke_indices.values(), strokes):
-                initial_values.insert(X(begin), stroke[0, 1:])
-        initial_values = fitter.create_initial_values_from_params(strokes[0][0, 1:], initial_values,
-                                                                  stroke_indices)
-    elif isinstance(fit_params.initialization_strategy_points, gtsam.Values):
-        initial_values.insert_or_assign(fit_params.initialization_strategy_points)
-    elif 'from data' in fit_params.initialization_strategy_points:
-        raise NotImplementedError('This initialization strategy hasnt been implemented yet.')
-    elif fit_params.initialization_strategy_points == 'zero':
-        tmax = max(stroke[-1, 0] for stroke in strokes)
-        for k in range(fitter.t2k(tmax) + 1):
-            initial_values.insert(X(k), np.zeros(2))
-
-    # Solve
-    (sol, history), stroke_indices = fitter.fit_stroke(strokes,
-                                                       initial_values=initial_values,
-                                                       params=params,
-                                                       logging_params=optimization_logging_params)
-
-    # Extract and return
-    def extract(values):
-        params = [fitter.query_parameters(values, k) for k in range(len(strokes))]
-        t = np.arange(min(stroke[0, 0] for stroke in strokes),
-                      max(stroke[-1, 0] for stroke in strokes) + dt / 2, dt).reshape(-1, 1)
-        txy = np.hstack((t, [fitter.query_estimate_at(values, t_) for t_ in t]))
-        txy_from_params = fitter.compute_trajectory_from_parameters(txy[0, 1:], params,
-                                                                    stroke_indices)
-        txy_from_params = np.hstack((t, txy_from_params))
-        return {
-            'params': params,
-            'txy': txy,
-            'txy_from_params': txy_from_params,
-            'stroke_indices': stroke_indices
-        }
-
-    return extract(sol), tuple(extract(est) for est in history), fitter, stroke_indices
+    return sol, history
 
 
 def fit_trajectory_2_stage(

@@ -25,7 +25,7 @@ class TestSlnStrokeFit(GtsamTestCase):
         graph = gtsam.NonlinearFactorGraph()
         fitter = SlnStrokeFit(2)
         graph.push_back(fitter.data_prior_factors(np.zeros((10, 3))))
-        fitter.create_initial_values(graph)
+        fitter.create_initial_values()
 
     def test_regress(self):
         """Test regression using 4 data points that should be exactly fit-able to a SLN curve"""
@@ -47,9 +47,7 @@ class TestSlnStrokeFit(GtsamTestCase):
         graph.push_back(fitter.data_prior_factors(data))
 
         # Since we expect a perfect fit to the data, we want 0 error
-        # TODO(gerry): play with initialization and how it affects optimization
-        # TODO(gerry): understand loss landscape
-        initial_values = fitter.create_initial_values(graph)
+        initial_values = fitter.create_initial_values()
         sol, _ = fitter.solve(graph,
                               initial_values=initial_values,
                               params=fitter.create_params(verbosityLM='SILENT',

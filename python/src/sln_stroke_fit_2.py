@@ -7,6 +7,7 @@ from typing import Iterable, Type
 import tqdm
 import dataclasses
 import contextlib
+from fit_types import Stroke
 
 
 @dataclasses.dataclass
@@ -56,9 +57,7 @@ class SlnStrokeFit:
             graph.add(factor)
         return graph
 
-    def create_initial_values(self,
-                              graph: gtsam.NonlinearFactorGraph,
-                              init: gtsam.Values = gtsam.Values()):
+    def create_initial_values(self, init: gtsam.Values = gtsam.Values()):
         """Automatically create the initialization values for a given graph by inserting dummy
         values with the correct data type according to the symbol character.
 
@@ -68,14 +67,10 @@ class SlnStrokeFit:
         Returns:
             gtsam.Values: The initializing values
         """
-        for key in set(graph.keyVector()) - set(init.keys()):
-            sym = gtsam.Symbol(key)
-            if sym.chr() == ord('x'):
-                init.insert(key, np.zeros(2))
-            elif sym.chr() == ord('p'):
-                init.insert(key, np.array([-0.1, 1., 0., 0.1, 0.2, -0.9]))
-            else:
-                raise RuntimeError('Symbol with unknown character encountered: ', key, sym)
+        if P(self.index) not in init.keys():
+            init.insert(P(self.index), np.array([-0.1, 1., 0., 0.1, 0.2, -0.9]))
+        if X(self.index) not in init.keys():
+            init.insert(X(self.index), np.zeros((2, 1)))
         return init
 
     def reparameterize_values(self, values: gtsam.Values, inplace: bool = True):
@@ -112,7 +107,7 @@ class SlnStrokeFit:
               initial_values: gtsam.Values = gtsam.Values(),
               params: gtsam.LevenbergMarquardtParams = None,
               logging_params: OptimizationLoggingParams = OptimizationLoggingParams()):
-        initial_values = self.create_initial_values(graph, gtsam.Values(initial_values))
+        initial_values = self.create_initial_values(gtsam.Values(initial_values))
         if params is None:
             params = self.create_params()
 
@@ -144,24 +139,20 @@ class SlnStrokeFit:
             return optimizer.optimize(), optim_history
 
     def fit_stroke(self,
-                   strokes: Iterable[np.ndarray],
+                   stroke: Stroke,
                    initial_values: gtsam.Values = gtsam.Values(),
                    params: gtsam.LevenbergMarquardtParams = None,
                    logging_params: OptimizationLoggingParams = OptimizationLoggingParams()):
-        graph = gtsam.NonlinearFactorGraph()
-
-        stroke_indices = self.stroke_indices(strokes)
-        for strokei, stroke in enumerate(strokes):
-            graph.push_back(self.stroke_factors(strokei, *stroke_indices[strokei]))
-            graph.push_back(self.data_prior_factors(stroke))
-
-        return (self.solve(graph,
-                           initial_values=initial_values,
-                           params=params if params is not None else self.create_params(),
-                           logging_params=logging_params), stroke_indices)
+        return self.solve(self.data_prior_factors(stroke),
+                          initial_values=initial_values,
+                          params=params if params is not None else self.create_params(),
+                          logging_params=logging_params)
 
     def query_estimate_at(self, values, t):
         return self.stroke.pos(t, True, values.atPoint2(X(self.index)), values)
+
+    def query_trajectory(self, values, ts):
+        return np.array([[t, *self.query_estimate_at(values, t)] for t in ts])
 
     def query_parameters(self, values):
         params = values.atVector(P(self.index))
@@ -183,13 +174,7 @@ class SlnStrokeFit:
             params[1:5] = [D, th1, th2, sigma]
         return params
 
-    def compute_trajectory_from_parameters(self, x0, params, stroke_indices):
-
-        displacements = [x0]
-        for strokei, param in enumerate(params):
-            stroke = SlnStrokeExpression(param)
-            displacements += [
-                stroke.displacement((k + 1) * self.dt, self.dt)
-                for k in range(*stroke_indices[strokei])
-            ]
-        return np.cumsum(displacements, axis=0)
+    def compute_trajectory_from_parameters(self, x0, params, ts):
+        values = gtsam.Values()
+        values.insert(P(self.index), params)
+        return [self.stroke.pos(t, True, x0, values) for t in ts]
