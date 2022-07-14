@@ -6,9 +6,10 @@ from matplotlib.axes import Axes
 import tqdm
 import tqdm.notebook
 from fit_types import (StrokeSolution, TrajectorySolution, LetterSolution, SlnStrokeParameters)
+from sln_fit import StrokeUtils
 
 
-def expand_range(vec, padding=0.1):
+def expand_range(vec, padding=0.2):
     l, h = np.min(vec), np.max(vec)
     return l - (h - l) * padding, h + (h - l) * padding
 
@@ -43,11 +44,13 @@ def plot_stroke(ax: Axes,
                 iteration_number: Optional[int] = None,
                 color='k') -> None:
     if ax is None:
-        _, ax = plt.subplots()
-    ax.plot(sol['txy'][:, 1], sol['txy'][:, 2], color + '-', \
+        _, ax = plt.subplots(figsize=(8, 8))
+    ax.plot(sol['txy'][:, 1], sol['txy'][:, 2], color + '-o', \
             label='Optimized SLN curve', linewidth=1)
     ax.plot(sol['data'][:, 1], sol['data'][:, 2], color + 'x', label='MoCap Data', markersize=3)
     condition_axes(ax, sol['data'], iteration_number)
+    mse_str = f'MSE = {StrokeUtils.MSE(sol):.4f}'
+    ax.text(0, 0.1, mse_str, transform=ax.transAxes, fontsize=16, color='red', backgroundcolor='white')
     display_params(ax, 'params: {:}'.format(np.round(sol['params'], 2)))
 
 
@@ -60,12 +63,12 @@ def plot_trajectory(ax: Axes,
         iteration_number: The iteration number is printed on the plot for reference.
     """
     if ax is None:
-        _, ax = plt.subplots()
+        _, ax = plt.subplots(figsize=(8, 8))
     ax.plot(sol['data'][:, 1], sol['data'][:, 2], 'k.', label='Mocap data')
     colors = 'rgb'
     for i, (begin, end) in sol['stroke_indices'].items():
         color = colors[i % 3]
-        ax.plot(sol['txy'][begin:end, 1], sol['txy'][begin:end, 2], color + '-', \
+        ax.plot(sol['txy'][begin:end, 1], sol['txy'][begin:end, 2], color + '-o', \
                 label='Optimized SLN curve', linewidth=1)
 
     condition_axes(ax, sol['data'], iteration_number)
@@ -87,7 +90,7 @@ def plot_trajectory(ax: Axes,
 def plot_letter(ax: Axes, sols: LetterSolution, iteration_number: Optional[int] = None) -> None:
     """Plots all the trajectories in a letter."""
     if ax is None:
-        _, ax = plt.subplots()
+        _, ax = plt.subplots(figsize=(8, 8))
     keys = sols.keys()
     keys_ = list(map(lambda k: k.replace('all_', ''), keys))
     for vals in zip(*[sols[key] for key in keys]):

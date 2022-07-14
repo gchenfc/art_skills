@@ -62,6 +62,13 @@ def create_params(verbosityLM: str = 'SILENT',
     return params
 
 
+def ValuesFromDict(values_dict: dict):
+    values = gtsam.Values()
+    for key, value in values_dict.items():
+        values.insert(key, value)
+    return values
+
+
 def solve(graph: gtsam.NonlinearFactorGraph,
           initial_values: gtsam.Values,
           params: gtsam.LevenbergMarquardtParams = None,
