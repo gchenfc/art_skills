@@ -87,7 +87,10 @@ def plot_trajectory(ax: Axes,
         display_params(ax, text)
 
 
-def plot_letter(ax: Axes, sols: LetterSolution, iteration_number: Optional[int] = None) -> None:
+def plot_letter(ax: Axes,
+                sols: LetterSolution,
+                iteration_number: Optional[int] = None,
+                disp_params: bool = True) -> None:
     """Plots all the trajectories in a letter."""
     if ax is None:
         _, ax = plt.subplots(figsize=(8, 8))
@@ -100,10 +103,11 @@ def plot_letter(ax: Axes, sols: LetterSolution, iteration_number: Optional[int] 
                         disp_params=False)
     ax.axis('equal')
     ax.get_legend().remove()
-    display_params(
-        ax, '\n'.join(f'params: {traji:}-{strokei:}: {np.round(params, 2):}'
-                      for traji, traj in enumerate(sols['params'])
-                      for strokei, params in enumerate(traj)))
+    if disp_params:
+        display_params(
+            ax, '\n'.join(f'params: {traji:}-{strokei:}: {np.round(params, 2):}'
+                          for traji, traj in enumerate(sols['params'])
+                          for strokei, params in enumerate(traj)))
 
 
 # def animate_trajectories(

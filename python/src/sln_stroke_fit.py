@@ -207,12 +207,16 @@ class SlnStrokeFit:
                    strokes: Iterable[np.ndarray],
                    initial_values: gtsam.Values = gtsam.Values(),
                    params: gtsam.LevenbergMarquardtParams = None,
-                   logging_params: OptimizationLoggingParams = OptimizationLoggingParams()):
+                   logging_params: OptimizationLoggingParams = OptimizationLoggingParams(),
+                   strokewise: bool = False):
         graph = gtsam.NonlinearFactorGraph()
 
         stroke_indices = self.stroke_indices(strokes)
         for strokei, stroke in enumerate(strokes):
-            graph.push_back(self.stroke_factors(strokei, *stroke_indices[strokei]))
+            b, e = stroke_indices[strokei]
+            if strokewise and strokei < len(strokes) - 1:
+                e -= 1
+            graph.push_back(self.stroke_factors(strokei, b, e))
             graph.push_back(self.data_prior_factors(stroke))
 
         return (self.solve(graph,
@@ -243,12 +247,24 @@ class SlnStrokeFit:
             params[1:5] = [D, th1, th2, sigma]
         return params
 
-    def compute_trajectory_from_parameters(self, x0, params, stroke_indices):
-        displacements = [x0]
-        for strokei, param in enumerate(params):
-            stroke = SlnStrokeExpression(param)
-            displacements += [
-                stroke.displacement((k + 1) * self.dt, self.dt)
-                for k in range(*stroke_indices[strokei])
-            ]
-        return np.cumsum(displacements, axis=0)
+    def compute_trajectory_from_parameters(self, txy, params, stroke_indices, strokewise=False):
+        if strokewise:
+            ret = []
+            for i, ((b, e), param) in enumerate(zip(stroke_indices.values(), params)):
+                displacements = [txy[b, 1:]]
+                stroke = SlnStrokeExpression(param)
+                displacements += [
+                    stroke.displacement((k + 1) * self.dt, self.dt)
+                    for k in range(b, e - 1 if i < len(stroke_indices) - 1 else e)
+                ]
+                ret.append(np.cumsum(displacements, axis=0))
+            return np.vstack(ret)
+        else:
+            displacements = [txy[0, 1:]]
+            for strokei, param in enumerate(params):
+                stroke = SlnStrokeExpression(param)
+                displacements += [
+                    stroke.displacement((k + 1) * self.dt, self.dt)
+                    for k in range(*stroke_indices[strokei])
+                ]
+            return np.cumsum(displacements, axis=0)

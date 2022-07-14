@@ -121,6 +121,29 @@ class TestSlnFit(GtsamTestCase):
         self.assertEqual(trajectory_history[0].keys(), {'params', 'txy', 'data', 'stroke_indices'})
         self.assertEqual(letter_history[0].keys(), {'params', 'txy', 'data', 'all_stroke_indices'})
 
+    def test_params_conversion(self):
+        letter_initial_guess = [gtsam.Values(), gtsam.Values()]
+        for j, traj_initial_guess in enumerate(letter_initial_guess):
+            for i in range(3):
+                traj_initial_guess.insert(P(i), np.array([1, 2, 3, 4, 5, 6]) + j * 20 + i * 6)
+                traj_initial_guess.insert(X(i), np.array([101, 102]) + j * 20 + i * 2)
+        letter_params = sln_fit.FitLetterParams(initial_guess=letter_initial_guess,
+                                                strokewise=True,
+                                                pos_expression_eps=123)
+        traj_params = letter_params.FitTrajectoryParams(0)
+        self.assertTrue(traj_params.strokewise)
+        self.assertEqual(traj_params.pos_expression_eps, 123)
+        self.gtsamAssertEquals(traj_params.initial_guess, letter_initial_guess[0])
+
+        stroke_params = traj_params.FitStrokeParams(1)
+        self.assertRaises(AttributeError, lambda: stroke_params.strokewise)
+        self.assertEqual(stroke_params.pos_expression_eps, 123)
+        stroke_initial_guess_expected = utils.ValuesFromDict({
+            P(1): np.array([1, 2, 3, 4, 5, 6]) + 6,
+            X(1): np.array([101, 102]) + 2,
+        })
+        self.gtsamAssertEquals(stroke_params.initial_guess, stroke_initial_guess_expected)
+
 
 if __name__ == "__main__":
     unittest.main()

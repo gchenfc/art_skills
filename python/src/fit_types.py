@@ -76,6 +76,7 @@ class FitParams:
     params: Optional[gtsam.LevenbergMarquardtParams] = None
     initialization_strategy_params: str = ' :D '  # Other possible values: 'default', 'random'
     initialization_strategy_points: str = 'from params'  # Other possible values: 'zero', 'random',
+    strokewise: bool = False
     # 'from params enhanced'
 
 

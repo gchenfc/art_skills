@@ -82,7 +82,8 @@ def fit_trajectory(
     (sol, history), stroke_indices = fitter.fit_stroke(strokes,
                                                        initial_values=initial_values,
                                                        params=params,
-                                                       logging_params=optimization_logging_params)
+                                                       logging_params=optimization_logging_params,
+                                                       strokewise=fit_params.strokewise)
 
     # Extract and return
     def extract(values):
@@ -90,8 +91,8 @@ def fit_trajectory(
         t = np.arange(min(stroke[0, 0] for stroke in strokes),
                       max(stroke[-1, 0] for stroke in strokes) + dt / 2, dt).reshape(-1, 1)
         txy = np.hstack((t, [fitter.query_estimate_at(values, t_) for t_ in t]))
-        txy_from_params = fitter.compute_trajectory_from_parameters(txy[0, 1:], params,
-                                                                    stroke_indices)
+        txy_from_params = fitter.compute_trajectory_from_parameters(
+            txy, params, stroke_indices, strokewise=fit_params.strokewise)
         txy_from_params = np.hstack((t, txy_from_params))
         return {
             'params': params,

@@ -29,7 +29,13 @@ class Expression {
   void dims(std::map<gtsam::Key, int> map);
   void print(std::string s = "");
   T value(gtsam::Values values);
+
+  Expression<T> operator+(Expression<T> rhs) const;
+  Expression<T> operator-(Expression<T> rhs) const;
 };
+
+template <T = {double, gtsam::Point2, gtsam::Point3, gtsam::Vector6}>
+class BinarySumExpression : gtsam::Expression<T> {};
 
 // ExpressionFactor should be wrapped in GTSAM, but going to use this for now
 template <T = {gtsam::Point2}>

@@ -24,6 +24,8 @@
 
 namespace art_skills {
 
+using gtsam::BinarySumExpression;  // hack to wrap this in art_skills namespace
+
 template <typename T>
 using DebugExpressionCallback =
     std::function<void(const gtsam::Values&, const T& return_value)>;

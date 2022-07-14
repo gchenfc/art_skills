@@ -36,8 +36,8 @@ def tqdm_class():
 @contextlib.contextmanager
 def Time(name: str):
     start = time.perf_counter()
-    yield
-    print(f'{name} took {time.perf_counter() - start:.2f} seconds')
+    yield lambda : time.perf_counter() - start
+    print(f'{name} took {time.perf_counter() - start:.5f} seconds')
 
 Double_ = lambda arg: ExpressionDouble(arg)
 Point2_ = lambda arg: ExpressionPoint2(arg)
@@ -97,7 +97,7 @@ def solve(graph: gtsam.NonlinearFactorGraph,
 
     optimizer = gtsam.LevenbergMarquardtOptimizer(graph, initial_values, params)
 
-    with logging_params.progress_bar_class(total=params.getMaxIterations() + 1) \
+    with logging_params.progress_bar_class(total=params.getMaxIterations() + 1, mininterval=0.5) \
             if logging_params.print_progress else contextlib.nullcontext() as progress:
         if logging_params:
             params.iterationHook(0, graph.error(initial_values), graph.error(initial_values))

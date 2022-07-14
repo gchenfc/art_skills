@@ -144,14 +144,28 @@ def create_init_values_3(stroke: Stroke, index: int) -> gtsam.Values:
         # start time
         t0 = stroke[0, 0] - 0.05
         # thetas
-        th_mean = stroke[-1, 1:] - stroke[0, 1:]
-        th_mean = np.arctan2(th_mean[1], th_mean[0])
-        dth = np.diff(stroke[:, 1:], axis=0)
-        dth = np.diff(np.arctan2(dth[:, 1], dth[:, 0]))
-        dth = np.clip(np.arctan2(np.sin(dth), np.cos(dth)), -0.1, 0.1)
-        th_dev = sum(dth)
-        th0 = th_mean - th_dev / 2
-        th1 = th_mean + th_dev / 2
+        if True:
+            th_mean = stroke[-1, 1:] - stroke[0, 1:]
+            th_mean = np.arctan2(th_mean[1], th_mean[0])
+            dth = np.diff(stroke[:, 1:], axis=0)
+            dth = np.diff(np.arctan2(dth[:, 1], dth[:, 0]))
+            dth = np.clip(np.arctan2(np.sin(dth), np.cos(dth)), -0.2, 0.2)
+            th_dev = sum(dth)
+            th0 = th_mean - th_dev / 2
+            th1 = th_mean + th_dev / 2
+        else:
+            v = np.diff(stroke[:, 1:], axis=0) / np.diff(stroke[:, 0]).reshape(-1, 1)
+            angles = np.arctan2(v[:, 1], v[:, 0])
+            th1 = np.mean(angles[:10])
+            if False:
+                th2 = np.mean(angles[-10:])
+            else:
+                angular_displacements = np.diff(angles)
+                angular_displacements = np.arctan2(np.sin(angular_displacements),
+                                                np.cos(angular_displacements))
+                th2 = th1 + np.sum(angular_displacements[9:])
+            th0, th1 = th1, th2
+        print(th0, th1)
         # mu, sigma
         sigma = 0.4
         duration = stroke[-1, 0] - stroke[0, 0]
@@ -163,7 +177,7 @@ def create_init_values_3(stroke: Stroke, index: int) -> gtsam.Values:
         speed = np.linalg.norm(np.diff(stroke[:, 1:], axis=0) /
                                np.diff(stroke[:, 0]).reshape(-1, 1),
                                axis=1)
-        D = max(speed) / predicted_peak_speed
+        D = max(speed) / predicted_peak_speed * 2.0  # 2.0 fudge factor
 
     values.insert(P(index), np.array([t0, D, th0, th1, sigma, mu]))
     return values
