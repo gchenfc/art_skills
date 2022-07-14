@@ -27,7 +27,7 @@ class Expression {
 
   std::set<gtsam::Key> keys();
   void dims(std::map<gtsam::Key, int> map);
-  void print(std::string s);
+  void print(std::string s = "");
   T value(gtsam::Values values);
 };
 
@@ -104,6 +104,32 @@ class SlnStrokeExpression2 {
                      gtsam::Values values = gtsam::Values());
   double speed(double t, bool is_absolute_time = true,
                gtsam::Values values = gtsam::Values());
+};
+
+// Note: if this throws errors during build, see
+// https://github.com/borglab/wrap/pull/150
+#include <SLM/utils.h>
+template <T = {double, gtsam::Point2, gtsam::Point3, gtsam::Vector6}>
+class DebugExpressionNode {
+  DebugExpressionNode(gtsam::Expression<T> e,
+                      art_skills::DebugExpressionCallback<T> cb);
+
+  T value(gtsam::Values values) const;
+};
+
+template <T = {double, gtsam::Point2, gtsam::Point3, gtsam::Vector6}>
+class DebugExpression : gtsam::Expression<T> {
+  DebugExpression(gtsam::Expression<T> expression);
+  DebugExpression(gtsam::Expression<T> expression,
+                  art_skills::DebugExpressionCallback<T> cb);
+};
+template <T = {gtsam::Point2}>
+class DebugExpressionFactor : gtsam::ExpressionFactor<T> {
+  DebugExpressionFactor(gtsam::SharedNoiseModel noiseModel,  //
+                        T measurement, gtsam::Expression<T> expression);
+  DebugExpressionFactor(gtsam::SharedNoiseModel noiseModel,  //
+                        T measurement, gtsam::Expression<T> expression,
+                        art_skills::DebugExpressionCallback<T> debug_expression_cb);
 };
 
 }  // namespace art_skills

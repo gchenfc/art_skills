@@ -7,18 +7,7 @@ from typing import Iterable, Type
 import tqdm
 import dataclasses
 import contextlib
-from fit_types import Stroke
-
-
-@dataclasses.dataclass
-class OptimizationLoggingParams:
-    print_progress: bool = True
-    log_optimization_values: bool = False
-    progress_bar_description: str = 'Fitting Stroke'
-    progress_bar_class: Type[tqdm.tqdm] = tqdm.tqdm
-
-    def __bool__(self):
-        return self.print_progress or self.log_optimization_values
+from fit_types import Stroke, OptimizationLoggingParams
 
 
 class SlnStrokeFit:

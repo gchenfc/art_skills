@@ -2,8 +2,9 @@ import gtsam
 import numpy as np
 from gtsam.symbol_shorthand import X, P
 from fit_types import Stroke, Strokes, FitParams
+from sln_stroke_fit import SlnStrokeFit
 
-def create_init_values(fit_params: FitParams, strokes: Strokes):
+def create_init_values(fit_params: FitParams, strokes: Strokes, fitter: SlnStrokeFit):
     # Initial values
     initial_values = gtsam.Values()
     if 'default' == fit_params.initialization_strategy_params:
@@ -74,6 +75,9 @@ def create_init_values(fit_params: FitParams, strokes: Strokes):
         for k in range(fitter.t2k(tmax) + 1):
             initial_values.insert(X(k), np.zeros(2))
 
+    return initial_values
+
+
 def create_init_values_2(fit_params: FitParams, stroke: Stroke, index: int):
     # Initial values
     initial_values = gtsam.Values()
@@ -126,4 +130,40 @@ def create_init_values_2(fit_params: FitParams, stroke: Stroke, index: int):
     else:
         raise NotImplementedError('The parameter initialization strategy is not yet implemented')
 
+    initial_values.insert(X(index), stroke[0, 1:])
+
     return initial_values
+
+
+def create_init_values_3(stroke: Stroke, index: int) -> gtsam.Values:
+    values = gtsam.Values()
+    # X
+    values.insert(X(index), stroke[0, 1:])
+    # P
+    if True:
+        # start time
+        t0 = stroke[0, 0] - 0.05
+        # thetas
+        th_mean = stroke[-1, 1:] - stroke[0, 1:]
+        th_mean = np.arctan2(th_mean[1], th_mean[0])
+        dth = np.diff(stroke[:, 1:], axis=0)
+        dth = np.diff(np.arctan2(dth[:, 1], dth[:, 0]))
+        dth = np.clip(np.arctan2(np.sin(dth), np.cos(dth)), -0.1, 0.1)
+        th_dev = sum(dth)
+        th0 = th_mean - th_dev / 2
+        th1 = th_mean + th_dev / 2
+        # mu, sigma
+        sigma = 0.4
+        duration = stroke[-1, 0] - stroke[0, 0]
+        mu = np.log(duration) - 0.9  # for sigma = 0.4
+        # D
+        tpeak_alt = np.exp(mu - sigma * sigma)
+        predicted_peak_speed = 1 / (sigma * np.sqrt(2 * np.pi) *
+                                    (tpeak_alt)) * np.exp(-0.5 * sigma * sigma)
+        speed = np.linalg.norm(np.diff(stroke[:, 1:], axis=0) /
+                               np.diff(stroke[:, 0]).reshape(-1, 1),
+                               axis=1)
+        D = max(speed) / predicted_peak_speed
+
+    values.insert(P(index), np.array([t0, D, th0, th1, sigma, mu]))
+    return values

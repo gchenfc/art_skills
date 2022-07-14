@@ -11,10 +11,11 @@ Terminology:
     segment: Either a stroke or trajectory depending on the context.
 """
 
-from typing import Iterable, TypedDict, Union, Tuple, Dict, Optional
+from typing import Iterable, TypedDict, Union, Tuple, Dict, Optional, Type
 import numpy as np
 import dataclasses
 import gtsam
+import tqdm
 
 # Letter data types
 Stroke = np.ndarray
@@ -27,6 +28,8 @@ Segments = Union[Strokes, Trajectories]
 ChebyshevStrokeParameters = Tuple[int, np.ndarray, np.ndarray]
 SlnStrokeParameters = np.ndarray  # 6-vector
 StrokeParameters = Union[ChebyshevStrokeParameters, SlnStrokeParameters]
+TrajectoryParameters = Iterable[StrokeParameters]
+LetterParameters = Iterable[TrajectoryParameters]
 StrokeIndices = Dict[int, Tuple[int, int]]
 Solution = TypedDict(
     'Solution',
@@ -40,6 +43,25 @@ SolutionAndHistory = Tuple[Solution, History]
 LetterSolution = Iterable[Solution]
 LetterHistory = Iterable[History]
 LetterSolutionAndHistory = Iterable[SolutionAndHistory]
+# Fit result types 2
+StrokeSolution = TypedDict('StrokeSolution',
+                           params=StrokeParameters,
+                           txy=np.ndarray,
+                           data=np.ndarray)
+TrajectorySolution = TypedDict('TrajectorySolution',
+                               params=TrajectoryParameters,
+                               txy=np.ndarray,
+                               data=np.ndarray,
+                               stroke_indices=StrokeIndices)
+LetterSolution = TypedDict('LetterSolution',
+                           params=LetterParameters,
+                           txy=Iterable[np.ndarray],
+                           data=Iterable[np.ndarray],
+                           all_stroke_indices=Iterable[StrokeIndices])
+StrokeHistory = Iterable[StrokeSolution]
+TrajectoryHistory = Iterable[TrajectorySolution]
+LetterHistory = Iterable[LetterSolution]
+
 
 # Fit optimization parameters
 @dataclasses.dataclass
@@ -55,3 +77,14 @@ class FitParams:
     initialization_strategy_params: str = ' :D '  # Other possible values: 'default', 'random'
     initialization_strategy_points: str = 'from params'  # Other possible values: 'zero', 'random',
     # 'from params enhanced'
+
+
+@dataclasses.dataclass
+class OptimizationLoggingParams:
+    print_progress: bool = True
+    log_optimization_values: bool = False
+    progress_bar_description: str = 'Fitting Stroke'
+    progress_bar_class: Type[tqdm.tqdm] = tqdm.tqdm
+
+    def __bool__(self):
+        return self.print_progress or self.log_optimization_values

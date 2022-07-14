@@ -60,8 +60,11 @@ def fit_trajectory(
     noise = lambda std: gtsam.noiseModel.Isotropic.Sigma(2, std)
 
     # Fit each stroke
-    sol = Solution(params=[], txy=np.zeros((0, 3)), txy_from_params=np.zeros((0, 3)))
-    history = []
+    sol = Solution(params=[],
+                   txy=np.zeros((0, 3)),
+                   txy_from_params=np.zeros((0, 3)),
+                   stroke_indices={})
+    history = [copy.copy(sol)]
     for i, stroke in enumerate(strokes):
         fitter = SlnStrokeFit(i,
                               data_prior_noise_model=noise(fit_params.noise_data_prior_std),
@@ -87,9 +90,11 @@ def fit_trajectory(
 
         # Join to solution / history
         def append_to_sol(sol, stroke: Stroke, fitter: SlnStrokeFit, values_new: gtsam.Values):
+            lbefore = sol['txy'].shape[0]
             sol['params'].append(fitter.query_parameters(values_new))
             sol['txy'] = np.vstack((sol['txy'], fitter.query_trajectory(values_new, stroke[:, 0])))
             sol['txy_from_params'] = sol['txy']
+            sol['stroke_indices'][i] = (lbefore, sol['txy'].shape[0] - 1)
 
         append_to_sol(sol, stroke, fitter, s)
         while len(history) < len(h):  # don't use zip_longest since fillvalue isn't recomputed
@@ -115,23 +120,23 @@ def fit_trajectory_2_stage(
         Tuple[Solution, History, SlnStrokeFit, StrokeIndices]: _description_
     """
     # TODO(gerry): append "stage 1/2" to the optimization_logging_params prefix
-    sol1, history1, _, _ = fit_trajectory(strokes,
-                                          fit_params=dataclasses.replace(fit_params,
-                                                                         noise_integration_std=1e2,
-                                                                         max_iters=15),
-                                          optimization_logging_params=optimization_logging_params)
+    sol1, history1 = fit_trajectory(strokes,
+                                    fit_params=dataclasses.replace(fit_params,
+                                                                   noise_integration_std=1e2,
+                                                                   max_iters=15),
+                                    optimization_logging_params=optimization_logging_params)
     param_inits = gtsam.Values()
     for parami, param in enumerate(sol1['params']):
         param_inits.insert(P(parami), param)
-    sol2, history2, fitter, stroke_indices = fit_trajectory(
-        strokes,
-        fit_params=dataclasses.replace(fit_params,
-                                       max_iters=max(0, fit_params.max_iters - 15),
-                                       initialization_strategy_params=param_inits),
-        optimization_logging_params=optimization_logging_params)
+    sol2, history2 = fit_trajectory(strokes,
+                                    fit_params=dataclasses.replace(
+                                        fit_params,
+                                        max_iters=max(0, fit_params.max_iters - 15),
+                                        initialization_strategy_params=param_inits),
+                                    optimization_logging_params=optimization_logging_params)
     if optimization_logging_params.log_optimization_values:
         history2 = history1 + history2[1:]
-    return sol2, history2, fitter, stroke_indices
+    return sol2, history2
 
 
 def fit_letter(trajectories: Letter,
@@ -144,6 +149,7 @@ def fit_letter(trajectories: Letter,
                stage1_iters: int = 15) -> LetterSolutionAndHistory:
     # Setup fitter kwargs
     fit_params_kwargs.setdefault('initialization_strategy_params', ' :D ')
+    # fit_params_kwargs.setdefault('initialization_strategy_params', 'default')
     kwargs = {
         'fit_params':
             FitParams(max_iters=max_iters, **fit_params_kwargs),
@@ -164,7 +170,7 @@ def fit_letter(trajectories: Letter,
     for traji, strokes in enumerate(trajectories):
         kwargs['optimization_logging_params'].progress_bar_description = (
             pbar_description_prefix + ', traj {:}'.format(traji))
-        sol, history, _, _ = fit_traj(strokes, **kwargs)
+        sol, history = fit_traj(strokes, **kwargs)
         all_sols_and_histories.append((sol, history))
     return all_sols_and_histories
 
@@ -176,15 +182,14 @@ def fit_and_plot_trajectory(ax,
                             log_history: bool,
                             pbar_description: str,
                             use_2_stage: bool = True) -> SolutionAndHistory:
-    sol, history, _, _ = fit_trajectory(strokes,
-                                             fit_params=FitParams(
-                                                 max_iters=max_iters,
-                                                 initialization_strategy_params=' :D '),
-                                             optimization_logging_params=OptimizationLoggingParams(
-                                                 log_optimization_values=log_history,
-                                                 progress_bar_class=utils.tqdm_class(),
-                                                 progress_bar_description=pbar_description),
-                                             use_2_stage=use_2_stage)
+    sol, history = fit_trajectory(strokes,
+                                  fit_params=FitParams(max_iters=max_iters,
+                                                       initialization_strategy_params=' :D '),
+                                  optimization_logging_params=OptimizationLoggingParams(
+                                      log_optimization_values=log_history,
+                                      progress_bar_class=utils.tqdm_class(),
+                                      progress_bar_description=pbar_description),
+                                  use_2_stage=use_2_stage)
     plotting.plot_trajectory(ax, strokes, sol)
     return sol, history
 
