@@ -208,7 +208,7 @@ inline gtsam::Double_ erf(const gtsam::Double_& z) {
 /// Expression version of (1 - cos(x)) / x
 inline gtsam::Double_ cosc(const gtsam::Double_& x, double eps = 1e-8) {
   return gtsam::Double_(
-      [&eps](double x, gtsam::OptionalJacobian<1, 1> H) {
+      [eps](double x, gtsam::OptionalJacobian<1, 1> H) {
         if (std::abs(x) < eps) {
           if (H) *H = gtsam::Vector1(0.5);
           return x / 2;
@@ -223,7 +223,7 @@ inline gtsam::Double_ cosc(const gtsam::Double_& x, double eps = 1e-8) {
 /// Expression version of sinc(x) = sinx / x
 inline gtsam::Double_ sinc(const gtsam::Double_& x, double eps = 1e-8) {
   return gtsam::Double_(
-      [&eps](double x, gtsam::OptionalJacobian<1, 1> H) {
+      [eps](double x, gtsam::OptionalJacobian<1, 1> H) {
         if (std::abs(x) < eps) {
           if (H) *H = gtsam::Vector1(-x / 3);
           return 1 - x * x / 6;
