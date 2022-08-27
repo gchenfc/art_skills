@@ -100,7 +100,7 @@ class SlnStrokeExpression2 {
   Double_ speed(const Double_& t) const {
     Double_ normalization_constant = 1. / (sqrt(2 * M_PI) * sigma * (t - t0));
     Double_ z = (log(t - t0) - mu) / sigma;
-    return normalization_constant * exp(-0.5 * z * z);
+    return D * normalization_constant * exp(-0.5 * z * z);
   }
 
   /** @defgroup query_functions Functions to call the SLN function with known

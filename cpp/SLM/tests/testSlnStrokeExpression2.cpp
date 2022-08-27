@@ -122,7 +122,7 @@ TEST(Sln, pos_double) {
 TEST(Sln, speed_double) {
   EXPECT_DOUBLES_EQUAL(0, stroke.speed(-0.17290046), 1e-5);
   EXPECT_DOUBLES_EQUAL(0, stroke.speed(-0.17291), 1e-5);
-  EXPECT_DOUBLES_EQUAL(5.1642384613, stroke.speed(0.1681930692), 1e-5);
+  EXPECT_DOUBLES_EQUAL(258.211923067, stroke.speed(0.1681930692), 1e-5);
   EXPECT_DOUBLES_EQUAL(0, stroke.speed(9999.0), 1e-5);
 }
 
