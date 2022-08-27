@@ -38,6 +38,7 @@ class FitStrokeParams(BaseFitParams):
     def field_names():
         return [field.name for field in dataclasses.fields(FitStrokeParams)]
 
+
 @dataclass
 class FitTrajectoryParams(BaseFitParams):
     initial_guess: Optional[Union[gtsam.Values, TrajectorySolution]] = None
@@ -45,7 +46,7 @@ class FitTrajectoryParams(BaseFitParams):
     noise_model_connecting: gtsam.noiseModel.Base = gtsam.noiseModel.Constrained.All(2)
 
     def FitStrokeParams(self, index):
-        data = {k:v for k, v in self.__dict__.items() if k in FitStrokeParams.field_names()}
+        data = {k: v for k, v in self.__dict__.items() if k in FitStrokeParams.field_names()}
         if data['initial_guess'] is None:
             return FitTrajectoryParams(**data)
         if isinstance(self.initial_guess, dict):  # TrajectorySolution
@@ -58,6 +59,7 @@ class FitTrajectoryParams(BaseFitParams):
 
     def field_names():
         return [field.name for field in dataclasses.fields(FitTrajectoryParams)]
+
 
 @dataclass
 class FitLetterParams(FitTrajectoryParams):
@@ -84,6 +86,21 @@ def create_factor(t, x, y, stroke, fit_params, index):
         return ExpressionFactorPoint2(
             fit_params.noise_model, np.array([x, y]),
             stroke.pos(Double_(t), Point2_(X(index)), fit_params.pos_expression_eps))
+
+
+def create_factor2(t, x, y, strokes, fit_params):
+    t_ = Double_(t)
+    # expr = sum((stroke.pos(t_) for stroke in strokes), Point2_(X(0)))
+    expr = sum(
+        (stroke.pos(t_, Point2_(np.zeros(2)), fit_params.pos_expression_eps) for stroke in strokes),
+        Point2_(X(0)))
+    if fit_params.expression_debug_callback_generator is not None:
+        return DebugExpressionFactorPoint2(fit_params.noise_model, np.array([x, y]), expr,
+                                           fit_params.expression_debug_callback_generator(
+                                               strokes[-1], t, x,
+                                               y))  # TODO(gerry): callback all strokes?
+    else:
+        return ExpressionFactorPoint2(fit_params.noise_model, np.array([x, y]), expr)
 
 
 class StrokeUtils:
