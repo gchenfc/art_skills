@@ -88,12 +88,12 @@ def create_factor(t, x, y, stroke, fit_params, index):
             stroke.pos(Double_(t), Point2_(X(index)), fit_params.pos_expression_eps))
 
 
-def create_factor2(t, x, y, strokes, fit_params):
+def create_factor2(t, x, y, strokes, fit_params, x0=Point2_(X(0))):
     t_ = Double_(t)
     # expr = sum((stroke.pos(t_) for stroke in strokes), Point2_(X(0)))
     expr = sum(
         (stroke.pos(t_, Point2_(np.zeros(2)), fit_params.pos_expression_eps) for stroke in strokes),
-        Point2_(X(0)))
+        x0)
     if fit_params.expression_debug_callback_generator is not None:
         return DebugExpressionFactorPoint2(fit_params.noise_model, np.array([x, y]), expr,
                                            fit_params.expression_debug_callback_generator(
@@ -166,6 +166,29 @@ class TrajectoryUtils:
                                   txy=np.vstack([sol['txy'] for sol in sols]),
                                   data=np.vstack([sol['data'] for sol in sols]),
                                   stroke_indices=stroke_indices)
+
+
+# class TrajectorySumStrokeUtils:
+#     """A collection of useful conversion functions for TrajectorySolution, where the strokes are
+#     summed instead of trimmed+concatenated"""
+
+#     @staticmethod
+#     def solution2values(solution: TrajectorySolution):
+#         return utils.ValuesFromDict({P(i): params for i, params in enumerate(solution['params'])} +
+#                                     {X(0): solution['txy'][0, 1:]})
+
+#     @staticmethod
+#     def values2solution(values: gtsam.Values, data: Iterable[np.ndarray], stroke_indices):
+
+#         def stroke_txy(index):
+#             stroke = SlnStrokeExpression2(P(index))
+#             return StrokeUtils.extract_txy(values, stroke, index, data[index][:, 0])
+
+#         sorted_keys = sorted(stroke_indices.keys())
+#         return TrajectorySolution(params=[values.atVector(P(index)) for index in sorted_keys],
+#                                   txy=np.vstack([stroke_txy(i) for i in sorted_keys]),
+#                                   data=np.vstack(data),
+#                                   stroke_indices=stroke_indices)
 
 
 def fit_stroke(data: np.ndarray,
