@@ -1,4 +1,4 @@
-const websocket = new WebSocket("ws://192.168.0.15:5679/");
+const websocket = new WebSocket("ws://192.168.0.15:5900/");
 var f = function () {
   websocket.send("this is a message!");
 };
