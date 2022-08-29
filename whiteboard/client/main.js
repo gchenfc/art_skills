@@ -1,23 +1,51 @@
 const websocket = new WebSocket("ws://192.168.0.15:5900/");
-var f = function () {
-  websocket.send("this is a message!");
-};
 
 // Reference source: https://github.com/shuding/apple-pencil-safari-api-test
 const $force = document.querySelectorAll('#force')[0]
 const $touches = document.querySelectorAll('#touches')[0]
-const canvas = document.querySelectorAll('canvas')[0]
+const canvas = document.querySelectorAll('canvas')[1]
 const context = canvas.getContext('2d')
+const canvas_fit = document.querySelectorAll('canvas')[0]
+const context_fit = canvas_fit.getContext('2d')
 let lineWidth = 0
 let isMousedown = false
 let points = []
+let startTime = window.performance.now()
+function t() { return (window.performance.now() - startTime) / 1000; }
 
 canvas.width = window.innerWidth * 2
 canvas.height = window.innerHeight * 2
+canvas_fit.width = window.innerWidth * 2
+canvas_fit.height = window.innerHeight * 2
 
 const strokeHistory = []
 
 const requestIdleCallback = window.requestIdleCallback || function (fn) { setTimeout(fn, 1) };
+
+websocket.onmessage = function (event) {
+  console.log(event.data);
+  let command = event.data[0];
+  xy = event.data.slice(1).split(',')
+  x = parseFloat(xy[0]) * canvas.width
+  y = parseFloat(xy[1]) * canvas.width
+  console.log(command, x, y)
+  context_fit.strokeStyle = 'green'
+  context_fit.fillStyle = 'green'
+  context_fit.lineCap = 'round'
+  context_fit.lineJoin = 'round'
+  context_fit.lineWidth = 10
+  if (command == 'M') {
+    // context_fit.beginPath();
+    // context_fit.ellipse(x, y, 10, 10, 0, 0, 2 * Math.PI);
+    // context_fit.fill();
+    // context_fit.stroke();
+    context_fit.moveTo(x, y);
+  } else if (command == 'L') {
+    context_fit.lineTo(x, y);
+    context_fit.stroke();
+  } else if (command == 'U') {
+  }
+};
 
 /**
  * This function takes in an array of points and draws them onto the canvas.
@@ -91,7 +119,7 @@ for (const ev of ["touchstart", "mousedown"]) {
     context.lineWidth = lineWidth// pressure * 50;
 
     points.push({ x, y, lineWidth })
-    websocket.send("M" + x / canvas.width + "," + y / canvas.height)
+    websocket.send("M" + t() + "," + x / canvas.width + "," + y / canvas.width)
     drawOnCanvas(points)
   })
 }
@@ -118,7 +146,7 @@ for (const ev of ['touchmove', 'mousemove']) {
     // smoothen line width
     lineWidth = (Math.log(pressure + 1) * 40 * 0.2 + lineWidth * 0.8)
     points.push({ x, y, lineWidth })
-    websocket.send("L" + x / canvas.width + "," + y / canvas.width)
+    websocket.send("L" + t() + "," + x / canvas.width + "," + y / canvas.width)
 
     drawOnCanvas(points);
 
@@ -160,6 +188,7 @@ for (const ev of ['touchend', 'touchleave', 'mouseup']) {
     isMousedown = false
 
     requestIdleCallback(function () { strokeHistory.push([...points]); points = [] })
+    websocket.send("U" + t() + "," + x / canvas.width + "," + y / canvas.width)
 
     lineWidth = 0
   })

@@ -12,6 +12,7 @@ import asyncio
 import socket
 import websockets
 import time
+import struct
 
 PORTS = {
     'whiteboard_input': 5900,
@@ -35,6 +36,12 @@ HOST = get_local_ip()
 clients = {'whiteboard': set(), 'fit': set(), 'robot': set()}
 
 
+def parse(msg):
+    t, x, y = msg[1:].split(',')
+    t, x, y= float(t), float(x), float(y)
+    return msg[0], t, x, y
+
+
 async def handle_whiteboard(websocket):
     print('Whiteboard connection opened!')
     s = time.perf_counter()
@@ -45,10 +52,10 @@ async def handle_whiteboard(websocket):
             msg = await websocket.recv()
             prev_t, t = t, time.perf_counter()
             print(f'{t - s:.2f}s', f'{1/(t-prev_t):.0f}Hz', msg)
+            c, *data = parse(msg)
             for writer in clients['fit']:
-                writer.write((msg + '\n').encode())
+                writer.write(c.encode() + struct.pack('fff', *data))
                 # await writer.drain()
-            await websocket.send(msg)  # echo-back
     except websockets.exceptions.ConnectionClosedOK:
         print('Whiteboard connection closed!')
     finally:
@@ -67,10 +74,13 @@ async def handle_fit(reader, writer):
     try:
         clients['fit'].add(writer)
         while not reader.at_eof():
-            data = await reader.readline()
-            message = data.decode()
+            data = await reader.read(9)
+            c = data[0:1].decode()
+            message = struct.unpack('ff', data[1:])
             addr = writer.get_extra_info('peername')
-            print(f"Received {message!r} from {addr!r}")
+            print(f"Received {c}{message} from {addr!r}")
+            for client in clients['whiteboard']:
+                await client.send(f'{c}{message[0]},{message[1]}')
         print('Fit connection closed due to EOF!')
 
     except websockets.exceptions.ConnectionClosed:
