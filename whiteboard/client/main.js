@@ -28,8 +28,10 @@ websocket.onmessage = function (event) {
   console.log(event.data);
   let command = event.data[0];
   xy = event.data.slice(1).split(',')
-  x = parseFloat(xy[0]) * canvas.width
-  y = parseFloat(xy[1]) * canvas.width
+  x_raw = parseFloat(xy[0]) * canvas.width
+  y_raw = parseFloat(xy[1]) * canvas.width
+  x = x_raw * canvas.width
+  y = y_raw * canvas.width
   console.log(command, x, y)
   context_fit.strokeStyle = 'green'
   context_fit.fillStyle = 'green'
@@ -46,6 +48,18 @@ websocket.onmessage = function (event) {
     context_fit.lineTo(x, y);
     context_fit.stroke();
   } else if (command == 'U') {
+  } else if (command == 'F') {
+    context_fit.beginPath();
+    context_fit.strokeStyle = 'black'
+    context_fit.fillStyle = 'black'
+    aspect_ratio = x_raw / y_raw;
+    console.log(aspect_ratio, canvas.width, canvas.height);
+    if (canvas.width < canvas.height * aspect_ratio) {
+      context_fit.fillRect(0, canvas.width / aspect_ratio, canvas.width, canvas.height);
+    } else {
+      context_fit.fillRect(canvas.height * aspect_ratio, 0, canvas.width, canvas.height);
+    }
+    context_fit.stroke();
   }
 };
 
@@ -63,14 +77,16 @@ function drawOnCanvas(stroke) {
   if (stroke.length >= 3) {
     const xc = (stroke[l].x + stroke[l - 1].x) / 2
     const yc = (stroke[l].y + stroke[l - 1].y) / 2
-    context.lineWidth = stroke[l - 1].lineWidth
+    // context.lineWidth = stroke[l - 1].lineWidth * 10
+    context.lineWidth = 150;
     context.quadraticCurveTo(stroke[l - 1].x, stroke[l - 1].y, xc, yc)
     context.stroke()
     context.beginPath()
     context.moveTo(xc, yc)
   } else {
     const point = stroke[l];
-    context.lineWidth = point.lineWidth
+    // context.lineWidth = point.lineWidth * 10
+    context.lineWidth = 150;
     context.strokeStyle = point.color
     context.beginPath()
     context.moveTo(point.x, point.y)
@@ -140,7 +156,8 @@ for (const ev of ['touchmove', 'mousemove']) {
       x = e.touches[0].pageX * 2
       y = e.touches[0].pageY * 2
     } else {
-      pressure = 1.0
+      // pressure = 1.0
+      pressure = 0.1
       x = e.pageX * 2
       y = e.pageY * 2
     }
