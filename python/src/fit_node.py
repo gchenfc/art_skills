@@ -3,10 +3,18 @@ This file acts as a "node" that connects to a websocket server.  It receives dra
 regression/fitting, and sends the results back to the websocket server.
 '''
 
+# NOTES:
+# How do we tell we are in a new trajectory?
+# Need to pick the txy in and txy estimated
+
+
 import asyncio
+from copyreg import pickle
 from fit_incremental import FixedLagFitter
 import struct
 import numpy as np
+import pickle
+from datetime import datetime
 
 data_to_fit = []
 
@@ -30,11 +38,21 @@ def update_fit(fitter, writer):
         print('Updating fitter!!!')
         _, x, y = fitter.step(consume_data(), False)[-1]
         print('Fitter updated!')
+        # boo = np.array(fitter.history)
+        print(fitter.history[-1][1][-1])
         writer.write('L'.encode() + struct.pack('ff', x, y))
     if len(fitter.history) > 0:
         return fitter.history[-1][1][-1]
     else:
         return None
+
+
+def write_history(fitter):
+    filename = datetime.now().strftime("%y_%m_%d-%H_%M_%S") + "_traj.p"
+    with open(filename, 'wb') as f:
+        pickle.dump(fitter.snr_history, f)
+    f.close()
+    print("\n\n _______________PICKLE_______________\n\n")
 
 
 async def client():
@@ -48,13 +66,17 @@ async def client():
     print('Connected to fit server!')
 
     fitter = FixedLagFitter()
+
+    # TODO?: add trajectory end detection with force < 0.001 (or similar)
+
     while not reader.at_eof():
         data = await reader.read(13)
         c, (t, x, y) = data[:1].decode(), struct.unpack('fff', data[1:])
         if c == 'M':
             if fitter.initialized:
                 last_txy = fitter.history[-1][1][-1]
-                writer.write('U'.encode() + struct.pack('ff', *last_txy[1:]))
+                writer.write('U'.encode() + struct.pack('ff', *last_txy[1:]))                
+                write_history(fitter) # pickles data for SNR
             fitter = FixedLagFitter()
             data_to_fit.clear()
         data_to_fit.append((t, x, y))

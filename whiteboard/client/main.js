@@ -1,5 +1,5 @@
 // const HOST = '192.168.0.15'
-const HOST = '128.61.74.232'
+const HOST = '10.5.0.10'
 const websocket = new WebSocket("ws://"+HOST+":5900/");
 
 // Reference source: https://github.com/shuding/apple-pencil-safari-api-test

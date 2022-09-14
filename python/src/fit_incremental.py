@@ -36,6 +36,8 @@ class FixedLagFitter(IncrementalFit):
         self.solve_skip = solve_skip
         self.history = []
         self.previous_strokes = []
+        self.snr_history = []
+
 
         self.logging_params = OptimizationLoggingParams(print_progress=False)
         # self.logging_params = OptimizationLoggingParams()
@@ -86,7 +88,7 @@ class FixedLagFitter(IncrementalFit):
                 self.sol.erase(key)
                 del self.strokes[0]
 
-        # add new data
+        # add new data THIS IS THE HISTORY OF THE INPUT
         self.full_stroke = np.vstack((self.full_stroke, data))
 
         # skip solve if not enough new data
@@ -106,13 +108,26 @@ class FixedLagFitter(IncrementalFit):
 
         # Solve
         self.sol, _ = utils.solve(graph, self.sol, self.fit_params.lm_params, self.logging_params)
-        ret = self.query(self.full_stroke[:, 0])
-        self.history.append((self.full_stroke.shape[0], ret, (gtsam.Values(self.sol),
+        updated_stroke = self.query(self.full_stroke[:, 0])
+        self.history.append((self.full_stroke.shape[0], updated_stroke, (gtsam.Values(self.sol),
                                                               np.array(self.new_stroke_times))))
-        return ret
+        
+        # Updated stroke is the list of points of the stroke of the nth iteration
+        
+        # History: [ 
+        #           datapoint number n, 
+        #           np.array([time, x, y]) of n rows,
+        #           [time, x, y],
+        #           (parameter values p0 and x0), np.array([t0])
+        #          ]
+
+        self.snr_history.append([self.full_stroke, updated_stroke])
+
+        return updated_stroke
 
     def query(self, ts: np.ndarray):
         x0 = self.sol.atPoint2(X(0)) if self.x0 is None else self.x0
         p = lambda t: sum(
             (stroke.pos(t, values=self.sol) for stroke in self.previous_strokes + self.strokes), x0)
         return np.hstack((ts.reshape(-1, 1), np.array([p(t) for t in ts])))
+        

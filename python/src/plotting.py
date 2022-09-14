@@ -1,6 +1,7 @@
 from typing import Optional
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import matplotlib.offsetbox
 from matplotlib.axes import Axes
 import tqdm
@@ -77,7 +78,7 @@ def animate_trajectories(
         sols_and_histories: LetterSolutionAndHistory,
         is_notebook: bool = False,
         animation_oversample: int = 1,
-        save_animation_fname: Optional[str] = None) -> matplotlib.animation.Animation:
+        save_animation_fname: Optional[str] = None) -> animation.Animation:
     """Animates the optimization process for a letter."""
 
     def update(i):
@@ -94,11 +95,11 @@ def animate_trajectories(
     if save_animation_fname is not None:
         with tqdm_.trange(0, max_iterations, animation_oversample) as progress_bar:
             progress_bar.set_description('Saving Animation')
-            ani = matplotlib.animation.FuncAnimation(ax.figure, update, frames=progress_bar)
-            ani.save(save_animation_fname, writer=matplotlib.animation.FFMpegWriter(fps=60))
+            ani = animation.FuncAnimation(ax.figure, update, frames=progress_bar)
+            ani.save(save_animation_fname, writer=animation.FFMpegWriter(fps=60))
     progress_bar = tqdm_.trange(0, max_iterations, animation_oversample)
     progress_bar.set_description('Displaying Animation')
-    return matplotlib.animation.FuncAnimation(ax.figure, update, frames=progress_bar)
+    return animation.FuncAnimation(ax.figure, update, frames=progress_bar)
 
 
 def plot_residuals(ax: Axes, strokes: Trajectory, history: History, relative=False):
