@@ -1,6 +1,7 @@
 import numpy as np
 import gtsam
 from gtsam.symbol_shorthand import X, P
+import scipy.signal
 
 import sln_fit
 from fit_types import OptimizationLoggingParams
@@ -39,7 +40,6 @@ class FixedLagFitter(IncrementalFit):
         self.snr_history = []
         self.stroke_n = 0
 
-
         self.logging_params = OptimizationLoggingParams(print_progress=False)
         # self.logging_params = OptimizationLoggingParams()
         self.fit_params = sln_fit.FitStrokeParams()
@@ -66,12 +66,16 @@ class FixedLagFitter(IncrementalFit):
                                                               np.array(self.new_stroke_times))))
         return ret
 
-    def step(self, data: np.ndarray, new_stroke: bool):
+    # def step(self, data: np.ndarray, new_stroke: bool):
+    def step(self, data: np.ndarray):
         if len(data.shape) == 1:
             data = data.reshape((1, -1))
         prev_t, t = self.full_stroke[-1, 0], data[-1, 0]
+        smooth_accel, inflection_pts, new_stroke = self.segment_trajectory()
+        print("New stroke?", new_stroke)
         # add new stroke
         if new_stroke:
+            print("Strokes:", self.stroke_n)
             self.new_stroke_times.append(prev_t)
             i = len(self.new_stroke_times) - 1
             self.strokes.append(SlnStrokeExpression2(P(i)))
@@ -79,12 +83,14 @@ class FixedLagFitter(IncrementalFit):
             self.sol.insert(P(i), np.array([data[0, 0] - 0.05, 1., p[3], p[3], 0.5, -0.5]))
         # marginalize-out x0
         if prev_t < self.new_stroke_times[0] + self.window <= t:
+            print("MARGINALIZING)")
             self.x0 = self.sol.atPoint2(X(0))
             self.sol.erase(X(0))
         # marginalize-out any strokes that start before window
         if len(self.new_stroke_times) > len(self.strokes):
             while self.new_stroke_times[-1 - len(self.strokes)] <= t - self.window:
                 key = P(len(self.new_stroke_times) - 1 - len(self.strokes))
+                print("new key", key)
                 self.previous_strokes.append(SlnStrokeExpression2(self.sol.atVector(key)))
                 self.sol.erase(key)
                 del self.strokes[0]
@@ -122,7 +128,7 @@ class FixedLagFitter(IncrementalFit):
         #           (parameter values p0 and x0), np.array([t0])
         #          ]
 
-        self.snr_history.append([self.full_stroke, updated_stroke])
+        self.snr_history.append([self.full_stroke, updated_stroke, smooth_accel, inflection_pts])
 
         return updated_stroke
 
@@ -131,4 +137,19 @@ class FixedLagFitter(IncrementalFit):
         p = lambda t: sum(
             (stroke.pos(t, values=self.sol) for stroke in self.previous_strokes + self.strokes), x0)
         return np.hstack((ts.reshape(-1, 1), np.array([p(t) for t in ts])))
-        
+    
+
+    def segment_trajectory(self):
+        v = np.diff(self.full_stroke[:, 1:], axis=0) / np.diff(self.full_stroke[:,0]).reshape(-1,1)
+        speed = np.sum(np.square(v), axis=1)
+        acceleration = np.diff(speed, axis=0) / np.diff(self.full_stroke[1:,0])
+        acc_smooth = scipy.signal.savgol_filter(acceleration, 5, 1)
+        pre_infls = np.where(np.diff(np.sign(acc_smooth))>0)[0]
+        if np.any(pre_infls):
+            if self.stroke_n == np.size(pre_infls):
+                return acc_smooth, pre_infls.tolist(), False
+            else:
+                self.stroke_n = np.size(pre_infls)
+                return acc_smooth, pre_infls.tolist(), True
+        else:
+            return acc_smooth, [], False

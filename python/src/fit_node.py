@@ -35,16 +35,17 @@ async def update_fit(fitter, writer):
             for _, *xy in txy:
                 writer.write('L'.encode() + struct.pack('ff', *xy))
     else:
-        current_stroke = fitter.stroke_n
-        print('Updating fitter!!!')
-        check_segment(fitter)
-        print("STROKES:",fitter.stroke_n)
-        if fitter.stroke_n != current_stroke:
-            _, x, y = fitter.step(consume_data(), False)[-1]
-        else:
-            _, x, y = fitter.step(consume_data(), False)[-1]
-        print('Fitter updated!')
-        print(fitter.history[-1][1][-1])
+        #current_stroke = fitter.stroke_n
+#        print('Updating fitter!!!')
+        # check_segment(fitter)
+        #print("STROKES:",fitter.stroke_n)
+        # if fitter.stroke_n != current_stroke:
+        #     _, x, y = fitter.step(consume_data(), True)[-1]
+        # else:
+        #     _, x, y = fitter.step(consume_data(), False)[-1]
+        _, x, y = fitter.step(consume_data())[-1]
+#        print('Fitter updated!')
+#        print(fitter.history[-1][1][-1])
         writer.write('L'.encode() + struct.pack('ff', x, y))
     if len(fitter.history) > 0:
         return fitter.history[-1][1][-1]
@@ -53,11 +54,15 @@ async def update_fit(fitter, writer):
 
 
 def write_history(fitter):
-    filename = datetime.now().strftime("%y_%m_%d-%H_%M_%S") + "_traj.p"
+    #filename = datetime.now().strftime("%y_%m_%d-%H_%M_%S") + "_traj.p"
     filename = 'tmp.p'
     with open('trajectories/' + filename, 'wb') as f:
         pickle.dump(fitter.snr_history, f)
     print("\n\n _______________PICKLE_______________\n\n")
+
+    filename1 = 'tmp1.p'
+    with open('trajectories/' + filename1, 'wb') as f1:
+        pickle.dump(fitter.history, f1)
 
 
 async def publish(t_offset, fitter, writer):
@@ -120,7 +125,7 @@ async def client():
         data_to_fit.append((t, x, y))
         if fit_task.done():
             fit_task = asyncio.create_task(update_fit(fitter, writer))
-        print(f'{c} {x:.3f} {y:.3f}')
+#        print(f'{c} {x:.3f} {y:.3f}')
 
     print('Closing connection to fit server')
     writer.close()
