@@ -29,8 +29,8 @@ websocket.onmessage = function (event) {
   console.log(event.data);
   let command = event.data[0];
   xy = event.data.slice(1).split(',')
-  x_raw = parseFloat(xy[0]) * canvas.width
-  y_raw = parseFloat(xy[1]) * canvas.width
+  x_raw = parseFloat(xy[0])
+  y_raw = parseFloat(xy[1])
   x = x_raw * canvas.width
   y = y_raw * canvas.width
   console.log(command, x, y)
@@ -76,18 +76,20 @@ function drawOnCanvas(stroke) {
 
   const l = stroke.length - 1
   if (stroke.length >= 3) {
-    const xc = (stroke[l].x + stroke[l - 1].x) / 2
-    const yc = (stroke[l].y + stroke[l - 1].y) / 2
-    // context.lineWidth = stroke[l - 1].lineWidth * 10
-    context.lineWidth = 150;
-    context.quadraticCurveTo(stroke[l - 1].x, stroke[l - 1].y, xc, yc)
+    // const xc = (stroke[l].x + stroke[l - 1].x) / 2
+    // const yc = (stroke[l].y + stroke[l - 1].y) / 2
+    context.lineWidth = stroke[l - 1].lineWidth * 10
+    // context.lineWidth = 150;
+    // context.quadraticCurveTo(stroke[l - 1].x, stroke[l - 1].y, xc, yc)
+    context.lineTo(stroke[l].x, stroke[l].y)
     context.stroke()
     context.beginPath()
-    context.moveTo(xc, yc)
+    context.moveTo(stroke[l].x, stroke[l].y)
+    // context.moveTo(xc, yc)
   } else {
     const point = stroke[l];
-    // context.lineWidth = point.lineWidth * 10
-    context.lineWidth = 150;
+    context.lineWidth = point.lineWidth * 10
+    // context.lineWidth = 150;
     context.strokeStyle = point.color
     context.beginPath()
     context.moveTo(point.x, point.y)

@@ -92,6 +92,8 @@ async def handle_fit(reader, writer):
             print(f"Received {c}{message} from {addr!r}")
             for client in clients['whiteboard']:
                 await client.send(f'{c}{message[0]},{message[1]}')
+            for sock in clients['robot_input']:
+                await sock.send(f'{c}0,{message[0]},{message[1]}')
         print('Fit connection closed due to EOF!')
 
     except websockets.exceptions.ConnectionClosed:
