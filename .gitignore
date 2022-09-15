@@ -5,3 +5,4 @@ __pycache__/
 python/src/results
 CMakeFiles/
 CMakeCache.txt
+python/src/trajectories/tmp.p
