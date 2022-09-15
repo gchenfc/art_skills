@@ -14,6 +14,7 @@ import struct
 import numpy as np
 import pickle
 from datetime import datetime
+import time
 
 data_to_fit = []
 
@@ -59,6 +60,15 @@ def write_history(fitter):
     print("\n\n _______________PICKLE_______________\n\n")
 
 
+async def publish(t_offset, fitter, writer):
+    while True:
+        if fitter.initialized:
+            txy = fitter.query(np.array([time.time() - t_offset]))
+            x, y = txy[0, 1:]
+            writer.write('N'.encode() + struct.pack('ff', x, y))
+        await asyncio.sleep(0.05)
+
+
 def check_segment(fitter):
     v = np.diff(fitter.full_stroke[:, 1:], axis=0) / np.diff(fitter.full_stroke[:,0]).reshape(-1,1)
     speed = np.sum(np.square(v), axis=1)
@@ -68,6 +78,7 @@ def check_segment(fitter):
     if np.any(pre_infls):
         # print("___________________infls\n",pre_infls,pre_infls+1)
         fitter.stroke_n = np.size(pre_infls)
+
 
 async def client():
     while True:
@@ -84,6 +95,7 @@ async def client():
     # TODO?: add trajectory end detection with force < 0.001 (or similar)
 
     fit_task = asyncio.create_task(asyncio.sleep(0.01))
+    publisher = asyncio.create_task(asyncio.sleep(0.01))
     prev_t = -1
     while not reader.at_eof():
         data = await reader.read(13)
@@ -93,6 +105,7 @@ async def client():
             continue
         prev_t = t
         if c == 'U':
+            publisher.cancel()
             if fitter.initialized:
                 last_txy = fitter.history[-1][1][-1]
                 writer.write('U'.encode() + struct.pack('ff', *last_txy[1:]))
@@ -102,6 +115,7 @@ async def client():
                 write_history(fitter)  # pickles data for SNR
         if c == 'M':
             fitter = FixedLagFitter()
+            publisher = asyncio.create_task(publish(time.time() - t, fitter, writer))
             data_to_fit.clear()
         data_to_fit.append((t, x, y))
         if fit_task.done():
