@@ -5,10 +5,11 @@ const websocket = new WebSocket("ws://"+HOST+":5900/");
 // Reference source: https://github.com/shuding/apple-pencil-safari-api-test
 const $force = document.querySelectorAll('#force')[0]
 const $touches = document.querySelectorAll('#touches')[0]
-const canvas = document.querySelectorAll('canvas')[1]
+const canvas = document.querySelectorAll('canvas')[0]
 const context = canvas.getContext('2d')
-const canvas_fit = document.querySelectorAll('canvas')[0]
+const canvas_fit = document.querySelectorAll('canvas')[1]
 const context_fit = canvas_fit.getContext('2d')
+const canvas_touch = document.querySelectorAll('canvas')[1]
 let lineWidth = 0
 let isMousedown = false
 let points = []
@@ -116,7 +117,7 @@ function undoDraw() {
 }
 
 for (const ev of ["touchstart", "mousedown"]) {
-  canvas.addEventListener(ev, function (e) {
+  canvas_touch.addEventListener(ev, function (e) {
     let pressure = 0.1;
     let x, y;
     if (e.touches && e.touches[0] && typeof e.touches[0]["force"] !== "undefined") {
@@ -143,7 +144,7 @@ for (const ev of ["touchstart", "mousedown"]) {
 }
 
 for (const ev of ['touchmove', 'mousemove']) {
-  canvas.addEventListener(ev, function (e) {
+  canvas_touch.addEventListener(ev, function (e) {
     if (!isMousedown) return
     e.preventDefault()
 
@@ -188,7 +189,7 @@ for (const ev of ['touchmove', 'mousemove']) {
 }
 
 for (const ev of ['touchend', 'touchleave', 'mouseup']) {
-  canvas.addEventListener(ev, function (e) {
+  canvas_touch.addEventListener(ev, function (e) {
     let pressure = 0.1;
     let x, y;
 

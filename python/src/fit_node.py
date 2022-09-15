@@ -7,7 +7,6 @@ regression/fitting, and sends the results back to the websocket server.
 # How do we tell we are in a new trajectory?
 # Need to pick the txy in and txy estimated
 
-
 import asyncio
 from copyreg import pickle
 from fit_incremental import FixedLagFitter
@@ -25,7 +24,7 @@ def consume_data():
     return tmp
 
 
-def update_fit(fitter, writer):
+async def update_fit(fitter, writer):
     if not fitter.initialized:
         if len(data_to_fit) > 10:
             print('Initializing fitter!!!')
@@ -49,9 +48,9 @@ def update_fit(fitter, writer):
 
 def write_history(fitter):
     filename = datetime.now().strftime("%y_%m_%d-%H_%M_%S") + "_traj.p"
-    with open(filename, 'wb') as f:
+    filename = 'tmp.p'
+    with open('trajectories/' + filename, 'wb') as f:
         pickle.dump(fitter.snr_history, f)
-    f.close()
     print("\n\n _______________PICKLE_______________\n\n")
 
 
@@ -69,19 +68,30 @@ async def client():
 
     # TODO?: add trajectory end detection with force < 0.001 (or similar)
 
+    fit_task = asyncio.create_task(asyncio.sleep(0.01))
+    prev_t = -1
     while not reader.at_eof():
         data = await reader.read(13)
         c, (t, x, y) = data[:1].decode(), struct.unpack('fff', data[1:])
-        if c == 'M':
+        # prevent dt = 0
+        if (c != 'U') and (-0.0000001 < t - prev_t < 0.0015):
+            continue
+        prev_t = t
+        if c == 'U':
             if fitter.initialized:
                 last_txy = fitter.history[-1][1][-1]
-                writer.write('U'.encode() + struct.pack('ff', *last_txy[1:]))                
-                write_history(fitter) # pickles data for SNR
+                writer.write('U'.encode() + struct.pack('ff', *last_txy[1:]))
+                await fit_task
+                if len(data_to_fit) > 0:
+                    await update_fit(fitter, writer)
+                write_history(fitter)  # pickles data for SNR
+        if c == 'M':
             fitter = FixedLagFitter()
             data_to_fit.clear()
         data_to_fit.append((t, x, y))
-        res = update_fit(fitter, writer)
-        print(f'{c} {x:.3f} {y:.3f} {res}')
+        if fit_task.done():
+            fit_task = asyncio.create_task(update_fit(fitter, writer))
+        print(f'{c} {x:.3f} {y:.3f}')
 
     print('Closing connection to fit server')
     writer.close()

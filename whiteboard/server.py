@@ -83,7 +83,11 @@ async def handle_fit(reader, writer):
         while not reader.at_eof():
             data = await reader.read(9)
             c = data[0:1].decode()
-            message = struct.unpack('ff', data[1:])
+            try:
+                message = struct.unpack('ff', data[1:])
+            except struct.error:
+                print('Parse Error')
+                continue
             addr = writer.get_extra_info('peername')
             print(f"Received {c}{message} from {addr!r}")
             for client in clients['whiteboard']:
@@ -128,16 +132,6 @@ async def handle_robot_(websocket, client_type):
 
 async def robot_server(client_type):
     handle_robot = lambda websocket: handle_robot_(websocket, client_type)
-    # server = await asyncio.start_server(handle_robot, 'localhost', PORTS[client_type])
-
-    # addrs = ', '.join(str(sock.getsockname()) for sock in server.sockets)
-    # print(f'Serving robot server at {addrs}')
-
-    # async with server:
-    #     await server.serve_forever()
-
-    # print('Closed robot server')
-
     print(f'Serving robot at: localhost:{PORTS[client_type]}')
     async with websockets.serve(handle_robot, 'localhost', PORTS[client_type]):
         await asyncio.Future()
