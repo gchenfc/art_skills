@@ -20,7 +20,8 @@ PORTS = {
     'fit_input': 5902,
     'fit_output': 5903,
     'robot_input': 5904,
-    'robot_output': 5905
+    'robot_output': 5905,
+    'whiteboard_passthrough': 5906
 }
 
 
@@ -33,12 +34,13 @@ def get_local_ip():
 
 HOST = get_local_ip()
 
-clients = {'whiteboard': set(), 'fit': set(), 'robot': set()}
+clients = {'whiteboard': set(), 'fit': set(), 'robot_input': set(), 'whiteboard_passthrough': set()}
+frame_msg = ''
 
 
 def parse(msg):
     t, x, y = msg[1:].split(',')
-    t, x, y= float(t), float(x), float(y)
+    t, x, y = float(t), float(x), float(y)
     return msg[0], t, x, y
 
 
@@ -48,6 +50,8 @@ async def handle_whiteboard(websocket):
     t = s
     try:
         clients['whiteboard'].add(websocket)
+        print(frame_msg)
+        await websocket.send(frame_msg)
         while True:
             msg = await websocket.recv()
             prev_t, t = t, time.perf_counter()
@@ -56,9 +60,12 @@ async def handle_whiteboard(websocket):
             for writer in clients['fit']:
                 writer.write(c.encode() + struct.pack('fff', *data))
                 # await writer.drain()
-    except websockets.exceptions.ConnectionClosedOK:
+            for sock in clients['whiteboard_passthrough']:
+                await sock.send(msg)
+    except websockets.exceptions.ConnectionClosed:
         print('Whiteboard connection closed!')
     finally:
+        websocket.close()
         clients['whiteboard'].remove(websocket)
 
 
@@ -101,10 +108,48 @@ async def fit_server():
     print('Closed fit server')
 
 
+async def handle_robot_(websocket, client_type):
+    print('Robot connection opened!')
+    try:
+        clients[client_type].add(websocket)
+        while True:
+            msg = await websocket.recv()
+            print('message from robot:', msg)
+            global frame_msg
+            frame_msg = msg
+            for sock in clients['whiteboard']:
+                await sock.send(msg)
+    except websockets.exceptions.ConnectionClosed:
+        print('Robot connection closed!')
+    finally:
+        websocket.close()
+        clients[client_type].remove(websocket)
+
+
+async def robot_server(client_type):
+    handle_robot = lambda websocket: handle_robot_(websocket, client_type)
+    # server = await asyncio.start_server(handle_robot, 'localhost', PORTS[client_type])
+
+    # addrs = ', '.join(str(sock.getsockname()) for sock in server.sockets)
+    # print(f'Serving robot server at {addrs}')
+
+    # async with server:
+    #     await server.serve_forever()
+
+    # print('Closed robot server')
+
+    print(f'Serving robot at: localhost:{PORTS[client_type]}')
+    async with websockets.serve(handle_robot, 'localhost', PORTS[client_type]):
+        await asyncio.Future()
+    print('Closed robot server')
+
+
 async def main():
     await asyncio.wait([
         asyncio.create_task(whiteboard_server()),
         asyncio.create_task(fit_server()),
+        asyncio.create_task(robot_server('robot_input')),
+        asyncio.create_task(robot_server('whiteboard_passthrough')),
     ])
 
 
