@@ -37,6 +37,7 @@ class FixedLagFitter(IncrementalFit):
         self.history = []
         self.previous_strokes = []
         self.snr_history = []
+        self.stroke_n = 0
 
 
         self.logging_params = OptimizationLoggingParams(print_progress=False)

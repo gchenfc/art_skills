@@ -75,7 +75,9 @@ def split_trajectory(trajectory: np.ndarray, debug: bool = False) -> Strokes:
     x_acc = acc_vector[:,0]
     y_acc = acc_vector[:,1]
     smoothed_acc = np.diff(speed2_smooth, axis=0)
-    infls = np.where(np.diff(np.sign(smoothed_acc)))[0]
+    infls = np.where(np.diff(np.sign(smoothed_acc))>0)[0] + 1
+    # extra = np.diff(smoothed_acc, axis=0)
+    # infls = np.where(np.diff(np.sign(extra)))[0]
 
     if debug:
         fig, ax = plt.subplots(4, 1, figsize=(10,15))

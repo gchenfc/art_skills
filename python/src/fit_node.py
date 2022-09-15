@@ -34,10 +34,15 @@ async def update_fit(fitter, writer):
             for _, *xy in txy:
                 writer.write('L'.encode() + struct.pack('ff', *xy))
     else:
+        current_stroke = fitter.stroke_n
         print('Updating fitter!!!')
-        _, x, y = fitter.step(consume_data(), False)[-1]
+        check_segment(fitter)
+        print("STROKES:",fitter.stroke_n)
+        if fitter.stroke_n != current_stroke:
+            _, x, y = fitter.step(consume_data(), False)[-1]
+        else:
+            _, x, y = fitter.step(consume_data(), False)[-1]
         print('Fitter updated!')
-        # boo = np.array(fitter.history)
         print(fitter.history[-1][1][-1])
         writer.write('L'.encode() + struct.pack('ff', x, y))
     if len(fitter.history) > 0:
@@ -53,6 +58,16 @@ def write_history(fitter):
         pickle.dump(fitter.snr_history, f)
     print("\n\n _______________PICKLE_______________\n\n")
 
+
+def check_segment(fitter):
+    v = np.diff(fitter.full_stroke[:, 1:], axis=0) / np.diff(fitter.full_stroke[:,0]).reshape(-1,1)
+    speed = np.sum(np.square(v), axis=1)
+    acceleration = np.diff(speed, axis=0) / np.diff(fitter.full_stroke[1:,0])
+    #print("\n\n\n___________________accel\n",acceleration)
+    pre_infls = np.where(np.diff(np.sign(acceleration))>0)[0]
+    if np.any(pre_infls):
+        # print("___________________infls\n",pre_infls,pre_infls+1)
+        fitter.stroke_n = np.size(pre_infls)
 
 async def client():
     while True:
