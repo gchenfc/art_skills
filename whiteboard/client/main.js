@@ -54,13 +54,22 @@ websocket.onmessage = function (event) {
     context_fit.strokeStyle = 'black'
     context_fit.fillStyle = 'black'
     aspect_ratio = x_raw / y_raw;
+    var new_width = canvas.width;
+    var new_height = canvas.height;
     console.log(aspect_ratio, canvas.width, canvas.height);
     if (canvas.width < canvas.height * aspect_ratio) {
       context_fit.fillRect(0, canvas.width / aspect_ratio, canvas.width, canvas.height);
+      new_height = canvas.width / aspect_ratio;
     } else {
       context_fit.fillRect(canvas.height * aspect_ratio, 0, canvas.width, canvas.height);
+      new_width = canvas.height * aspect_ratio
     }
     context_fit.stroke();
+    context_fit.strokeStyle = 'red'
+    var pad_w = 0.15;
+    var pad_h = 0.25;
+    context_fit.rect((pad_w + 0.06) * new_width, (pad_h - 0.07) * new_height, (1-2*pad_w - 0.05) * new_width, (1-2*pad_h) * new_height);
+    context_fit.stroke()
   }
 };
 
@@ -78,8 +87,8 @@ function drawOnCanvas(stroke) {
   if (stroke.length >= 3) {
     // const xc = (stroke[l].x + stroke[l - 1].x) / 2
     // const yc = (stroke[l].y + stroke[l - 1].y) / 2
-    context.lineWidth = stroke[l - 1].lineWidth * 10
-    // context.lineWidth = 150;
+    // context.lineWidth = stroke[l - 1].lineWidth * 10
+    context.lineWidth = 40;
     // context.quadraticCurveTo(stroke[l - 1].x, stroke[l - 1].y, xc, yc)
     context.lineTo(stroke[l].x, stroke[l].y)
     context.stroke()
@@ -88,8 +97,8 @@ function drawOnCanvas(stroke) {
     // context.moveTo(xc, yc)
   } else {
     const point = stroke[l];
-    context.lineWidth = point.lineWidth * 10
-    // context.lineWidth = 150;
+    // context.lineWidth = point.lineWidth * 10
+    context.lineWidth = 40;
     context.strokeStyle = point.color
     context.beginPath()
     context.moveTo(point.x, point.y)
