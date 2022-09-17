@@ -2,6 +2,7 @@ import numpy as np
 import gtsam
 from gtsam.symbol_shorthand import X, P
 import scipy.signal
+from typing import Optional
 
 import sln_fit
 from fit_types import OptimizationLoggingParams
@@ -62,38 +63,49 @@ class FixedLagFitter(IncrementalFit):
         self.initialized = True
 
         ret = self.query(self.full_stroke[:, 0])
-        self.history.append((self.full_stroke.shape[0], ret, (gtsam.Values(self.sol),
-                                                              np.array(self.new_stroke_times))))
+        self.history.append((self.full_stroke.shape[0], ret,
+                             (gtsam.Values(self.sol), np.array(self.new_stroke_times),
+                              [s for s in self.strokes], [s for s in self.previous_strokes])))
         return ret
 
     # def step(self, data: np.ndarray, new_stroke: bool):
-    def step(self, data: np.ndarray):
+    def step(self, data: np.ndarray, force_new_stroke: Optional[bool] = None):
         if len(data.shape) == 1:
             data = data.reshape((1, -1))
         prev_t, t = self.full_stroke[-1, 0], data[-1, 0]
-        smooth_accel, inflection_pts, new_stroke = self.segment_trajectory()
+        if force_new_stroke is not None:
+            smooth_accel, inflection_pts, new_stroke = [], [], force_new_stroke
+        else:
+            smooth_accel, inflection_pts, new_stroke = self.segment_trajectory()
         print("New stroke?", new_stroke)
         # add new stroke
         if new_stroke:
-            print("Strokes:", self.stroke_n)
             self.new_stroke_times.append(prev_t)
+            print("Num strokes:", len(self.new_stroke_times))
             i = len(self.new_stroke_times) - 1
             self.strokes.append(SlnStrokeExpression2(P(i)))
             p = self.sol.atVector(P(i - 1))
             self.sol.insert(P(i), np.array([data[0, 0] - 0.05, 1., p[3], p[3], 0.5, -0.5]))
+            # prev_stroke_sol = self.sol.atVector(P(i - 1))
+            # prev_stroke_sol[1] *= 0.9
+            # prev_stroke_sol[2] *= 0.9
+            # prev_stroke_sol[3] *= 0.9
+            # self.sol.update(P(i - 1), prev_stroke_sol)
         # marginalize-out x0
         if prev_t < self.new_stroke_times[0] + self.window <= t:
             print("MARGINALIZING)")
             self.x0 = self.sol.atPoint2(X(0))
             self.sol.erase(X(0))
         # marginalize-out any strokes that start before window
-        if len(self.new_stroke_times) > len(self.strokes):
-            while self.new_stroke_times[-1 - len(self.strokes)] <= t - self.window:
-                key = P(len(self.new_stroke_times) - 1 - len(self.strokes))
-                print("new key", key)
-                self.previous_strokes.append(SlnStrokeExpression2(self.sol.atVector(key)))
-                self.sol.erase(key)
-                del self.strokes[0]
+        # if len(self.new_stroke_times) > len(self.strokes):
+        #     while self.new_stroke_times[-1 - len(self.strokes)] <= t - self.window:
+        while self.new_stroke_times[-len(self.strokes)] <= t - self.window:
+            print(self.new_stroke_times, len(self.strokes))
+            key = P(len(self.new_stroke_times) - len(self.strokes))
+            print("new key", key)
+            self.previous_strokes.append(SlnStrokeExpression2(self.sol.atVector(key)))
+            self.sol.erase(key)
+            del self.strokes[0]
 
         # add new data THIS IS THE HISTORY OF THE INPUT
         self.full_stroke = np.vstack((self.full_stroke, data))
@@ -116,13 +128,14 @@ class FixedLagFitter(IncrementalFit):
         # Solve
         self.sol, _ = utils.solve(graph, self.sol, self.fit_params.lm_params, self.logging_params)
         updated_stroke = self.query(self.full_stroke[:, 0])
-        self.history.append((self.full_stroke.shape[0], updated_stroke, (gtsam.Values(self.sol),
-                                                              np.array(self.new_stroke_times))))
-        
+        self.history.append((self.full_stroke.shape[0], updated_stroke,
+                             (gtsam.Values(self.sol), np.array(self.new_stroke_times),
+                              [s for s in self.strokes], [s for s in self.previous_strokes])))
+
         # Updated stroke is the list of points of the stroke of the nth iteration
-        
-        # History: [ 
-        #           datapoint number n, 
+
+        # History: [
+        #           datapoint number n,
         #           np.array([time, x, y]) of n rows,
         #           [time, x, y],
         #           (parameter values p0 and x0), np.array([t0])
@@ -137,19 +150,20 @@ class FixedLagFitter(IncrementalFit):
         p = lambda t: sum(
             (stroke.pos(t, values=self.sol) for stroke in self.previous_strokes + self.strokes), x0)
         return np.hstack((ts.reshape(-1, 1), np.array([p(t) for t in ts])))
-    
 
     def segment_trajectory(self):
-        v = np.diff(self.full_stroke[:, 1:], axis=0) / np.diff(self.full_stroke[:,0]).reshape(-1,1)
+        v = np.diff(self.full_stroke[:, 1:], axis=0) / np.diff(self.full_stroke[:, 0]).reshape(
+            -1, 1)
         speed = np.sum(np.square(v), axis=1)
-        acceleration = np.diff(speed, axis=0) / np.diff(self.full_stroke[1:,0])
+        acceleration = np.diff(speed, axis=0) / np.diff(self.full_stroke[1:, 0])
         acc_smooth = scipy.signal.savgol_filter(acceleration, 5, 1)
-        pre_infls = np.where(np.diff(np.sign(acc_smooth))>0)[0]
+        pre_infls = np.where(np.diff(np.sign(acc_smooth)) > 0)[0]
         if np.any(pre_infls):
-            if self.stroke_n == np.size(pre_infls):
-                return acc_smooth, pre_infls.tolist(), False
-            else:
-                self.stroke_n = np.size(pre_infls)
+            print(f'\t\t\t\t{pre_infls}, {len(self.new_stroke_times)}')
+            # print(f'\t\t\t\t{[int(n*60) for n in self.new_stroke_times]}')
+            if len(self.new_stroke_times) < np.size(pre_infls) + 1:
                 return acc_smooth, pre_infls.tolist(), True
+            else:
+                return acc_smooth, pre_infls.tolist(), False
         else:
             return acc_smooth, [], False
