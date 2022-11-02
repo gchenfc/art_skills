@@ -13,6 +13,7 @@
      * From the [cable-robot repo (html branch)](https://github.gatech.edu/borglab/cable-robot/tree/feature/html_control_panel%2Fmain), start a live server (see 4) and open the site/index.html file, or
      * open the html file directly in a browser, e.g. URL:
         <a href="file:///Users/gerry/GIT_REPOS/cable-robot/site/index.html">file:///Users/gerry/GIT_REPOS/cable-robot/site/index.html</a>
+     * calibrate & run `ts0.3` to set the speed to 0.3.
 4. start whiteboard "Live Server":
    1. Install the [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) vscode extension, or have some other way of serving a webpage over a local network.
    2. Start the Live Server (bottom-right of the screen is a "Go Live" icon), take note of the port number.

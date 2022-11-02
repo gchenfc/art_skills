@@ -50,6 +50,7 @@ websocket.onmessage = function (event) {
     context_fit.stroke();
   } else if (command == 'U') {
   } else if (command == 'F') {
+    // Draw CDPR bounds
     context_fit.beginPath();
     context_fit.strokeStyle = 'black'
     context_fit.fillStyle = 'black'
@@ -60,6 +61,17 @@ websocket.onmessage = function (event) {
     } else {
       context_fit.fillRect(canvas.height * aspect_ratio, 0, canvas.width, canvas.height);
     }
+    context_fit.stroke();
+
+    let [xmin, xmax] = [0.58, 2.53];
+    let [ymin, ymax] = [0.86, 1.6554];
+    scale = canvas.width / x_raw;
+
+    context_fit.beginPath();
+    context_fit.strokeStyle = 'green';
+    // context_fit.rect(xmin * scale, (y_raw - ymin) * scale, (xmax - xmin) * scale, (ymax - ymin) * scale);
+    context_fit.rect(xmin * scale, (y_raw - ymin) * scale, (xmax - xmin) * scale, -(ymax - ymin) * scale);
+    context_fit.rect(xmin * scale, (y_raw - ymax) * scale, (xmax - xmin) * scale, (ymax - ymin) * scale);
     context_fit.stroke();
   }
 };
