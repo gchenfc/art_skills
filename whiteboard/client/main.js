@@ -1,5 +1,6 @@
 // const HOST = '192.168.0.15'
-const HOST = '10.5.0.10'
+// const HOST = '143.215.90.39'
+const HOST = '172.20.10.2'
 const websocket = new WebSocket("ws://"+HOST+":5900/");
 
 // Reference source: https://github.com/shuding/apple-pencil-safari-api-test
@@ -57,14 +58,14 @@ websocket.onmessage = function (event) {
     aspect_ratio = x_raw / y_raw;
     console.log(aspect_ratio, canvas.width, canvas.height);
     if (canvas.width < canvas.height * aspect_ratio) {
-      context_fit.fillRect(0, canvas.width / aspect_ratio, canvas.width, canvas.height);
+      // context_fit.fillRect(0, canvas.width / aspect_ratio, canvas.width, canvas.height);
     } else {
-      context_fit.fillRect(canvas.height * aspect_ratio, 0, canvas.width, canvas.height);
+      // context_fit.fillRect(canvas.height * aspect_ratio, 0, canvas.width, canvas.height);
     }
     context_fit.stroke();
 
-    let [xmin, xmax] = [0.58, 2.53];
-    let [ymin, ymax] = [0.86, 1.6554];
+    let [xmin, xmax] = [0.68, 2.64];
+    let [ymin, ymax] = [0.70, 1.75];
     scale = canvas.width / x_raw;
 
     context_fit.beginPath();
