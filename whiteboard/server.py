@@ -9,10 +9,13 @@ run with:
 @author Gerry Chen
 '''
 import asyncio
+import aiofiles
 import socket
 import websockets
 import time
+import datetime
 import struct
+from pathlib import Path
 
 PORTS = {
     'whiteboard_input': 5900,
@@ -23,6 +26,7 @@ PORTS = {
     'robot_output': 5905,
     'whiteboard_passthrough': 5906
 }
+SAVE_FOLDER = None
 
 
 def get_local_ip():
@@ -44,7 +48,14 @@ def parse(msg):
     return msg[0], t, x, y
 
 
+def create_log_file():
+    if SAVE_FOLDER is None:
+        return '/dev/null'
+    now = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
+    return SAVE_FOLDER / f'{now}.txt'
+
 async def handle_whiteboard(websocket):
+    # async with aiofiles.open(create_log_file(), 'w') as f:
     print('Whiteboard connection opened!')
     s = time.perf_counter()
     t = s
@@ -52,20 +63,25 @@ async def handle_whiteboard(websocket):
         clients['whiteboard'].add(websocket)
         print(frame_msg)
         await websocket.send(frame_msg)
-        while True:
-            msg = await websocket.recv()
-            prev_t, t = t, time.perf_counter()
-            print(f'{t - s:.2f}s', f'{1/(t-prev_t):.0f}Hz', msg)
-            c, *data = parse(msg)
-            for writer in clients['fit']:
-                writer.write(c.encode() + struct.pack('fff', *data))
-                # await writer.drain()
-            for sock in clients['whiteboard_passthrough']:
-                await sock.send(msg)
-    except websockets.exceptions.ConnectionClosed:
-        print('Whiteboard connection closed!')
+        # Not sure why opening as 'w' causes some weird bug with websocket
+        #   https://stackoverflow.com/q/70811731/9151520
+        # Open with 'a' instead, and the first connection will always fail, just wait for the second
+        with open(create_log_file(), 'a') as f:
+            while True:
+                msg = await websocket.recv()
+                prev_t, t = t, time.perf_counter()
+                print(f'{t - s:.2f}s', f'{1/(t-prev_t):.0f}Hz', msg)
+                c, *data = parse(msg)
+                f.write(','.join('{}'.format(n) for n in [t, c, *data]) + '\n')
+                for writer in clients['fit']:
+                    writer.write(c.encode() + struct.pack('fff', *data))
+                    # await writer.drain()
+                for sock in clients['whiteboard_passthrough']:
+                    await sock.send(msg)
+    except websockets.exceptions.ConnectionClosed as e:
+        print('Whiteboard connection closed!', e)
     finally:
-        websocket.close()
+        await websocket.close()
         clients['whiteboard'].remove(websocket)
 
 
@@ -150,5 +166,16 @@ async def main():
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(prog='Graffiti Whiteboard Server')
+    parser.add_argument('-s',
+                        '--save',
+                        type=str,
+                        default=None,
+                        help='Folder name to save the whiteboard data to')
+    args = parser.parse_args()
+    if args.save is not None:
+        SAVE_FOLDER = Path(args.save)
+
     print("STARTING UP!!!")
     asyncio.get_event_loop().run_until_complete(main())
