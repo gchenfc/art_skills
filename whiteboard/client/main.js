@@ -1,6 +1,6 @@
 // const HOST = '192.168.0.15'
-// const HOST = '143.215.90.39'
-const HOST = '172.20.10.2'
+const HOST = '143.215.86.12'
+// const HOST = '172.20.10.2'
 const websocket = new WebSocket("ws://"+HOST+":5900/");
 
 // Reference source: https://github.com/shuding/apple-pencil-safari-api-test
@@ -23,6 +23,7 @@ canvas_fit.width = window.innerWidth * 2
 canvas_fit.height = window.innerHeight * 2
 
 const strokeHistory = []
+const colorHistory = []
 
 const requestIdleCallback = window.requestIdleCallback || function (fn) { setTimeout(fn, 1) };
 
@@ -80,10 +81,14 @@ websocket.onmessage = function (event) {
 /**
  * This function takes in an array of points and draws them onto the canvas.
  * @param {array} stroke array of points to draw on the canvas
+ * @param {String} color string which will only temporarily set the color for a stroke
  * @return {void}
  */
-function drawOnCanvas(stroke) {
-  context.strokeStyle = 'black'
+function drawOnCanvas(stroke, color='') {
+  if (color.length > 0) {
+    var previousColor = context.strokeStyle; 
+    context.strokeStyle = color;
+  }
   context.lineCap = 'round'
   context.lineJoin = 'round'
 
@@ -108,6 +113,10 @@ function drawOnCanvas(stroke) {
     context.moveTo(point.x, point.y)
     context.stroke()
   }
+
+  if (color.length > 0) {
+    context.strokeStyle = previousColor;
+  }
 }
 
 /**
@@ -116,9 +125,10 @@ function drawOnCanvas(stroke) {
  */
 function undoDraw() {
   strokeHistory.pop()
+  colorHistory.pop()
   context.clearRect(0, 0, canvas.width, canvas.height)
 
-  strokeHistory.map(function (stroke) {
+  strokeHistory.map(function (stroke, ind) {
     if (strokeHistory.length === 0) return
 
     context.beginPath()
@@ -126,9 +136,52 @@ function undoDraw() {
     let strokePath = [];
     stroke.map(function (point) {
       strokePath.push(point)
-      drawOnCanvas(strokePath)
+      drawOnCanvas(strokePath, colorHistory[ind])
     })
   })
+}
+
+function changeBlack() {
+  if (context.strokeStyle != 'black') {
+    context.strokeStyle = 'black';
+  }
+  sendColorChange();
+}
+function changeRed() {
+  if (context.strokeStyle != 'red') {
+    context.strokeStyle = 'red';
+  }
+  sendColorChange();
+}
+function changeYellow() {
+  if (context.strokeStyle != 'yellow') {
+    context.strokeStyle = 'yellow';
+  }
+  sendColorChange();
+}
+function changeGreen() {
+  if (context.strokeStyle != 'green') {
+    context.strokeStyle = 'green';
+  }
+  sendColorChange();
+}
+function changeBlue() {
+  if (context.strokeStyle != 'blue') {
+    context.strokeStyle = 'blue';
+  }
+  sendColorChange();
+}
+function changePurple() {
+  if (context.strokeStyle != 'purple') {
+    context.strokeStyle = 'purple';
+  }
+  sendColorChange();
+}
+
+function sendColorChange() {
+  let previous_color = colorHistory.length ? colorHistory[colorHistory.length - 1] : '#000000'
+  console.log(previous_color, context.strokeStyle);
+  websocket.send(`C${t()},${context.strokeStyle},${previous_color}`);
 }
 
 for (const ev of ["touchstart", "mousedown"]) {
@@ -149,7 +202,8 @@ for (const ev of ["touchstart", "mousedown"]) {
 
     isMousedown = true
 
-    lineWidth = Math.log(pressure + 1) * 40
+    // lineWidth = Math.log(pressure + 1) * 40
+    linewidth = 1;
     context.lineWidth = lineWidth// pressure * 50;
 
     points.push({ x, y, lineWidth })
@@ -179,7 +233,8 @@ for (const ev of ['touchmove', 'mousemove']) {
     }
 
     // smoothen line width
-    lineWidth = (Math.log(pressure + 1) * 40 * 0.2 + lineWidth * 0.8)
+    // lineWidth = (Math.log(pressure + 1) * 40 * 0.2 + lineWidth * 0.8)
+    lineWidth = 1;
     points.push({ x, y, lineWidth })
     websocket.send("L" + t() + "," + x / canvas.width + "," + y / canvas.width)
 
@@ -222,7 +277,11 @@ for (const ev of ['touchend', 'touchleave', 'mouseup']) {
 
     isMousedown = false
 
-    requestIdleCallback(function () { strokeHistory.push([...points]); points = [] })
+    requestIdleCallback(function () {
+      strokeHistory.push([...points]);
+      colorHistory.push(context.strokeStyle);
+      points = [];
+    })
     websocket.send("U" + t() + "," + x / canvas.width + "," + y / canvas.width)
 
     lineWidth = 0

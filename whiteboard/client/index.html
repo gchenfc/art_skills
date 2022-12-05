@@ -1,9 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="en">
     <head>
         <title>WebSocket demo</title>
         <link rel="stylesheet" href="styles.css">
         <script type="text/javascript" src="https://code.jquery.com/jquery-1.7.1.min.js"></script>
+        <script src="https://kit.fontawesome.com/ace6e52b9b.js" crossorigin="anonymous"></script>
     </head>
     <body>
         <!-- Reference Source: https://github.com/shuding/apple-pencil-safari-api-test -->
@@ -14,7 +16,15 @@
         <canvas>Sorry, your browser is too old for this demo.</canvas>
         <div id="info">
             <a href="https://github.com/quietshu/apple-pencil-safari-api-test" target="_blank">GitHub</a>
-            <button onclick="undoDraw()">Undo</button>
+            <span class="buttons">
+                <button class="undo" onclick="undoDraw()"><i class="fa-solid fa-rotate-left fa-4x"></i></button>
+                <button class="color black" onclick="changeBlack()"></button>
+                <button class="color red" onclick="changeRed()"></button>
+                <button class="color yellow" onclick="changeYellow()"></button>
+                <button class="color green" onclick="changeGreen()"></button>
+                <button class="color blue" onclick="changeBlue()"></button>
+                <button class="color purple" onclick="changePurple()"></button>
+            </span>
         </div>
         <script src="main.js"></script>
     </body>

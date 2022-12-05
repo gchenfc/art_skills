@@ -28,6 +28,14 @@ PORTS = {
 }
 SAVE_FOLDER = None
 
+COLORS = {
+    '#000000': 0, # black
+    '#ff0000': 1, # red
+    '#ffff00': 2, # yellow
+    '#008000': 3, # green
+    '#0000ff': 4, # blue
+    '#800080': 5  # purple
+}
 
 def get_local_ip():
     # return socket.gethostbyname(socket.gethostname())
@@ -71,7 +79,12 @@ async def handle_whiteboard(websocket):
                 msg = await websocket.recv()
                 prev_t, t = t, time.perf_counter()
                 print(f'{t - s:.2f}s', f'{1/(t-prev_t):.0f}Hz', msg)
-                c, *data = parse(msg)
+                if msg[0] == 'C':
+                    t_ipad, curr_color, prev_color = msg[1:].split(',')
+                    print(curr_color, COLORS[curr_color])
+                    c, *data = float(t_ipad), COLORS[curr_color], COLORS[prev_color]
+                else:
+                    c, *data = parse(msg)
                 f.write(','.join('{}'.format(n) for n in [t, c, *data]) + '\n')
                 for writer in clients['fit']:
                     writer.write(c.encode() + struct.pack('fff', *data))

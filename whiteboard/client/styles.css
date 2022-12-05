@@ -27,4 +27,36 @@ canvas {
 	z-index: 1;
 	position: absolute;
 	bottom: 1em;
+	height: 10%;
+	width: 100%;
+}
+
+.color {
+  height: 50px;
+  width: 50px;
+  border-radius: 50%;
+}
+
+.black {
+	background-color:black;
+}
+
+.red {
+	background-color:red;
+}
+
+.yellow {
+	background-color:yellow;
+}
+
+.green {
+	background-color:green;
+}
+
+.blue {
+	background-color:blue;
+}
+
+.purple {
+	background-color:purple;
 }
