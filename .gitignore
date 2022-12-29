@@ -7,3 +7,5 @@ cpp/Stroke_Capture/*
 .vscode/*
 .build/*
 .vscode/settings.json
+
+python/style/data/gml
