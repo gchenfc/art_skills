@@ -24,6 +24,17 @@ def count_latest():
     return r.json()['id']
 
 
+def download_one_blocking(id, ext='json', save_path=SAVE_PATH):
+    '''Download one file and save it to disk.
+    Args:
+        id (int): The id of the file to download.
+        ext (str): The extension of the file to download (json, gml, or xml), without leading dot.
+        save_path (pathlib.Path): The path to save the file to [Default: data/gml].
+    '''
+    with open(save_path / f'{id}.{ext}', 'wb') as f:
+        f.write(requests.get(ROOT_URL + f'{id}.{ext}').content)
+
+
 async def download_one(id, ext, sem=contextlib.AsyncExitStack(), session=None, save_path=SAVE_PATH):
     '''Download one file and save it to disk.
     Args:
