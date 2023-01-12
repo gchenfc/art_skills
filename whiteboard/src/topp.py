@@ -89,7 +89,9 @@ class Stroke:
 
 def spline_interp(t, x):
     """Interpolates the stroke using a spline."""
-    return ta.SplineInterpolator(scipy.signal.savgol_filter(t, 15, 3), x, bc_type='clamped')
+    tnew = scipy.signal.savgol_filter(t, 15, 3)
+    tnew[0] = t[0]
+    return ta.SplineInterpolator(tnew, x, bc_type='clamped')
 
 
 def retime(t, x, vmax=1, amax=5, path=None):
@@ -114,10 +116,32 @@ def retime(t, x, vmax=1, amax=5, path=None):
 
 
 def sample_spline(spline: ta.SplineInterpolator, N=200, dt=None):
-    if N is not None:
-        ts = np.linspace(0, spline.get_duration(), N)
-    elif dt is not None:
+    if dt is not None:
         ts = np.arange(0, spline.get_duration(), dt)
+    elif N is not None:
+        ts = np.linspace(0, spline.get_duration(), N)
     else:
         raise ValueError('Must specify either N or dt')
     return ts, spline.eval(ts), spline.evald(ts), spline.evaldd(ts)
+
+def manually_evaluate_spline(t, path: ta.SplineInterpolator):
+    cubic_spline = path.cspl
+    coeff = cubic_spline.c
+    breakpts = cubic_spline.x
+    degree = coeff.shape[0] - 1
+    xy = []
+
+    t = t.reshape(-1, 1)
+    breakpts2 = breakpts.reshape(1, -1)
+
+    # which coefficients to grab
+    cond = np.logical_and(t >= breakpts2[:, :-1], t < breakpts2[:, 1:])
+    # loop through each time queried
+    for t_, cond_ in zip(t, cond):
+        t_ -= breakpts[:-1][cond_] # re-parameterize to start at left breakpoint
+        coeff_ = coeff[:, cond_, :].squeeze() # select the correct coefficients
+
+        tpow = np.power(t_, np.arange(degree, -1, -1)).reshape(1, -1) # t^2, t^1, t^0
+        xy.append((tpow @ coeff_).flatten()) # polyval
+
+    return np.array(xy)
