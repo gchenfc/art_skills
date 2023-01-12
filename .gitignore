@@ -9,3 +9,5 @@ cpp/Stroke_Capture/*
 .vscode/settings.json
 
 python/style/data/gml
+**__pycache__
+**.ipynb_checkpoints
