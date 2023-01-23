@@ -1,6 +1,0 @@
-gtsam_example/
-setup.py
-
-dist
-*.egg-info
-**/__pycache__

@@ -5,9 +5,15 @@ cpp/Stroke_Capture/*
 !cpp/Stroke_Capture/src/
 
 .vscode/*
-.build/*
 .vscode/settings.json
+.build/*
+build/
+**.pyc
+CMakeFiles/
+**CMakeCache.txt
 
+python/src/results
+python/src/trajectories/tmp.p
 python/style/data/gml
 **__pycache__
 **.ipynb_checkpoints

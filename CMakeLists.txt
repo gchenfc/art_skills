@@ -5,8 +5,9 @@
 # * 1. To create your own project, replace "gtsam_example" with the actual name
 #   of your project
 cmake_minimum_required(VERSION 3.9)
-project(gtsam_example CXX C)
+project(art_skills CXX C)
 set(CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 
 # ##############################################################################
 # * 2. Find GTSAM components so we have access to the GTSAM Cython install path
@@ -14,18 +15,30 @@ find_package(GTSAM REQUIRED) # Uses installed package
 # Note: Since Jan-2019, GTSAMConfig.cmake defines exported CMake targets that
 # automatically do include the include_directories() without the need to call
 # include_directories(), just target_link_libraries(NAME gtsam)
-# include_directories(${GTSAM_INCLUDE_DIR})
+find_package(GTSAMCMakeTools)
+include(GtsamMakeConfigFile)
+include(GtsamBuildTypes)
+include(GtsamTesting)
 
 # ##############################################################################
 # * 3. Add the local source directory for CMake Ensure that local folder is
 #   searched before library folders
-include_directories(BEFORE "${PROJECT_SOURCE_DIR}")
+include_directories(BEFORE "${PROJECT_SOURCE_DIR}/cpp")
 
 # ##############################################################################
 # * 4. Build static library from common sources. This is a common cmake step
 #   where we load all the source files and link against the GTSAM library.
-add_library(${PROJECT_NAME} SHARED cpp/greeting.h cpp/greeting.cpp)
+
+# Glob all source/header files in SOURCE_SUBDIRS.
+# TODO: Fix this later
+file(GLOB sources "cpp/SLM/*.cpp")
+file(GLOB headers "cpp/SLM/*.h")
+add_library(${PROJECT_NAME} SHARED ${headers} ${sources})
 target_link_libraries(${PROJECT_NAME} gtsam)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
+add_subdirectory(cpp)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 # ##############################################################################
 # * 5. Install library
@@ -44,6 +57,7 @@ install(
 # # Build scripts (CMake tracks the dependecy to link with GTSAM through our
 # project's static library) gtsamAddExamplesGlob("*.cpp" "" "${PROJECT_NAME}")
 
+##[[
 # ##############################################################################
 # * 6. Find the gtwrap package (either installed via GTSAM or as a standalone
 #   package) The cmake code for wrapping is included automatically.
@@ -80,15 +94,15 @@ configure_file(${PROJECT_SOURCE_DIR}/wrapper/pybind_wrapper.tpl.example
                ${PROJECT_BINARY_DIR}/${PROJECT_NAME}.tpl)
 
 # Copy over C++ headers to use for wrapping
-file(COPY "${PROJECT_SOURCE_DIR}/wrapper/preamble.h"
-     DESTINATION "${PROJECT_BINARY_DIR}/python")
+file(COPY "${PROJECT_SOURCE_DIR}/wrapper/preamble/art_skills.h"
+     DESTINATION "${PROJECT_BINARY_DIR}/art_skills/preamble/")
 
-file(COPY "${PROJECT_SOURCE_DIR}/wrapper/specializations.h"
-     DESTINATION "${PROJECT_BINARY_DIR}/python")
+file(COPY "${PROJECT_SOURCE_DIR}/wrapper/specializations/art_skills.h"
+     DESTINATION "${PROJECT_BINARY_DIR}/art_skills/specializations/")
 
-# Copy all the tests files to module folder.
-file(COPY "${PROJECT_SOURCE_DIR}/python/tests"
-     DESTINATION "${GTSAM_MODULE_PATH}")
+# # Copy all the tests files to module folder.
+# file(COPY "${PROJECT_SOURCE_DIR}/python/tests"
+#      DESTINATION "${GTSAM_MODULE_PATH}")
 
 # We print out our configuration for an easy visual check
 message("========== Configuration Options ==========")
@@ -142,3 +156,4 @@ add_custom_target(
   COMMAND ${PYTHON_EXECUTABLE} ${GTSAM_MODULE_PATH}/setup.py install
   DEPENDS ${PROJECT_NAME}_py
   WORKING_DIRECTORY ${GTSAM_MODULE_PATH})
+#]]
