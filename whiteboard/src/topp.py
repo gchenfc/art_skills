@@ -67,24 +67,24 @@ class Stroke:
             self.retime(**retime_kwargs)
         return sample_spline(self.retimed_path, N=N, dt=dt)
 
-    def plot_xva(self, axes, original=True, retimed=True):
+    def plot_xva(self, axes, original=True, retimed=True, **line_kwargs):
         """Plots the original and retimed trajectories."""
         col = 0
         if original:
-            util.plot_xva(axes[:, col], *self.sample())
+            util.plot_xva(axes[:, col], *self.sample(), **line_kwargs)
             axes[0, col].set_title('Original')
             col += 1
         if retimed:
-            util.plot_xva(axes[:, col], *self.sample_retimed())
+            util.plot_xva(axes[:, col], *self.sample_retimed(), **line_kwargs)
             axes[0, col].set_title('Retimed')
 
-    def create_html_anim(self, fname=None):
+    def create_html_anim(self, fname=None, **kwargs):
         """Creates an HTML animation of the original and retimed trajectories.
         Usage:
             1) display(HTML(stroke.create_html_anim()))
             2) stroke.create_html_anim('filename.html')
         """
-        return util.create_html_anim(self.sample(), self.sample_retimed(), fname=fname)
+        return util.create_html_anim(self.sample(), self.sample_retimed(), fname=fname, **kwargs)
 
 
 def spline_interp(t, x):

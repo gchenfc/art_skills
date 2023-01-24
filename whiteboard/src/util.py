@@ -42,21 +42,31 @@ def strokes2txs(strokes):
     return list(map(stroke2tx, strokes))
 
 
-def plot_xva(axes, t, x, xdot, xddot):
-    axes[0].plot(t, x, label=('x', 'y'))
-    axes[1].plot(t, xdot, label=('x', 'y'))
-    axes[2].plot(t, xddot, label=('x', 'y'))
+def plot_xva(axes, t, x, xdot, xddot, **line_kwargs):
+    axes[0].plot(t, x, '-o', label=('x', 'y'), **line_kwargs)
+    axes[1].plot(t, xdot, '-o', label=('x', 'y'), **line_kwargs)
+    axes[2].plot(t, xddot, '-o', label=('x', 'y'), **line_kwargs)
     axes[0].set_ylabel('Position')
     axes[1].set_ylabel('Velocity')
     axes[2].set_ylabel('Acceleration')
     axes[0].legend()
 
 
-def create_html_anim(*txs, fname=None):
+def create_html_anim(*txs, fname=None, bnds=None, markersize=3):
     """Creates an html animation using the given strokes.
     Usage:
         create_html_anim((t1, x1), (t2, x2), ..., fname='test.html')
+    Args:
+        bnds: (min, max) where min and max are each 2-vectors representing the x/y min/max bounds.
+        markersize (float): size of the markers in the animation.
     """
+    if bnds is None or bnds == 'auto':
+        all_xs = np.vstack([tx[1] for tx in txs])
+        bnds = [np.min(all_xs, axis=0), np.max(all_xs, axis=0)]
+        bnds = [bnds[0] - abs(0.1 * bnds[0]), bnds[1] + abs(0.1 * bnds[1])]  # padding
+    if bnds == 'cablerobot':
+        bnds = [np.array([0, 0]), np.array([2.9, 2.32])]  # cable robot
+    axis_height, axis_width = 300, 300 * (bnds[1] - bnds[0])[0] / (bnds[1] - bnds[0])[1]
     string_to_write = ''
     def write(*lines):
         nonlocal string_to_write
@@ -64,7 +74,7 @@ def create_html_anim(*txs, fname=None):
     # Create canvas
     write(
         f'<button onclick="run()">Run</button>'
-        f'<canvas id="c" width="{300*len(txs)}" height="300"></canvas>',
+        f'<canvas id="c" width="{axis_width * len(txs) + 1}" height="{axis_height}"></canvas>',
         f'<a id="link"></a>',
         f'<a href="?download=true" id="download">Download as png files (only works in-browser)</a>',
     )
@@ -80,10 +90,20 @@ def create_html_anim(*txs, fname=None):
         f'        ctx.fillStyle = "red";',
         f'',
     )
+    write( # outlines for each txy sub-canvas
+        f'        ctx.beginPath();',
+        *[
+            f'        ctx.rect({sx}, {0}, {axis_width}, {axis_height});'
+            for sx in np.arange(0, axis_width * len(txs), axis_width)
+        ],
+        f'        ctx.stroke();',
+        f'',
+    )
     # Hardcode data into javascript and loop over data w/ timeouts
     max_time = 0
     for i, tx in enumerate(txs):
         t, x = tx[0], tx[1]  # don't unpack as `t, x = tx` in case txva is given.
+        x = (x - bnds[0]) / (bnds[1] - bnds[0])
         max_time = max(max_time, t[-1])
         data = np.hstack((t.reshape(-1, 1) - t[0], x))
         write(
@@ -91,7 +111,7 @@ def create_html_anim(*txs, fname=None):
             f'        data{i}.forEach(element => {{',
             f'            setTimeout(() => {{',
             f'                console.log(element[1], element[2]);',
-            f'                ctx.fillRect((element[1] + {i}) * 300, -element[2] * 300, 5, 5);',
+            f'                ctx.fillRect((element[1] + {i}) * {axis_width}, (1 - element[2]) * {axis_height}, {markersize}, {markersize});',
             f'            }}, element[0] * 1000);',
             f'        }});',
             f'',
