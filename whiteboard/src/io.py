@@ -42,14 +42,14 @@ def send_spline_serial(spline, port='/dev/tty.usbmodem100994303'):
         robot.update()
 
         robot.send('gs1')
-        robot.send('t-')
+        robot.send('x-')
         for line in export_spline_serial(spline):
-            robot.send('t&' + line)
+            robot.send('x+' + line)
 
         robot.update()
 
         # Read-back checks
-        robot.send('t#')
+        robot.send('x#')
         act_num = read_spline_serial(robot, num_lines=1)[0].split(':')[-1][1:]
         assert act_num == str(
             spline.c.shape[1]), f'Robot only read {act_num} / {spline.c.shape[1]} segments'

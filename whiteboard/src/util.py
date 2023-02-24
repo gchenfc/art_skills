@@ -66,6 +66,8 @@ def create_html_anim(*txs, fname=None, bnds=None, markersize=3):
         bnds = [bnds[0] - abs(0.1 * bnds[0]), bnds[1] + abs(0.1 * bnds[1])]  # padding
     if bnds == 'cablerobot':
         bnds = [np.array([0, 0]), np.array([2.9, 2.32])]  # cable robot
+    if bnds == 'air':
+        bnds = [np.array([0, 0]), np.array([6.17, 2.64])]  # cable robot
     axis_height, axis_width = 300, 300 * (bnds[1] - bnds[0])[0] / (bnds[1] - bnds[0])[1]
     string_to_write = ''
     def write(*lines):
