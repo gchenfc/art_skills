@@ -1,6 +1,7 @@
 // const HOST = '192.168.0.15'
-const HOST = '143.215.86.12'
+// const HOST = '143.215.91.93'
 // const HOST = '172.20.10.2'
+const HOST = '172.20.10.10'
 const websocket = new WebSocket("ws://"+HOST+":5900/");
 
 // Reference source: https://github.com/shuding/apple-pencil-safari-api-test
@@ -21,11 +22,32 @@ canvas.width = window.innerWidth * 2
 canvas.height = window.innerHeight * 2
 canvas_fit.width = window.innerWidth * 2
 canvas_fit.height = window.innerHeight * 2
+let scale = 1;
 
 const strokeHistory = []
 const colorHistory = []
 
 const requestIdleCallback = window.requestIdleCallback || function (fn) { setTimeout(fn, 1) };
+
+function convert_xy_to_normalized(x, y) {
+  return [x / canvas.width, y / canvas.width];
+
+  // const xwidth = 5.986;
+  // const yheight = 2.5180000000000002;
+  // let [xmin, xmax] = [2.15 / xwidth, 4.00 / xwidth];
+  // let [ymin, ymax] = [0.74 / xwidth, 1.58 / xwidth];
+
+  // const xscale = (xmax - xmin);
+  // const yscale = (ymax - ymin);
+
+  // return [
+  //   (x / canvas.width) * xscale + xmin,
+  //   (y / canvas.width) * yscale + ymin,
+  // ];
+}
+// function convert_raw_to_xy(x_raw, y_raw) {
+//   return []
+// }
 
 websocket.onmessage = function (event) {
   console.log(event.data);
@@ -65,12 +87,19 @@ websocket.onmessage = function (event) {
     }
     context_fit.stroke();
 
-    let [xmin, xmax] = [0.68, 2.64];
-    let [ymin, ymax] = [0.70, 1.75];
+    // let [xmin, xmax] = [0.68, 2.64];
+    // let [ymin, ymax] = [0.70, 1.75];
+    // let [xmin, xmax] = [3.36, 4.08];
+    // let [ymin, ymax] = [0.92, 1.45];
+    // let [xmin, xmax] = [2.15, 4.00];
+    // let [ymin, ymax] = [0.74, 1.58];
+    let [xmin, xmax] = [0.7, 2.35];
+    let [ymin, ymax] = [0.85, 1.7];
     scale = canvas.width / x_raw;
 
     context_fit.beginPath();
     context_fit.strokeStyle = 'green';
+    return;
     // context_fit.rect(xmin * scale, (y_raw - ymin) * scale, (xmax - xmin) * scale, (ymax - ymin) * scale);
     context_fit.rect(xmin * scale, (y_raw - ymin) * scale, (xmax - xmin) * scale, -(ymax - ymin) * scale);
     context_fit.rect(xmin * scale, (y_raw - ymax) * scale, (xmax - xmin) * scale, (ymax - ymin) * scale);
@@ -207,7 +236,8 @@ for (const ev of ["touchstart", "mousedown"]) {
     context.lineWidth = lineWidth// pressure * 50;
 
     points.push({ x, y, lineWidth })
-    websocket.send("M" + t() + "," + x / canvas.width + "," + y / canvas.width)
+    const xy = convert_xy_to_normalized(x, y)
+    websocket.send("M" + t() + "," + xy[0] + "," + xy[1]);
     drawOnCanvas(points)
   })
 }
@@ -236,7 +266,8 @@ for (const ev of ['touchmove', 'mousemove']) {
     // lineWidth = (Math.log(pressure + 1) * 40 * 0.2 + lineWidth * 0.8)
     lineWidth = 1;
     points.push({ x, y, lineWidth })
-    websocket.send("L" + t() + "," + x / canvas.width + "," + y / canvas.width)
+    const xy = convert_xy_to_normalized(x, y)
+    websocket.send("L" + t() + "," + xy[0] + "," + xy[1])
 
     drawOnCanvas(points);
 
@@ -282,7 +313,8 @@ for (const ev of ['touchend', 'touchleave', 'mouseup']) {
       colorHistory.push(context.strokeStyle);
       points = [];
     })
-    websocket.send("U" + t() + "," + x / canvas.width + "," + y / canvas.width)
+    const xy = convert_xy_to_normalized(x, y);
+    websocket.send("U" + t() + "," + xy[0] + "," + xy[1])
 
     lineWidth = 0
   })
