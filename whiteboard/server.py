@@ -184,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument('-s',
                         '--save',
                         type=str,
-                        default=None,
+                        default='logs',
                         help='Folder name to save the whiteboard data to')
     args = parser.parse_args()
     if args.save is not None:

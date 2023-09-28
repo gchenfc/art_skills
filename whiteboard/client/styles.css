@@ -1,3 +1,6 @@
+/* Disable scrolling */
+html, body {margin: 0; height: 100%; overflow: hidden}
+
 /* Reference source: https://github.com/shuding/apple-pencil-safari-api-test */
 body {
 	position: absolute;
