@@ -1,8 +1,10 @@
 // const HOST = '192.168.0.15'
 // const HOST = '143.215.91.93'
 // const HOST = '172.20.10.2'
-const HOST = '172.20.10.10'
+const HOST = '143.215.91.135'
 const websocket = new WebSocket("ws://"+HOST+":5900/");
+
+const [W, H] = [2.9464, 2.26];
 
 // Reference source: https://github.com/shuding/apple-pencil-safari-api-test
 const $force = document.querySelectorAll('#force')[0]
@@ -24,26 +26,44 @@ canvas_fit.width = window.innerWidth * 2
 canvas_fit.height = window.innerHeight * 2
 let scale = 1;
 
+// robot.send('xLl0.9')
+// robot.send('xLd0.63')
+// robot.send('xLr2.5964')
+// robot.send('xLu1.91')
+const [xmin, xmax] = [0.9, 2.5964];
+const [ymin, ymax] = [0.63, 1.91];
+
 const strokeHistory = []
 const colorHistory = []
 
 const requestIdleCallback = window.requestIdleCallback || function (fn) { setTimeout(fn, 1) };
 
+function clamp(xy, xbnds, ybnds) {
+  return [
+    Math.min(Math.max(xy[0], xbnds[0]), xbnds[1]),
+    Math.min(Math.max(xy[1], ybnds[0]), ybnds[1]),
+  ];
+}
 function convert_xy_to_normalized(x, y) {
-  return [x / canvas.width, y / canvas.width];
+  // return [x / canvas.width, y / canvas.width];
 
-  // const xwidth = 5.986;
-  // const yheight = 2.5180000000000002;
-  // let [xmin, xmax] = [2.15 / xwidth, 4.00 / xwidth];
-  // let [ymin, ymax] = [0.74 / xwidth, 1.58 / xwidth];
-
-  // const xscale = (xmax - xmin);
-  // const yscale = (ymax - ymin);
-
-  // return [
-  //   (x / canvas.width) * xscale + xmin,
-  //   (y / canvas.width) * yscale + ymin,
-  // ];
+  y = canvas.height - y;
+  return clamp(
+    [
+      (x - canvas.width / 2) / scale + (xmin + xmax) / 2,
+      (y - canvas.height / 2) / scale + (ymin + ymax) / 2,
+    ],
+    [xmin, xmax],
+    [ymin, ymax]
+  );
+}
+function convert_xy_from_normalized(x, y) {
+  const ret = [
+    (x - (xmin + xmax) / 2) * scale + canvas.width / 2,
+    (y - (ymin + ymax) / 2) * scale + canvas.height / 2,
+  ];
+  ret[1] = canvas.height - ret[1];
+  return ret;
 }
 // function convert_raw_to_xy(x_raw, y_raw) {
 //   return []
@@ -78,31 +98,35 @@ websocket.onmessage = function (event) {
     context_fit.beginPath();
     context_fit.strokeStyle = 'black'
     context_fit.fillStyle = 'black'
-    aspect_ratio = x_raw / y_raw;
-    console.log(aspect_ratio, canvas.width, canvas.height);
-    if (canvas.width < canvas.height * aspect_ratio) {
-      // context_fit.fillRect(0, canvas.width / aspect_ratio, canvas.width, canvas.height);
-    } else {
-      // context_fit.fillRect(canvas.height * aspect_ratio, 0, canvas.width, canvas.height);
-    }
-    context_fit.stroke();
+    // aspect_ratio = x_raw / y_raw;
+    // console.log(aspect_ratio, canvas.width, canvas.height);
+    // if (canvas.width < canvas.height * aspect_ratio) {
+    //   // context_fit.fillRect(0, canvas.width / aspect_ratio, canvas.width, canvas.height);
+    // } else {
+    //   // context_fit.fillRect(canvas.height * aspect_ratio, 0, canvas.width, canvas.height);
+    // }
+    // context_fit.stroke();
 
-    // let [xmin, xmax] = [0.68, 2.64];
-    // let [ymin, ymax] = [0.70, 1.75];
-    // let [xmin, xmax] = [3.36, 4.08];
-    // let [ymin, ymax] = [0.92, 1.45];
-    // let [xmin, xmax] = [2.15, 4.00];
-    // let [ymin, ymax] = [0.74, 1.58];
-    let [xmin, xmax] = [0.7, 2.35];
-    let [ymin, ymax] = [0.85, 1.7];
-    scale = canvas.width / x_raw;
+    const aspect_ratio = (xmax - xmin) / (ymax - ymin);
+    const canvas_aspect_ratio = canvas.width / canvas.height;
+    if (canvas_aspect_ratio < aspect_ratio) {  // ipad is too narrow
+      scale = canvas.width / (xmax - xmin);
+    } else {
+      scale = canvas.height / (ymax - ymin);
+    }
 
     context_fit.beginPath();
+    context_fit.strokeStyle = 'black';
+    context_fit.fillStyle = 'black';
+    context_fit.fillRect(0, 0, canvas.width, canvas.height);
+    context_fit.stroke();
+    context_fit.beginPath();
     context_fit.strokeStyle = 'green';
-    return;
-    // context_fit.rect(xmin * scale, (y_raw - ymin) * scale, (xmax - xmin) * scale, (ymax - ymin) * scale);
-    context_fit.rect(xmin * scale, (y_raw - ymin) * scale, (xmax - xmin) * scale, -(ymax - ymin) * scale);
-    context_fit.rect(xmin * scale, (y_raw - ymax) * scale, (xmax - xmin) * scale, (ymax - ymin) * scale);
+    lr = convert_xy_from_normalized(xmin, ymin);
+    tr = convert_xy_from_normalized(xmax, ymax);
+    console.log(lr, tr);
+    context_fit.clearRect(lr[0], lr[1], (tr[0] - lr[0]), (tr[1] - lr[1]));
+    context_fit.rect(lr[0], lr[1], (tr[0] - lr[0]), (tr[1] - lr[1]));
     context_fit.stroke();
   }
 };
