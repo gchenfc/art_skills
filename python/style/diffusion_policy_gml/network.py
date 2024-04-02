@@ -152,6 +152,7 @@ class MemorizationModel(nn.Module):
         down_dims=[256,512,1024],
         kernel_size=5,
         n_groups=8,
+        T=132
         ):
         """
         input_dim: Dim of actions.
@@ -165,7 +166,6 @@ class MemorizationModel(nn.Module):
         """
 
         super().__init__()
-        T = 132
 
         dsed = diffusion_step_embed_dim
         self.diffusion_step_encoder = nn.Sequential(
@@ -211,14 +211,101 @@ class MemorizationModel(nn.Module):
                 global_feature, global_cond * 0
             ], axis=-1)
 
-        # x = self.net(torch.cat([global_feature, sample.reshape(sample.shape[0], -1)], axis=-1)).reshape(sample.shape)
-        x = self.net(torch.cat([global_feature, 0 * sample.reshape(sample.shape[0], -1)], axis=-1)).reshape(sample.shape)
+        x = self.net(torch.cat([global_feature, sample.reshape(sample.shape[0], -1)], axis=-1)).reshape(sample.shape)
+        # x = self.net(torch.cat([global_feature, 0 * sample.reshape(sample.shape[0], -1)], axis=-1)).reshape(sample.shape)
 
         # (B,C,T)
         x = x.moveaxis(-1,-2)
         # (B,T,C)
 
         return compute_noise(self.noise_scheduler, timesteps, raw, x)
+
+
+class MemorizationModel2(nn.Module):
+
+    def __init__(self,
+        input_dim,
+        global_cond_dim,
+        noise_scheduler,
+        diffusion_step_embed_dim=256,
+        down_dims=[256,512,1024],
+        kernel_size=5,
+        n_groups=8,
+        T=132
+        ):
+        """
+        input_dim: Dim of actions.
+        global_cond_dim: Dim of global conditioning applied with FiLM
+          in addition to diffusion step embedding. This is usually obs_horizon * obs_dim
+        diffusion_step_embed_dim: Size of positional encoding for diffusion iteration k
+        down_dims: Channel size for each UNet level.
+          The length of this array determines numebr of levels.
+        kernel_size: Conv kernel size
+        n_groups: Number of groups for GroupNorm
+        """
+
+        super().__init__()
+
+        dsed = diffusion_step_embed_dim
+        self.diffusion_step_encoder = nn.Sequential(
+            SinusoidalPosEmb(dsed),
+            nn.Linear(dsed, dsed * 4),
+            nn.Mish(),
+            nn.Linear(dsed * 4, dsed),
+        )
+
+        # self.net = nn.Linear(dsed + global_cond_dim + T * input_dim, T * input_dim)
+        self.net = nn.Sequential(
+            nn.Linear(dsed + global_cond_dim + T * input_dim, T * input_dim * 100),
+            nn.Mish(),
+            nn.Linear(T * input_dim * 100, T * input_dim * 10),
+            nn.Mish(),
+            nn.Linear(T * input_dim * 10, T * input_dim),
+        )
+
+        self.noise_scheduler = noise_scheduler
+
+    def forward(self,
+            sample: torch.Tensor,
+            timestep: Union[torch.Tensor, float, int],
+            global_cond=None):
+        """
+        x: (B,T,input_dim)
+        timestep: (B,) or int, diffusion step
+        global_cond: (B,global_cond_dim)
+        output: (B,T,input_dim)
+        """
+        raw = sample * 1.0
+        # (B,T,C)
+        sample = sample.moveaxis(-1,-2)
+        # (B,C,T)
+
+        # 1. time
+        timesteps = timestep
+        if not torch.is_tensor(timesteps):
+            # TODO: this requires sync between CPU and GPU. So try to pass timesteps as tensors if you can
+            timesteps = torch.tensor([timesteps], dtype=torch.long, device=sample.device)
+        elif torch.is_tensor(timesteps) and len(timesteps.shape) == 0:
+            timesteps = timesteps[None].to(sample.device)
+        # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
+        timesteps = timesteps.expand(sample.shape[0])
+
+        global_feature = self.diffusion_step_encoder(timesteps)
+
+        if global_cond is not None:
+            global_feature = torch.cat([
+                global_feature, global_cond
+            ], axis=-1)
+
+        x = self.net(torch.cat([global_feature, sample.reshape(sample.shape[0], -1)], axis=-1)).reshape(sample.shape)
+        # x = self.net(torch.cat([global_feature, 0 * sample.reshape(sample.shape[0], -1)], axis=-1)).reshape(sample.shape)
+
+        # (B,C,T)
+        x = x.moveaxis(-1,-2)
+        # (B,T,C)
+
+        return compute_noise(self.noise_scheduler, timesteps, raw, x)
+
 
 class ConditionalUnet1D(nn.Module):
     def __init__(self,

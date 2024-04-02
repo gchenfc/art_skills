@@ -22,8 +22,8 @@ class PaintingEnv():
         # return obs, info
         return self.traj[-1], None
 
-    def step(self, action):
-        self.pos = self.pos + action
+    def step(self, action, delta=True):
+        self.pos = (self.pos + action) if delta else action
         self.traj.append(self.pos)
 
         # return observation, reward, terminated, truncated, info

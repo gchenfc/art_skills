@@ -48,7 +48,8 @@ def create_sample_indices(
 
 def sample_sequence(train_data, sequence_length,
                     buffer_start_idx, buffer_end_idx,
-                    sample_start_idx, sample_end_idx):
+                    sample_start_idx, sample_end_idx,
+                    action_delta=False):
     result = dict()
     for key, input_arr in train_data.items():
         sample = input_arr[buffer_start_idx:buffer_end_idx]
@@ -58,7 +59,7 @@ def sample_sequence(train_data, sequence_length,
                 shape=(sequence_length,) + input_arr.shape[1:],
                 dtype=input_arr.dtype)
             if sample_start_idx > 0:
-                data[:sample_start_idx] = sample[0]
+                data[:sample_start_idx] = 0 if (action_delta and key == 'action') else sample[0]
             if sample_end_idx < sequence_length:
                 data[sample_end_idx:] = sample[-1]
             data[sample_start_idx:sample_end_idx] = sample
@@ -74,30 +75,35 @@ def get_data_stats(data):
     }
     return stats
 
-def normalize_data(data, stats):
-    # nomalize to [0,1]
-    ndata = (data - stats['min']) / (stats['max'] - stats['min'])
-    # normalize to [-1, 1]
-    ndata = ndata * 2 - 1
+def normalize_data(data, stats, center=False):
+    if center:
+        # nomalize to [0,1]
+        ndata = (data - stats['min']) / (stats['max'] - stats['min'])
+        # normalize to [-1, 1]
+        ndata = ndata * 2 - 1
+    else:
+        ndata = data / (stats['max'] - stats['min']) * 2
     return ndata * 5
 
-def unnormalize_data(ndata, stats):
-    ndata = (ndata / 5 + 1) / 2
-    data = ndata * (stats['max'] - stats['min']) + stats['min']
+def unnormalize_data(ndata, stats, center=False):
+    if center:
+        ndata = (ndata / 5 + 1) / 2
+        data = ndata * (stats['max'] - stats['min']) + stats['min']
+    else:
+        data = ndata / 10 * (stats['max'] - stats['min'])
     return data
 
 # dataset
 class PushTStateDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path,
-                 pred_horizon, obs_horizon, action_horizon):
+                 pred_horizon, obs_horizon, action_horizon, action_delta=False):
 
         # read from zarr dataset
         dataset_root = zarr.open(dataset_path, 'r')
         # All demonstration episodes are concatinated in the first dimension N
         train_data = {
             # (N, action_dim)
-            # 'action': dataset_root['data']['action'][:].astype(np.float32),
-            'action': dataset_root['data']['state'][:].astype(np.float32),
+            'action': dataset_root['data']['action' if action_delta else 'state'][:].astype(np.float32),
             # (N, obs_dim)
             'obs': dataset_root['data']['state'][:].astype(np.float32)
         }
@@ -126,6 +132,7 @@ class PushTStateDataset(torch.utils.data.Dataset):
         self.pred_horizon = pred_horizon
         self.action_horizon = action_horizon
         self.obs_horizon = obs_horizon
+        self.action_delta = action_delta
 
     def __len__(self):
         # all possible segments of the dataset
@@ -143,7 +150,8 @@ class PushTStateDataset(torch.utils.data.Dataset):
             buffer_start_idx=buffer_start_idx,
             buffer_end_idx=buffer_end_idx,
             sample_start_idx=sample_start_idx,
-            sample_end_idx=sample_end_idx
+            sample_end_idx=sample_end_idx,
+            action_delta=self.action_delta
         )
 
         # discard unused observations
@@ -157,7 +165,7 @@ class PushTStateDataset(torch.utils.data.Dataset):
         return unnormalize_data(data, self.stats['obs'])
 
     def normalize_action(self, data):
-        return normalize_data(data, self.stats['action'])
+        return normalize_data(data, self.stats['action'], center=not self.action_delta)
     
     def unnormalize_action(self, data):
-        return unnormalize_data(data, self.stats['action'])
+        return unnormalize_data(data, self.stats['action'], center=not self.action_delta)
