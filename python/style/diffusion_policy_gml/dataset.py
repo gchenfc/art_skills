@@ -129,6 +129,7 @@ class PushTStateDataset(torch.utils.data.Dataset):
         self.indices = indices
         self.stats = stats
         self.normalized_train_data = normalized_train_data
+        self.episode_ends = episode_ends
         self.pred_horizon = pred_horizon
         self.action_horizon = action_horizon
         self.obs_horizon = obs_horizon
