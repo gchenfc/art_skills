@@ -19,6 +19,35 @@ import math
 import torch
 import torch.nn as nn
 
+@torch.no_grad()
+def eval(network, noise_scheduler, init, global_cond=None, log_history=None):
+    x = init
+
+    if isinstance(log_history, list):
+        log_history.clear()
+        log_history.append(x.detach().to('cpu').numpy())
+
+    for k in noise_scheduler.timesteps:
+        # predict noise
+        pred = network(
+            sample=x,
+            timestep=k,
+            global_cond=global_cond
+        )
+
+        # inverse diffusion step (remove noise)
+        x = noise_scheduler.step(
+            model_output=pred,
+            timestep=k,
+            sample=x
+        ).prev_sample
+
+        if isinstance(log_history, list):
+            log_history.append(x.detach().to('cpu').numpy())
+
+    return x
+
+
 class SinusoidalPosEmb(nn.Module):
     def __init__(self, dim):
         super().__init__()
