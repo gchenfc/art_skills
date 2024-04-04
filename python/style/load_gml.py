@@ -51,6 +51,7 @@ def get_from_blackbook(id, save_path=Path('data/gml'), **drawing_kwargs):
     if not fname.exists():
         print(f'File {fname} does not exist, downloading...')
         gerry00_gml_downloader.download_one_blocking(id, save_path=save_path)
+    print(fname, drawing_kwargs)
     return Drawing(fname, **drawing_kwargs)
 
 
@@ -65,11 +66,14 @@ def is_from_application(fname, application_name='Fat Tag - Katsu Edition'):
         return json.load(f).get('gml_application') == application_name
 
 
-def read_json(fname, verbosity=1):
+def read_json(fname, verbosity=1, **hook_kwargs):
     '''Reads a GML JSON file, replacing strokes from dicts to numpy arrays.  Returns as dict.'''
     with open(fname, 'r') as file:
         try:
-            return json.load(file, object_hook=json_decoder_hook)
+            if hook_kwargs is not None:
+                return json.load(file, object_hook=lambda x: json_decoder_hook(x, **hook_kwargs))
+            else:
+                return json.load(file, object_hook=json_decoder_hook)
         except (KeyError, TypeError, AttributeError, AssertionError) as e:
             if verbosity >= 1:
                 print(f'Error while reading {fname}: {type(e)}')
@@ -92,8 +96,14 @@ def _pt2tuple(pt):
     return _float(pt.get('time')), _float(pt['x']), _float(pt['y']), _float(pt.get('z'))
 
 
-def json_decoder_hook(data):
-    '''Custom json decoder hook to do some preprocessing to make the GML object easier to use.'''
+def json_decoder_hook(data, scale_behavior='GML_SCREEN'):
+    '''Custom json decoder hook to do some preprocessing to make the GML object easier to use.
+    scale_behavior: one of the following options:
+        * 'GML_SCREEN' - scale to the GML screen size (true to the GML spec)
+        * 'PRESERVE_ASPECT_CENTERED' - largest dimension is scaled to 1, and aspect ratio preserved
+        * 'PRESERVE_ASPECT' - largest dimension is scaled to 1, and aspect ratio preserved (not centered)
+        * 'NONE' - no scaling, so both x and y are in the range [0, 1]
+    '''
     if 'pt' in data:
         # Convert a single stroke to a numpy array
         if isinstance(data['pt'], list):
@@ -112,15 +122,37 @@ def json_decoder_hook(data):
         else:
             w, h = 1, 1
         for stroke in data['tag']['drawing']:
-            stroke[:, 1] *= w
-            stroke[:, 2] *= h
+            if scale_behavior == 'GML_SCREEN':
+                stroke[:, 1] *= w
+                stroke[:, 2] *= h
+            elif scale_behavior == 'PRESERVE_ASPECT_CENTERED':
+                scale = max(w, h)
+                stroke[:, 1] = stroke[:, 1] * w / scale + (1 - w / scale) / 2
+                stroke[:, 2] = stroke[:, 2] * h / scale + (1 - h / scale) / 2
+            elif scale_behavior == 'PRESERVE_ASPECT':
+                scale = max(w, h)
+                stroke[:, 1] *= w / scale
+                stroke[:, 2] *= h / scale
+            elif scale_behavior == 'NONE':
+                pass
+            else:
+                raise ValueError(f'Invalid scale_behavior: {scale_behavior}')
+            data['w'], data['h'] = w, h
         # swap x and y if the device is held in portrait mode
         if 'environment' in data['tag'] and 'up' in data['tag']['environment']:
             orientation = data['tag']['environment']['up']
             if float(orientation['x']):
                 for stroke in data['tag']['drawing']:
                     stroke[:, [1, 2]] = stroke[:, [2, 1]]
+                    data['w'], data['h'] = h, w
             elif float(orientation['y']):
-                for stroke in data['tag']['drawing']:
-                    stroke[:, 2] = w - stroke[:, 2]
+                if scale_behavior == 'GML_SCREEN':
+                    for stroke in data['tag']['drawing']:
+                        stroke[:, 2] = w - stroke[:, 2]
+                elif scale_behavior == 'PRESERVE_ASPECT':
+                    for stroke in data['tag']['drawing']:
+                        stroke[:, 2] = (w / max(w, h)) - stroke[:, 2]
+                else:
+                    for stroke in data['tag']['drawing']:
+                        stroke[:, 2] = 1 - stroke[:, 2]
     return data
