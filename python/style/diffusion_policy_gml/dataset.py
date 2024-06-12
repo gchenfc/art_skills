@@ -16,6 +16,8 @@ The dataset class
 import torch
 import numpy as np
 import zarr
+from collections import defaultdict
+from typing import Optional
 
 def create_sample_indices(
         episode_ends:np.ndarray, sequence_length:int,
@@ -170,3 +172,163 @@ class PushTStateDataset(torch.utils.data.Dataset):
     
     def unnormalize_action(self, data):
         return unnormalize_data(data, self.stats['action'], center=not self.action_delta)
+
+
+# dataset
+class GmlDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset_path,
+                 sequence_length, pad_before=0, pad_after=0, stride=1,
+                 action_delta=False, action_penlift=False, normalize=defaultdict(lambda: True),
+                 max_drawings: Optional[int]=None):
+
+        # read from zarr dataset
+        dataset_root = zarr.open(dataset_path, 'r')
+        # All demonstration episodes are concatinated in the first dimension N
+        action_key = 'action' if action_delta else 'state'
+        train_data = {
+            # (N, action_dim)
+            'action': dataset_root['data'][action_key][:].astype(np.float32),
+            # (N, obs_dim)
+            'obs': dataset_root['data']['state'][:].astype(np.float32)
+        }
+        print(train_data['action'].shape, train_data['obs'].shape)
+        if action_penlift:
+            dx_act = np.diff(train_data['obs'], axis=0, append=-8675309)
+            dx_pred = dataset_root['data']['action'][:].astype(np.float32)
+            if dx_pred.shape[1] == 3:
+                # tmp = dx_pred[:, 2]
+                # dx_pred = dx_pred[:, :2]
+                # train_data['action'][:, 2] = train_data['action'][:, 2] < 0.5
+                pass
+            else:
+                pen_lifted = np.linalg.norm(dx_act - dx_pred, axis=1) > 1e-6
+                # print(np.stack((tmp[1800:1900] < 0.5, pen_lifted[1800:1900])).T)
+                # print(np.argwhere((tmp < 0.5) != pen_lifted).flatten()[:10])
+                # np.testing.assert_allclose(tmp < 0.5, pen_lifted)
+                if action_delta:
+                    train_data['action'][pen_lifted] = dx_act[pen_lifted]
+                    train_data['action'][-1] = 0
+                train_data['action'] = np.concatenate([train_data['action'], pen_lifted[:,None]], axis=1)
+
+        # Marks one-past the last index for each episode
+        if max_drawings is None:
+            episode_ends = dataset_root['meta']['episode_ends'][:]
+        else:
+            episode_ends = dataset_root['meta']['episode_ends'][:max_drawings]
+            train_data['action'] = train_data['action'][:episode_ends[-1] + 10]
+            train_data['obs'] = train_data['obs'][:episode_ends[-1] + 10]
+
+        # compute start and end of each state-action sequence
+        # also handles padding
+        indices = GmlDataset.create_sample_indices(
+            episode_ends=episode_ends,
+            sequence_length=sequence_length,
+            # add padding such that each timestep in the dataset are seen
+            pad_before=pad_before,
+            pad_after=pad_after,
+            stride=stride)
+
+        # compute statistics and normalized data to [-1,1]
+        stats = dict()
+        normalized_train_data = dict()
+        for key, data in train_data.items():
+            if normalize[key]:
+                stats[key] = get_data_stats(data)
+                if key == 'action' and action_penlift and action_delta:
+                    lifted = data[:, -1]
+                    stats[key] = get_data_stats(data[lifted == 0])
+                    stats[key]['min'][-1] = 0
+                    stats[key]['max'][-1] = 10
+                normalized_train_data[key] = normalize_data(data, stats[key])
+            else:
+                normalized_train_data[key] = data
+
+        self.indices = indices
+        self.stats = stats
+        self.normalized_train_data = normalized_train_data
+        self.normalize = normalize
+        self.episode_ends = episode_ends
+        self.sequence_length = sequence_length
+        self.pad_after = pad_after
+        self.pad_before = pad_before
+        self.action_delta = action_delta
+        self.action_penlift = action_penlift
+
+    @staticmethod
+    def create_sample_indices(episode_ends:np.ndarray,
+                              sequence_length:int,
+                              pad_before: int=0,
+                              pad_after: int=0,
+                              stride: int=1):
+        indices = list()
+        for i in range(len(episode_ends)):
+            start_idx = 0
+            if i > 0:
+                start_idx = episode_ends[i-1]
+            end_idx = episode_ends[i]
+            episode_length = end_idx - start_idx
+
+            # range stops one idx before end
+            # First do pre-buffer
+            buffer_start_idx = np.zeros(pad_before, dtype=int)
+            buffer_end_idx = sequence_length - 1 - np.arange(pad_before, dtype=int)
+            sample_start_idx = np.arange(pad_before, dtype=int) + 1
+            sample_end_idx = sequence_length + np.zeros(pad_before, dtype=int)
+            indices.extend(np.stack([buffer_start_idx + start_idx, buffer_end_idx + start_idx, sample_start_idx, sample_end_idx], axis=1)[::stride])
+            # Next do main buffer
+            if episode_length >= sequence_length:
+                buffer_start_idx = np.arange(episode_length - sequence_length + 1, dtype=int)
+                buffer_end_idx = buffer_start_idx + sequence_length
+                sample_start_idx = np.zeros(episode_length - sequence_length + 1, dtype=int)
+                sample_end_idx = sequence_length + np.zeros(episode_length - sequence_length + 1, dtype=int)
+                indices.extend(np.stack([buffer_start_idx + start_idx, buffer_end_idx + start_idx, sample_start_idx, sample_end_idx], axis=1)[::stride])
+            # Finally do post-buffer
+            buffer_start_idx = episode_length - sequence_length + 1 + np.arange(pad_after, dtype=int)
+            buffer_end_idx = episode_length + np.zeros(pad_after, dtype=int)
+            sample_start_idx = np.zeros(pad_after, dtype=int)
+            sample_end_idx = sequence_length - 1 - np.arange(pad_after, dtype=int)
+            indices.extend(np.stack([buffer_start_idx + start_idx, buffer_end_idx + start_idx, sample_start_idx, sample_end_idx], axis=1)[::stride])
+
+        indices = np.array(indices)
+        return indices
+
+    def __len__(self):
+        # all possible segments of the dataset
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        # get the start/end indices for this datapoint
+        buffer_start_idx, buffer_end_idx, \
+            sample_start_idx, sample_end_idx = self.indices[idx]
+
+        # get nomralized data using these indices
+        try:
+            nsample = sample_sequence(
+                train_data=self.normalized_train_data,
+                sequence_length=self.sequence_length,
+                buffer_start_idx=buffer_start_idx,
+                buffer_end_idx=buffer_end_idx,
+                sample_start_idx=sample_start_idx,
+                sample_end_idx=sample_end_idx,
+                action_delta=self.action_delta
+            )
+        except:
+            print(buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx)
+            raise
+
+        # discard unused observations
+        # nsample['obs'] = nsample['obs'][:self.obs_horizon,:]
+        assert nsample['obs'].shape[0] == self.sequence_length
+        return nsample
+
+    def normalize_obs(self, data):
+        return normalize_data(data, self.stats['obs']) if self.normalize['obs'] else data
+    
+    def unnormalize_obs(self, data):
+        return unnormalize_data(data, self.stats['obs']) if self.normalize['obs'] else data
+
+    def normalize_action(self, data):
+        return normalize_data(data, self.stats['action'], center=not self.action_delta) if self.normalize['action'] else data
+    
+    def unnormalize_action(self, data):
+        return unnormalize_data(data, self.stats['action'], center=not self.action_delta) if self.normalize['action'] else data
