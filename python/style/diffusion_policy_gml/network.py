@@ -35,6 +35,10 @@ def eval(network, noise_scheduler, init, global_cond=None, log_history=None, gui
             global_cond=global_cond
         )
 
+        if guidance is not None:
+            alpha_bar = noise_scheduler.alphas_cumprod[k]
+            pred += guidance(x) * torch.sqrt(1 - alpha_bar)
+
         # inverse diffusion step (remove noise)
         x = noise_scheduler.step(
             model_output=pred,
