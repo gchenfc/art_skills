@@ -21,14 +21,15 @@ from typing import Optional
 from load_gml import Drawing
 
 
-def create_sample_indices(
-        episode_ends:np.ndarray, sequence_length:int,
-        pad_before: int=0, pad_after: int=0):
+def create_sample_indices(episode_ends: np.ndarray,
+                          sequence_length: int,
+                          pad_before: int = 0,
+                          pad_after: int = 0):
     indices = list()
     for i in range(len(episode_ends)):
         start_idx = 0
         if i > 0:
-            start_idx = episode_ends[i-1]
+            start_idx = episode_ends[i - 1]
         end_idx = episode_ends[i]
         episode_length = end_idx - start_idx
 
@@ -36,48 +37,52 @@ def create_sample_indices(
         max_start = episode_length - sequence_length + pad_after
 
         # range stops one idx before end
-        for idx in range(min_start, max_start+1):
+        for idx in range(min_start, max_start + 1):
             buffer_start_idx = max(idx, 0) + start_idx
-            buffer_end_idx = min(idx+sequence_length, episode_length) + start_idx
-            start_offset = buffer_start_idx - (idx+start_idx)
-            end_offset = (idx+sequence_length+start_idx) - buffer_end_idx
+            buffer_end_idx = min(idx + sequence_length,
+                                 episode_length) + start_idx
+            start_offset = buffer_start_idx - (idx + start_idx)
+            end_offset = (idx + sequence_length + start_idx) - buffer_end_idx
             sample_start_idx = 0 + start_offset
             sample_end_idx = sequence_length - end_offset
             indices.append([
-                buffer_start_idx, buffer_end_idx,
-                sample_start_idx, sample_end_idx])
+                buffer_start_idx, buffer_end_idx, sample_start_idx,
+                sample_end_idx
+            ])
     indices = np.array(indices)
     return indices
 
 
-def sample_sequence(train_data, sequence_length,
-                    buffer_start_idx, buffer_end_idx,
-                    sample_start_idx, sample_end_idx,
+def sample_sequence(train_data,
+                    sequence_length,
+                    buffer_start_idx,
+                    buffer_end_idx,
+                    sample_start_idx,
+                    sample_end_idx,
                     action_delta=False):
     result = dict()
     for key, input_arr in train_data.items():
         sample = input_arr[buffer_start_idx:buffer_end_idx]
         data = sample
         if (sample_start_idx > 0) or (sample_end_idx < sequence_length):
-            data = np.zeros(
-                shape=(sequence_length,) + input_arr.shape[1:],
-                dtype=input_arr.dtype)
+            data = np.zeros(shape=(sequence_length, ) + input_arr.shape[1:],
+                            dtype=input_arr.dtype)
             if sample_start_idx > 0:
-                data[:sample_start_idx] = 0 if (action_delta and key == 'action') else sample[0]
+                data[:sample_start_idx] = 0 if (
+                    action_delta and key == 'action') else sample[0]
             if sample_end_idx < sequence_length:
                 data[sample_end_idx:] = sample[-1]
             data[sample_start_idx:sample_end_idx] = sample
         result[key] = data
     return result
 
+
 # normalize data
 def get_data_stats(data):
-    data = data.reshape(-1,data.shape[-1])
-    stats = {
-        'min': np.min(data, axis=0),
-        'max': np.max(data, axis=0)
-    }
+    data = data.reshape(-1, data.shape[-1])
+    stats = {'min': np.min(data, axis=0), 'max': np.max(data, axis=0)}
     return stats
+
 
 def normalize_data(data, stats, center=False):
     if center:
@@ -89,6 +94,7 @@ def normalize_data(data, stats, center=False):
         ndata = data / (stats['max'] - stats['min']) * 2
     return ndata * 5
 
+
 def unnormalize_data(ndata, stats, center=False):
     if center:
         ndata = (ndata / 5 + 1) / 2
@@ -97,19 +103,27 @@ def unnormalize_data(ndata, stats, center=False):
         data = ndata / 10 * (stats['max'] - stats['min'])
     return data
 
+
 # dataset
 class PushTStateDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path,
-                 pred_horizon, obs_horizon, action_horizon, action_delta=False):
+    def __init__(self,
+                 dataset_path,
+                 pred_horizon,
+                 obs_horizon,
+                 action_horizon,
+                 action_delta=False):
 
         # read from zarr dataset
         dataset_root = zarr.open(dataset_path, 'r')
         # All demonstration episodes are concatinated in the first dimension N
         train_data = {
             # (N, action_dim)
-            'action': dataset_root['data']['action' if action_delta else 'state'][:].astype(np.float32),
+            'action':
+            dataset_root['data']['action' if action_delta else 'state']
+            [:].astype(np.float32),
             # (N, obs_dim)
-            'obs': dataset_root['data']['state'][:].astype(np.float32)
+            'obs':
+            dataset_root['data']['state'][:].astype(np.float32)
         }
         # Marks one-past the last index for each episode
         episode_ends = dataset_root['meta']['episode_ends'][:]
@@ -120,8 +134,8 @@ class PushTStateDataset(torch.utils.data.Dataset):
             episode_ends=episode_ends,
             sequence_length=pred_horizon,
             # add padding such that each timestep in the dataset are seen
-            pad_before=obs_horizon-1,
-            pad_after=action_horizon-1)
+            pad_before=obs_horizon - 1,
+            pad_after=action_horizon - 1)
 
         # compute statistics and normalized data to [-1,1]
         stats = dict()
@@ -149,39 +163,47 @@ class PushTStateDataset(torch.utils.data.Dataset):
             sample_start_idx, sample_end_idx = self.indices[idx]
 
         # get nomralized data using these indices
-        nsample = sample_sequence(
-            train_data=self.normalized_train_data,
-            sequence_length=self.pred_horizon,
-            buffer_start_idx=buffer_start_idx,
-            buffer_end_idx=buffer_end_idx,
-            sample_start_idx=sample_start_idx,
-            sample_end_idx=sample_end_idx,
-            action_delta=self.action_delta
-        )
+        nsample = sample_sequence(train_data=self.normalized_train_data,
+                                  sequence_length=self.pred_horizon,
+                                  buffer_start_idx=buffer_start_idx,
+                                  buffer_end_idx=buffer_end_idx,
+                                  sample_start_idx=sample_start_idx,
+                                  sample_end_idx=sample_end_idx,
+                                  action_delta=self.action_delta)
 
         # discard unused observations
-        nsample['obs'] = nsample['obs'][:self.obs_horizon,:]
+        nsample['obs'] = nsample['obs'][:self.obs_horizon, :]
         return nsample
 
     def normalize_obs(self, data):
         return normalize_data(data, self.stats['obs'])
-    
+
     def unnormalize_obs(self, data):
         return unnormalize_data(data, self.stats['obs'])
 
     def normalize_action(self, data):
-        return normalize_data(data, self.stats['action'], center=not self.action_delta)
-    
+        return normalize_data(data,
+                              self.stats['action'],
+                              center=not self.action_delta)
+
     def unnormalize_action(self, data):
-        return unnormalize_data(data, self.stats['action'], center=not self.action_delta)
+        return unnormalize_data(data,
+                                self.stats['action'],
+                                center=not self.action_delta)
 
 
 # dataset
 class GmlDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path,
-                 sequence_length, pad_before=0, pad_after=0, stride=1,
-                 action_delta=False, action_penlift=False, normalize=defaultdict(lambda: True),
-                 max_drawings: Optional[int]=None):
+    def __init__(self,
+                 dataset_path,
+                 sequence_length,
+                 pad_before=0,
+                 pad_after=0,
+                 stride=1,
+                 action_delta=False,
+                 action_penlift=False,
+                 normalize=defaultdict(lambda: True),
+                 max_drawings: Optional[int] = None):
 
         # read from zarr dataset
         dataset_root = zarr.open(dataset_path, 'r')
@@ -210,7 +232,8 @@ class GmlDataset(torch.utils.data.Dataset):
                 if action_delta:
                     train_data['action'][pen_lifted] = dx_act[pen_lifted]
                     train_data['action'][-1] = 0
-                train_data['action'] = np.concatenate([train_data['action'], pen_lifted[:,None]], axis=1)
+                train_data['action'] = np.concatenate(
+                    [train_data['action'], pen_lifted[:, None]], axis=1)
 
         # Marks one-past the last index for each episode
         if max_drawings is None:
@@ -257,39 +280,62 @@ class GmlDataset(torch.utils.data.Dataset):
         self.action_penlift = action_penlift
 
     @staticmethod
-    def create_sample_indices(episode_ends:np.ndarray,
-                              sequence_length:int,
-                              pad_before: int=0,
-                              pad_after: int=0,
-                              stride: int=1):
+    def create_sample_indices(episode_ends: np.ndarray,
+                              sequence_length: int,
+                              pad_before: int = 0,
+                              pad_after: int = 0,
+                              stride: int = 1):
         indices = list()
         for i in range(len(episode_ends)):
             start_idx = 0
             if i > 0:
-                start_idx = episode_ends[i-1]
+                start_idx = episode_ends[i - 1]
             end_idx = episode_ends[i]
             episode_length = end_idx - start_idx
 
             # range stops one idx before end
             # First do pre-buffer
             buffer_start_idx = np.zeros(pad_before, dtype=int)
-            buffer_end_idx = sequence_length - 1 - np.arange(pad_before, dtype=int)
+            buffer_end_idx = sequence_length - 1 - np.arange(pad_before,
+                                                             dtype=int)
             sample_start_idx = np.arange(pad_before, dtype=int) + 1
             sample_end_idx = sequence_length + np.zeros(pad_before, dtype=int)
-            indices.extend(np.stack([buffer_start_idx + start_idx, buffer_end_idx + start_idx, sample_start_idx, sample_end_idx], axis=1)[::stride])
+            indices.extend(
+                np.stack([
+                    buffer_start_idx + start_idx, buffer_end_idx + start_idx,
+                    sample_start_idx, sample_end_idx
+                ],
+                         axis=1)[::stride])
             # Next do main buffer
             if episode_length >= sequence_length:
-                buffer_start_idx = np.arange(episode_length - sequence_length + 1, dtype=int)
+                buffer_start_idx = np.arange(episode_length - sequence_length +
+                                             1,
+                                             dtype=int)
                 buffer_end_idx = buffer_start_idx + sequence_length
-                sample_start_idx = np.zeros(episode_length - sequence_length + 1, dtype=int)
-                sample_end_idx = sequence_length + np.zeros(episode_length - sequence_length + 1, dtype=int)
-                indices.extend(np.stack([buffer_start_idx + start_idx, buffer_end_idx + start_idx, sample_start_idx, sample_end_idx], axis=1)[::stride])
+                sample_start_idx = np.zeros(episode_length - sequence_length +
+                                            1,
+                                            dtype=int)
+                sample_end_idx = sequence_length + np.zeros(
+                    episode_length - sequence_length + 1, dtype=int)
+                indices.extend(
+                    np.stack([
+                        buffer_start_idx + start_idx, buffer_end_idx +
+                        start_idx, sample_start_idx, sample_end_idx
+                    ],
+                             axis=1)[::stride])
             # Finally do post-buffer
-            buffer_start_idx = episode_length - sequence_length + 1 + np.arange(pad_after, dtype=int)
+            buffer_start_idx = episode_length - sequence_length + 1 + np.arange(
+                pad_after, dtype=int)
             buffer_end_idx = episode_length + np.zeros(pad_after, dtype=int)
             sample_start_idx = np.zeros(pad_after, dtype=int)
-            sample_end_idx = sequence_length - 1 - np.arange(pad_after, dtype=int)
-            indices.extend(np.stack([buffer_start_idx + start_idx, buffer_end_idx + start_idx, sample_start_idx, sample_end_idx], axis=1)[::stride])
+            sample_end_idx = sequence_length - 1 - np.arange(pad_after,
+                                                             dtype=int)
+            indices.extend(
+                np.stack([
+                    buffer_start_idx + start_idx, buffer_end_idx + start_idx,
+                    sample_start_idx, sample_end_idx
+                ],
+                         axis=1)[::stride])
 
         indices = np.array(indices)
         return indices
@@ -305,17 +351,16 @@ class GmlDataset(torch.utils.data.Dataset):
 
         # get nomralized data using these indices
         try:
-            nsample = sample_sequence(
-                train_data=self.normalized_train_data,
-                sequence_length=self.sequence_length,
-                buffer_start_idx=buffer_start_idx,
-                buffer_end_idx=buffer_end_idx,
-                sample_start_idx=sample_start_idx,
-                sample_end_idx=sample_end_idx,
-                action_delta=self.action_delta
-            )
+            nsample = sample_sequence(train_data=self.normalized_train_data,
+                                      sequence_length=self.sequence_length,
+                                      buffer_start_idx=buffer_start_idx,
+                                      buffer_end_idx=buffer_end_idx,
+                                      sample_start_idx=sample_start_idx,
+                                      sample_end_idx=sample_end_idx,
+                                      action_delta=self.action_delta)
         except:
-            print(buffer_start_idx, buffer_end_idx, sample_start_idx, sample_end_idx)
+            print(buffer_start_idx, buffer_end_idx, sample_start_idx,
+                  sample_end_idx)
             raise
 
         # discard unused observations
@@ -324,15 +369,22 @@ class GmlDataset(torch.utils.data.Dataset):
         return nsample
 
     def normalize_obs(self, data):
-        return normalize_data(data, self.stats['obs']) if self.normalize['obs'] else data
-    
+        return normalize_data(
+            data, self.stats['obs']) if self.normalize['obs'] else data
+
     def unnormalize_obs(self, data):
-        return unnormalize_data(data, self.stats['obs']) if self.normalize['obs'] else data
+        return unnormalize_data(
+            data, self.stats['obs']) if self.normalize['obs'] else data
 
     def normalize_action(self, data):
-        return normalize_data(data, self.stats['action'], center=not self.action_delta) if self.normalize['action'] else data
-    
+        return normalize_data(
+            data, self.stats['action'],
+            center=not self.action_delta) if self.normalize['action'] else data
+
     def unnormalize_action(self, data):
+        return unnormalize_data(
+            data, self.stats['action'],
+            center=not self.action_delta) if self.normalize['action'] else data
 
     def create_normalized_from_drawing(self,
                                        drawing: Drawing,

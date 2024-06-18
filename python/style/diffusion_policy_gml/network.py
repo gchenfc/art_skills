@@ -70,18 +70,11 @@ def eval_partial(network,
             t for t in noise_scheduler.timesteps if ending_t <= t <= starting_t
     ]:
         # predict noise
-        pred = network(
-            sample=x,
-            timestep=k,
-            global_cond=global_cond
-        )
+        pred = network(sample=x, timestep=k, global_cond=global_cond)
 
         # inverse diffusion step (remove noise)
-        x = noise_scheduler.step(
-            model_output=pred,
-            timestep=k,
-            sample=x
-        ).prev_sample
+        x = noise_scheduler.step(model_output=pred, timestep=k,
+                                 sample=x).prev_sample
 
         if isinstance(log_history, list):
             log_history.append(x.detach().to('cpu').numpy())
