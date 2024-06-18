@@ -31,14 +31,16 @@ import numpy as np
 @dataclasses.dataclass
 class Drawing:
     '''Represents a GML drawing.'''
-
     def __init__(self, fname, **read_json_kwargs):
         '''Reads a GML JSON file and stores it as a Drawing object.'''
         # TODO(gerry): check for multiple strokes etc?
         # TODO(gerry): add support for other optional GML fields (e.g. color, brush, etc.)
-        self.raw_dict = read_json(fname, **read_json_kwargs)
+        self.raw_dict = read_json(fname, verbosity=2, **read_json_kwargs)
         self.id = self.raw_dict['id']
         self.strokes = self.raw_dict['gml']['tag']['drawing']
+
+    def __repr__(self):
+        return f'Drawing(id={self.id}, num_strokes={len(self.strokes)})'
 
 
 def get_from_blackbook(id, save_path=Path('data/gml'), **drawing_kwargs):
@@ -55,9 +57,11 @@ def get_from_blackbook(id, save_path=Path('data/gml'), **drawing_kwargs):
     return Drawing(fname, **drawing_kwargs)
 
 
-def filter_by_application(iterable, application_name='Fat Tag - Katsu Edition'):
+def filter_by_application(iterable,
+                          application_name='Fat Tag - Katsu Edition'):
     '''Returns an iterable of files that are from the given application.'''
-    return filter(lambda fname: is_from_application(fname, application_name), iterable)
+    return filter(lambda fname: is_from_application(fname, application_name),
+                  iterable)
 
 
 def is_from_application(fname, application_name='Fat Tag - Katsu Edition'):
@@ -71,7 +75,9 @@ def read_json(fname, verbosity=1, **hook_kwargs):
     with open(fname, 'r') as file:
         try:
             if hook_kwargs is not None:
-                return json.load(file, object_hook=lambda x: json_decoder_hook(x, **hook_kwargs))
+                return json.load(
+                    file,
+                    object_hook=lambda x: json_decoder_hook(x, **hook_kwargs))
             else:
                 return json.load(file, object_hook=json_decoder_hook)
         except (KeyError, TypeError, AttributeError, AssertionError) as e:
@@ -93,7 +99,8 @@ def _float(x):
 
 def _pt2tuple(pt):
     '''Converts a GML point (as dict) to a tuple of (time, x, y, z).'''
-    return _float(pt.get('time')), _float(pt['x']), _float(pt['y']), _float(pt.get('z'))
+    return _float(pt.get('time')), _float(pt['x']), _float(pt['y']), _float(
+        pt.get('z'))
 
 
 def json_decoder_hook(data, scale_behavior='GML_SCREEN'):
@@ -112,15 +119,21 @@ def json_decoder_hook(data, scale_behavior='GML_SCREEN'):
             return np.array([_pt2tuple(data['pt'])])
     elif 'stroke' in data:
         # Convert list of strokes to array if it isn't already (due to GML->json conversion bug)
-        return [data['stroke']] if isinstance(data['stroke'], np.ndarray) else data['stroke']
+        return [data['stroke']] if isinstance(data['stroke'],
+                                              np.ndarray) else data['stroke']
     if 'tag' in data:
         # scale canvas to screen size
-        assert isinstance(data['tag'], dict), 'tag is not a dict.  GML malformed?'
+        assert isinstance(data['tag'],
+                          dict), 'tag is not a dict.  GML malformed?'
+        if 'header' in data['tag'] and 'environment' in data['tag']['header']:
+            data['tag']['environment'] = data['tag']['header']['environment']
         if 'environment' in data['tag']:
             w = float(data['tag']['environment']['screenBounds']['x'])
             h = float(data['tag']['environment']['screenBounds']['y'])
         else:
             w, h = 1, 1
+        # Flatten the drawing list by 1 level
+        data['tag']['drawing'] = sum(data['tag']['drawing'], [])
         for stroke in data['tag']['drawing']:
             if scale_behavior == 'GML_SCREEN':
                 stroke[:, 1] *= w
@@ -156,3 +169,96 @@ def json_decoder_hook(data, scale_behavior='GML_SCREEN'):
                     for stroke in data['tag']['drawing']:
                         stroke[:, 2] = 1 - stroke[:, 2]
     return data
+
+
+def txy_to_gml_xml(txys, bounds):
+    """Returns an xml string representing the given trajectory in GML format.
+    Args:
+        txys (Iterable[np.ndarray, nx3]): The trajectory to format (sequence of strokes)
+        bounds (4-tuple, [xmin, xmax, ymin, ymax]): The bounds of the canvas
+    """
+    with open('data/gml_template.xml', 'r') as f:
+        template = f.read()
+
+    def to_xml(**kwargs):
+        return '\n'.join([f'<{k}>{v}</{k}>' for k, v in kwargs.items()])
+
+    UP_VECTOR3 = to_xml(x=0, y=1, z=0)
+    SCREENBOUNDS = to_xml(x=bounds[1] - bounds[0], y=bounds[3] - bounds[2])
+    for txy in txys:
+        txy[:, 1:] += [bounds[0], bounds[2]]
+
+    def to_stroke(stroke):
+        return ('<stroke>' + '\n'.join(
+            [to_xml(pt=to_xml(t=t, x=x, y=y, z=0))
+             for t, x, y in stroke]) + '</stroke>')
+
+    DRAWING = '\n'.join([to_stroke(stroke) for stroke in txys])
+
+    return template.format(UP_VECTOR3=UP_VECTOR3,
+                           SCREENBOUNDS_VECTOR2=SCREENBOUNDS,
+                           DRAWING=DRAWING)
+
+
+def txy_to_gml_json(txys, bounds):
+    """Returns a json string representing the given trajectory in GML format.
+    Args:
+        txys (Iterable[np.ndarray, nx3]): The trajectory to format (sequence of strokes)
+        bounds (4-tuple, [xmin, xmax, ymin, ymax]): The bounds of the canvas
+    """
+
+    w, h = bounds[1] - bounds[0], bounds[3] - bounds[2]
+
+    drawing = [{
+        "stroke": {
+            "pt": [{
+                "time": str(t),
+                "x": str(x / w),
+                "y": str(y / h)
+            } for t, x, y in stroke]
+        }
+    } for stroke in txys]
+
+    ret = {
+        "id": -1,
+        "gml": {
+            "tag": {
+                "header": {
+                    "filename": "temptTag-2009_8_23_13_21_12.gml",
+                    "client": {
+                        "name": "eyeSaver-003"
+                    },
+                    "environment": {
+                        "screenBounds": {
+                            "x": str(bounds[1] - bounds[0]),
+                            "y": str(bounds[3] - bounds[2]),
+                        },
+                        "origin": {
+                            "x": "0",
+                            "y": "0",
+                        },
+                        # "up": {
+                        #     "x": "0",
+                        #     "y": "1",
+                        #     "z": "0",
+                        # },
+                    }
+                },
+                "drawing": drawing
+            }
+        }
+    }
+    return json.dumps(ret)
+
+
+def compute_state(stroke):
+    return stroke[:, 1:3].astype(np.float32)
+
+
+def compute_action(stroke):
+    return np.diff(stroke[:, 1:3], axis=0,
+                   append=stroke[-1:, 1:3]).astype(np.float32)
+
+
+def compute_obs(stroke):
+    return None

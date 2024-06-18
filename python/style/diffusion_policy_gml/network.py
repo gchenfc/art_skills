@@ -53,14 +53,22 @@ def eval(network, noise_scheduler, init, global_cond=None, log_history=None, gui
 
 
 @torch.no_grad()
-def eval_partial(network, noise_scheduler, init, starting_t, global_cond=None, log_history=None):
+def eval_partial(network,
+                 noise_scheduler,
+                 init,
+                 starting_t,
+                 ending_t=0,
+                 global_cond=None,
+                 log_history=None):
     x = init
 
     if isinstance(log_history, list):
         log_history.clear()
         log_history.append(x.detach().to('cpu').numpy())
 
-    for k in [t for t in noise_scheduler.timesteps if t <= starting_t]:
+    for k in [
+            t for t in noise_scheduler.timesteps if ending_t <= t <= starting_t
+    ]:
         # predict noise
         pred = network(
             sample=x,
@@ -79,6 +87,14 @@ def eval_partial(network, noise_scheduler, init, starting_t, global_cond=None, l
             log_history.append(x.detach().to('cpu').numpy())
 
     return x
+
+
+@torch.no_grad()
+def add_noise(x, timestep, noise_scheduler):
+    # Add initial noise
+    noise = torch.randn(x.shape, device=x.device)
+    return noise_scheduler.add_noise(x, noise,
+                                     torch.tensor([timestep]).to(x.device))
 
 
 class SinusoidalPosEmb(nn.Module):

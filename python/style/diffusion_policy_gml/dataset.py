@@ -18,6 +18,8 @@ import numpy as np
 import zarr
 from collections import defaultdict
 from typing import Optional
+from load_gml import Drawing
+
 
 def create_sample_indices(
         episode_ends:np.ndarray, sequence_length:int,
@@ -331,4 +333,44 @@ class GmlDataset(torch.utils.data.Dataset):
         return normalize_data(data, self.stats['action'], center=not self.action_delta) if self.normalize['action'] else data
     
     def unnormalize_action(self, data):
-        return unnormalize_data(data, self.stats['action'], center=not self.action_delta) if self.normalize['action'] else data
+
+    def create_normalized_from_drawing(self,
+                                       drawing: Drawing,
+                                       strokei: Optional[int] = None):
+        def compute_state(stroke):
+            return stroke[:, 1:3].astype(np.float32)
+
+        def compute_action_(stroke):
+            return np.diff(stroke[:, 1:3], axis=0,
+                           append=stroke[-1:, 1:3]).astype(np.float32)
+
+        compute_action = compute_action_ if self.action_delta else compute_state
+
+        if strokei is not None:
+            obs = compute_state(drawing.strokes[strokei])
+            act = compute_action(drawing.strokes[strokei])
+        else:
+            if not self.action_penlift:
+                obs = np.concatenate(
+                    [compute_state(stroke) for stroke in drawing.strokes])
+                act = np.concatenate(
+                    [compute_action(stroke) for stroke in drawing.strokes])
+            else:
+
+                def append_false(stroke):
+                    return np.concatenate(
+                        [stroke, np.zeros((stroke.shape[0], 1), dtype=np.float32)], axis=1)
+
+                all_obs = [compute_state(drawing.strokes[0])]
+                all_act = [append_false(compute_action(drawing.strokes[0]))]
+                for strokei in range(1, len(drawing.strokes)):
+                    obs = compute_state(drawing.strokes[strokei])
+                    act = append_false(compute_action(
+                        drawing.strokes[strokei]))
+                    all_act[-1][-1] = [*(obs[0] - all_obs[-1][-1]), 1]
+                    all_obs.append(obs)
+                    all_act.append(act)
+                obs = np.concatenate(all_obs)
+                act = np.concatenate(all_act)
+
+        return self.normalize_obs(obs), self.normalize_action(act)
