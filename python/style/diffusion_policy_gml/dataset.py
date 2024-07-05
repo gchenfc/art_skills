@@ -106,6 +106,7 @@ def unnormalize_data(ndata, stats, center=False):
 
 # dataset
 class PushTStateDataset(torch.utils.data.Dataset):
+
     def __init__(self,
                  dataset_path,
                  pred_horizon,
@@ -194,6 +195,7 @@ class PushTStateDataset(torch.utils.data.Dataset):
 
 # dataset
 class GmlDataset(torch.utils.data.Dataset):
+
     def __init__(self,
                  dataset_path,
                  sequence_length,
@@ -389,6 +391,7 @@ class GmlDataset(torch.utils.data.Dataset):
     def create_normalized_from_drawing(self,
                                        drawing: Drawing,
                                        strokei: Optional[int] = None):
+
         def compute_state(stroke):
             return stroke[:, 1:3].astype(np.float32)
 
@@ -410,8 +413,11 @@ class GmlDataset(torch.utils.data.Dataset):
             else:
 
                 def append_false(stroke):
-                    return np.concatenate(
-                        [stroke, np.zeros((stroke.shape[0], 1), dtype=np.float32)], axis=1)
+                    return np.concatenate([
+                        stroke,
+                        np.zeros((stroke.shape[0], 1), dtype=np.float32)
+                    ],
+                                          axis=1)
 
                 all_obs = [compute_state(drawing.strokes[0])]
                 all_act = [append_false(compute_action(drawing.strokes[0]))]
@@ -426,3 +432,142 @@ class GmlDataset(torch.utils.data.Dataset):
                 act = np.concatenate(all_act)
 
         return self.normalize_obs(obs), self.normalize_action(act)
+
+
+class GmlDatasetNoSliding(GmlDataset):
+
+    def __init__(self,
+                 dataset_path,
+                 sequence_length,
+                 action_delta=False,
+                 action_penlift=False,
+                 normalize=defaultdict(lambda: True),
+                 max_drawings: Optional[int] = None,
+                 allow_sliding_by_stroke=False,
+                 smaller_normalization=False):
+        """
+        action_delta: if True, actions should be dx/dy (vs x/y)
+        action_penlift: if True, add 5th column for penlift status (0 or 1)
+        normalize: dict of bools for 'obs' and 'action' whether to normalize or not
+        max_drawings: if not None, only load the first max_drawings episodes
+        allow_starting_after_first_stroke: if True, allow "sliding" window on stroke boundaries
+        """
+
+        # read from zarr dataset
+        dataset_root = zarr.open(dataset_path, 'r')
+        # All demonstration episodes are concatinated in the first dimension N
+        action_key = 'action' if action_delta else 'state'
+        train_data = {
+            # (N, action_dim)
+            'action': dataset_root['data'][action_key][:].astype(np.float32),
+            # (N, obs_dim)
+            'obs': dataset_root['data']['state'][:].astype(np.float32)
+        }
+        print('Dataset action/obs dims:', train_data['action'].shape,
+              train_data['obs'].shape)
+
+        # Handle penlifts
+        penlift_already_calculated = (
+            dataset_root['data']['action'].shape[1] == 3)
+        if action_penlift and not penlift_already_calculated:
+            dx_act = np.diff(train_data['obs'], axis=0, append=-8675309)
+            dx_pred = dataset_root['data']['action'][:].astype(np.float32)
+            pen_lifted = np.linalg.norm(dx_act - dx_pred, axis=1) > 1e-6
+            if action_delta:
+                train_data['action'][pen_lifted] = dx_act[pen_lifted]
+                train_data['action'][-1] = 0
+            train_data['action'] = np.concatenate(
+                [train_data['action'], pen_lifted[:, None]], axis=1)
+
+        # Marks one-past the last index for each episode
+        if max_drawings is None:
+            episode_ends = dataset_root['meta']['episode_ends'][:]
+        else:
+            episode_ends = dataset_root['meta']['episode_ends'][:max_drawings]
+            train_data['action'] = train_data['action'][:episode_ends[-1] + 10]
+            train_data['obs'] = train_data['obs'][:episode_ends[-1] + 10]
+
+        # compute start and end of each state-action sequence
+        # also handles padding
+        indices = GmlDatasetNoSliding.create_sample_indices(
+            episode_ends=episode_ends,
+            sequence_length=sequence_length,
+            allow_sliding=allow_sliding_by_stroke)
+
+        # compute statistics and normalized data to [-1,1]
+        stats = dict()
+        normalized_train_data = dict()
+        for key, data in train_data.items():
+            if normalize[key]:
+                stats[key] = get_data_stats(data)
+                if key == 'action' and action_penlift and action_delta:
+                    lifted = data[:, -1]
+                    stats[key] = get_data_stats(data[lifted == 0])
+                    stats[key]['min'][-1] = 0
+                    stats[key]['max'][-1] = 10
+                    if smaller_normalization:
+                        stats[key]['min'][:-1] *= 5
+                        stats[key]['max'][:-1] *= 5
+                        stats[key]['min'][-1] = 0
+                        stats[key]['max'][-1] = 20
+                normalized_train_data[key] = normalize_data(data, stats[key])
+            else:
+                normalized_train_data[key] = data
+
+        self.data_bak = train_data
+        self.indices = indices
+        self.stats = stats
+        self.normalized_train_data = normalized_train_data
+        self.normalize = normalize
+        self.episode_ends = episode_ends
+        self.sequence_length = sequence_length
+        self.action_delta = action_delta
+        self.action_penlift = action_penlift
+
+    @staticmethod
+    def create_sample_indices(episode_ends,
+                              sequence_length,
+                              allow_sliding=False):
+        # Return Nx4 array with rows:
+        #   (buffer_start, buffer_end, sample_start, sample_end)
+        #   e.g. (4000, 4128, 0, 128)
+        N = len(episode_ends)
+        ret = np.zeros((N, 4), dtype=np.int64)
+        ret[0, 0] = 0
+        ret[1:, 0] = episode_ends[:-1]
+        ret[:, 1] = np.minimum(episode_ends, ret[:, 0] + sequence_length)
+        ret[:, 2] = 0
+        ret[:, 3] = ret[:, 1] - ret[:, 0]
+        if allow_sliding:
+            raise NotImplementedError('Sliding not implemented')
+        return ret
+
+    def __getitem__(self, idx):
+        # get the start/end indices for this datapoint
+        buffer_start_idx, buffer_end_idx, \
+            sample_start_idx, sample_end_idx = self.indices[idx]
+
+        # place data into ret object
+        try:
+            nsample = dict()
+            nsample['obs'] = np.zeros(
+                (self.sequence_length,
+                 self.normalized_train_data['obs'].shape[1]),
+                dtype=np.float32)
+            nsample['action'] = np.zeros(
+                (self.sequence_length,
+                 self.normalized_train_data['action'].shape[1]),
+                dtype=np.float32)
+            nsample['obs'][:sample_end_idx] = self.normalized_train_data[
+                'obs'][buffer_start_idx:buffer_end_idx]
+            nsample['action'][:sample_end_idx] = self.normalized_train_data[
+                'action'][buffer_start_idx:buffer_end_idx]
+        except:
+            print(buffer_start_idx, buffer_end_idx, sample_start_idx,
+                  sample_end_idx)
+            raise
+
+        # discard unused observations
+        # nsample['obs'] = nsample['obs'][:self.obs_horizon,:]
+        assert nsample['obs'].shape[0] == self.sequence_length
+        return nsample

@@ -19,8 +19,23 @@ import math
 import torch
 import torch.nn as nn
 
+
+def binarize_last(x):
+    x[..., -1] = x[..., -1] > 0.5
+    return x
+
+
+binarize_last_ = binarize_last
+
+
 @torch.no_grad()
-def eval(network, noise_scheduler, init, global_cond=None, log_history=None, guidance=None):
+def eval(network,
+         noise_scheduler,
+         init,
+         global_cond=None,
+         binarize_last=False,
+         log_history=None,
+         guidance=None):
     x = init
 
     if isinstance(log_history, list):
@@ -29,25 +44,21 @@ def eval(network, noise_scheduler, init, global_cond=None, log_history=None, gui
 
     for k in noise_scheduler.timesteps:
         # predict noise
-        pred = network(
-            sample=x,
-            timestep=k,
-            global_cond=global_cond
-        )
+        pred = network(sample=x, timestep=k, global_cond=global_cond)
 
         if guidance is not None:
             alpha_bar = noise_scheduler.alphas_cumprod[k]
             pred += guidance(x) * torch.sqrt(1 - alpha_bar)
 
         # inverse diffusion step (remove noise)
-        x = noise_scheduler.step(
-            model_output=pred,
-            timestep=k,
-            sample=x
-        ).prev_sample
+        x = noise_scheduler.step(model_output=pred, timestep=k,
+                                 sample=x).prev_sample
 
         if isinstance(log_history, list):
             log_history.append(x.detach().to('cpu').numpy())
+
+        if binarize_last:
+            x = binarize_last_(x)
 
     return x
 
@@ -59,6 +70,7 @@ def eval_partial(network,
                  starting_t,
                  ending_t=0,
                  global_cond=None,
+                 binarize_last=False,
                  log_history=None):
     x = init
 
@@ -78,6 +90,9 @@ def eval_partial(network,
 
         if isinstance(log_history, list):
             log_history.append(x.detach().to('cpu').numpy())
+
+        if binarize_last:
+            x = binarize_last_(x)
 
     return x
 
