@@ -1,28 +1,56 @@
-from typing import Union
+from typing import Union, Optional
 import torch
 import torch.nn as nn
 from style.diffusion_policy_gml.transformer_for_diffusion import TransformerForDiffusion
 from diffusion_policy.model.diffusion.positional_embedding import SinusoidalPosEmb
 
+# class AugmentWithCnn(nn.Module):
+
+#     def __init__(self, input_dim, n_emb):
+#         super().__init__()
+#         self.layer1 = nn.Conv1d(input_dim, input_dim * 3, 5)
+#         self.layer2 = nn.Conv1d(input_dim * 3, n_emb, 1)
+#         self.input_emb = nn.Sequential(nn.Conv1d(input_dim, input_dim * 3, 5),
+#                                        nn.ReLU(), nn.Conv1d(n_emb, n_emb, 1),
+#                                        nn.ReLU(), nn.Conv1d(n_emb, n_emb, 1),
+#                                        nn.ReLU())
+
+#     def forward(self, x):
+#         return self.input_emb(x)
+
+
+class Transpose(nn.Module):
+
+    def __init__(self, dim1, dim2):
+        super().__init__()
+        self.dim1 = dim1
+        self.dim2 = dim2
+
+    def forward(self, x):
+        return x.transpose(self.dim1, self.dim2)
+
 
 class Transformer1d(TransformerForDiffusion):
 
-    def __init__(self,
-                 input_dim: int,
-                 output_dim: int,
-                 horizon: int,
-                 n_obs_steps: int = None,
-                 cond_dim: int = 0,
-                 n_layer: int = 12,
-                 n_head: int = 12,
-                 n_emb: int = 768,
-                 p_drop_emb: float = 0.1,
-                 p_drop_attn: float = 0.1,
-                 causal_attn: bool = False,
-                 time_as_cond: bool = True,
-                 obs_as_cond: bool = False,
-                 n_cond_layers: int = 0,
-                 use_sinusoidal_pos_embedding: bool = False) -> None:
+    def __init__(
+        self,
+        input_dim: int,
+        output_dim: int,
+        horizon: int,
+        n_obs_steps: int = None,
+        cond_dim: int = 0,
+        n_layer: int = 12,
+        n_head: int = 12,
+        n_emb: int = 768,
+        p_drop_emb: float = 0.1,
+        p_drop_attn: float = 0.1,
+        causal_attn: bool = False,
+        time_as_cond: bool = True,
+        obs_as_cond: bool = False,
+        n_cond_layers: int = 0,
+        use_sinusoidal_pos_embedding: bool = False,
+        augment_input_embedding: Optional[nn.Module] = None,
+    ) -> None:
         self.use_sin_pos_emb = use_sinusoidal_pos_embedding
         super().__init__(input_dim=input_dim,
                          output_dim=output_dim,
@@ -41,6 +69,10 @@ class Transformer1d(TransformerForDiffusion):
         # if use_sinusoidal_input_embedding:
         #     self.input_emb = nn.Linear(input_dim, n_emb)
         # initialize positional embedding to sinusoidal
+        if augment_input_embedding is not None:
+            # augment with cnn and stuff
+            self.input_emb = augment_input_embedding
+        self.apply(self._init_weights)
 
     def _init_weights(self, module):
         if isinstance(module, TransformerForDiffusion):
@@ -63,6 +95,12 @@ class Transformer1d(TransformerForDiffusion):
                 torch.nn.init.normal_(module.pos_emb, mean=0.0, std=0.02)
             if module.cond_obs_emb is not None:
                 torch.nn.init.normal_(module.cond_pos_emb, mean=0.0, std=0.02)
+        elif isinstance(module, nn.Conv1d):
+            torch.nn.init.kaiming_normal_(module.weight)
+            if module.bias is not None:
+                torch.nn.init.constant_(module.bias, 0)
+        elif isinstance(module, nn.ReLU) or isinstance(module, Transpose):
+            pass
         else:
             super()._init_weights(module)
 

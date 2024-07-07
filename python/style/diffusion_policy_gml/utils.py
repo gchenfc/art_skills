@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from cycler import cycler
 
+drawing_lims = dict(x=(0, 1), y=(0, 1))
+
 
 def plot_traj(ax,
               action,
@@ -45,8 +47,8 @@ def plot_traj(ax,
         ax.grid(False)
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
+        ax.set_xlim(*drawing_lims['x'])
+        ax.set_ylim(*drawing_lims['y'])
         ax.set_aspect('equal')
 
 
@@ -70,6 +72,8 @@ def plot_result(dataset,
             ax.set_prop_cycle(custom_cycler)
     else:
         fig = axes['A'].get_figure()
+    if len(action_n.shape) == 1:
+        action_n = action_n[:, None]
     if action_n.shape[1] == 1:
         use_obs = True
     if use_obs:
@@ -93,20 +97,25 @@ def plot_result(dataset,
     axes['p'].set_title('Pen Up')
 
     if clean:
-        axes['A'].set_xticks([0, 0.5, 1])
-        axes['A'].set_yticks([0, 0.5, 1])
+        xmin, xmax = drawing_lims['x']
+        ymin, ymax = drawing_lims['y']
+        axes['A'].set_xticks([xmin, (xmin + xmax) / 2, xmax])
+        axes['A'].set_yticks([ymin, (ymin + ymax) / 2, ymax])
 
     fig.tight_layout()
     return fig, axes
 
 
-import torch
-import torch.nn as nn
-import gc
+def kill_after_penlift(x, penlift_index):
+    x = x * 1
+    if len(x.shape) == 3:
+        return np.stack([
+            kill_after_penlift(x[i], penlift_index) for i in range(x.shape[0])
+        ])
 
+    index = np.nonzero(x[:, penlift_index] > 0.5)[0]
+    if len(index) > 0:
+        index = index[0]
+        x[index + 1:] = np.nan
 
-def is_cuda_tensor(obj):
-    try:
-        return torch.is_tensor(obj) and obj.is_cuda
-    except ReferenceError:
-        return False
+    return x

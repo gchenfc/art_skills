@@ -199,7 +199,8 @@ class TransformerForDiffusion(ModuleAttrMixin):
         decay = set()
         no_decay = set()
         whitelist_weight_modules = (torch.nn.Linear,
-                                    torch.nn.MultiheadAttention)
+                                    torch.nn.MultiheadAttention,
+                                    torch.nn.Conv1d)
         blacklist_weight_modules = (torch.nn.LayerNorm, torch.nn.Embedding)
         for mn, m in self.named_modules():
             for pn, p in m.named_parameters():

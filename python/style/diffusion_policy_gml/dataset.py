@@ -444,13 +444,19 @@ class GmlDatasetNoSliding(GmlDataset):
                  normalize=defaultdict(lambda: True),
                  max_drawings: Optional[int] = None,
                  allow_sliding_by_stroke=False,
-                 smaller_normalization=False):
+                 ignore_jump_actions=False,
+                 smaller_normalization=False,
+                 prescale_obs=None,
+                 prescale_penlift=None,
+                 min_traj_length=None):
         """
         action_delta: if True, actions should be dx/dy (vs x/y)
         action_penlift: if True, add 5th column for penlift status (0 or 1)
         normalize: dict of bools for 'obs' and 'action' whether to normalize or not
         max_drawings: if not None, only load the first max_drawings episodes
         allow_starting_after_first_stroke: if True, allow "sliding" window on stroke boundaries
+        ignore_jump_actions: if True, set the actions during pen lifts to 0 instead of the true dx/dy
+        min_traj_length: if not None, discard trajectories shorter than this
         """
 
         # read from zarr dataset
@@ -474,10 +480,22 @@ class GmlDatasetNoSliding(GmlDataset):
             dx_pred = dataset_root['data']['action'][:].astype(np.float32)
             pen_lifted = np.linalg.norm(dx_act - dx_pred, axis=1) > 1e-6
             if action_delta:
-                train_data['action'][pen_lifted] = dx_act[pen_lifted]
+                train_data['action'][pen_lifted] = (0 if ignore_jump_actions
+                                                    else dx_act[pen_lifted])
                 train_data['action'][-1] = 0
             train_data['action'] = np.concatenate(
                 [train_data['action'], pen_lifted[:, None]], axis=1)
+
+        if prescale_obs is not None:
+            min_, max_ = prescale_obs
+            train_data['obs'] = train_data['obs'] * (max_ - min_) + min_
+            assert train_data['action'].shape[1] == 3, 'Unexpected action dim'
+            train_data['action'][:, :2] *= (max_ - min_)
+        if prescale_penlift is not None:
+            min_, max_ = prescale_penlift
+            assert train_data['action'].shape[1] == 3, 'Unexpected action dim'
+            train_data['action'][:, -1] = (train_data['action'][:, -1] *
+                                           (max_ - min_) + min_)
 
         # Marks one-past the last index for each episode
         if max_drawings is None:
@@ -493,6 +511,8 @@ class GmlDatasetNoSliding(GmlDataset):
             episode_ends=episode_ends,
             sequence_length=sequence_length,
             allow_sliding=allow_sliding_by_stroke)
+        if min_traj_length is not None:
+            indices = indices[indices[:, 3] >= min_traj_length]
 
         # compute statistics and normalized data to [-1,1]
         stats = dict()
