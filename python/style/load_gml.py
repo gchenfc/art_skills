@@ -200,7 +200,7 @@ def txy_to_gml_xml(txys, bounds):
                            DRAWING=DRAWING)
 
 
-def txy_to_gml_json(txys, bounds):
+def txy_to_gml_json(txys, bounds, alt_format=False):
     """Returns a json string representing the given trajectory in GML format.
     Args:
         txys (Iterable[np.ndarray, nx3]): The trajectory to format (sequence of strokes)
@@ -209,15 +209,26 @@ def txy_to_gml_json(txys, bounds):
 
     w, h = bounds[1] - bounds[0], bounds[3] - bounds[2]
 
-    drawing = [{
-        "stroke": {
-            "pt": [{
-                "time": str(t),
-                "x": str(x / w),
-                "y": str(y / h)
-            } for t, x, y in stroke]
+    if not alt_format:
+        drawing = [{
+            "stroke": {
+                "pt": [{
+                    "time": str(t),
+                    "x": str(x / w),
+                    "y": str(y / h)
+                } for t, x, y in stroke]
+            }
+        } for stroke in txys]
+    else:
+        drawing = {
+            "stroke": [{
+                "pt": [{
+                    "time": str(t),
+                    "x": str(x / w),
+                    "y": str(y / h)
+                } for t, x, y in stroke]
+            } for stroke in txys]
         }
-    } for stroke in txys]
 
     ret = {
         "id": -1,

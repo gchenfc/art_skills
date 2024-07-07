@@ -1,0 +1,296 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--
+  canvasplayer, 000000book edition
+  Graffiti Markup Language (GML) playback using HTML5 <canvas> and Processing.js
+
+  by Jamie Wilkinson... <https://jamiedubs.com> <https://github.com/jamiew>
+
+	v1: initial implementation
+  v2: multiple strokes, looping, iPhone translation, better stage positioning
+	v3: time-accurate playback
+
+  TODO:
+  * drips!!
+  * draw curves instead of simple lines
+  * scale & center the drawing on the stage
+  * customizable line width, speed sensitivity, etc.
+
+-->
+<html>
+<head>
+  <title>canvasplayer: GML Playback using Processing.js</title>
+  <style type="text/css" media="screen">
+    body { background: #fff; color: #222; font-family: sans-serif;margin: 0 auto; text-align: center; }
+    body, canvas { width: 800px; }
+    canvas { height: 580px; background-color: #000; border: 5px solid #222; }
+    a, a:hover { color: #9f9f77; }
+    h1 { letter-spacing: -1px; color: #000; margin-left: 20px; }
+    h2 { font-family: "Arial", sans-serif; font-weight: normal; }
+    #loading { position: absolute; margin: -5px 0 0 0px; }
+    #tag_id { color: #999; text-transform: uppercase; font-size: 9pt; margin-top: -8px; }
+
+    /* new navigation sidebar */
+    #sidebar { position: absolute; margin-left: -170px; width: 150px; margin-top: 50px; overflow: hidden; font-size: 13pt; text-align: right; }
+    #sidebar ul { list-style: none; line-height: 1.4em; }
+    #sidebar hr { border: 0; border-bottom: 1px dotted #ccc; }
+    #sidebar a.selected { text-decoration: none; color: #000; }
+    #sidebar a.selected:after { content: "*"; color: #e33; font-weight: bold; }
+  </style>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-96220-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'UA-96220-1');
+  </script>
+</head>
+<body>
+
+  <div id="loading">
+    <img src="https://raw.githubusercontent.com/jamiew/canvasplayer/master/loading1.gif" alt="" title="" id="loading_animation" />
+    <div id="tag_id">...</div>
+  </div>
+
+  <h1>canvasplayer: GML Playback using Processing.js</h1>
+  <div id="sidebar">
+    <div id="meta"></div>
+    <h3>Load Tag:</h3>
+    <ul>
+      <li><a href="?latest" id="link-latest">Latest</a></li>
+      <li><a href="?random" id="link-random">Random</a></li>
+      <li><hr />
+          <a href="?id=161" id="link-161">Katsu</a></li>
+      <li><a href="?id=158" id="link-158">Jesus Saves</a></li>
+      <li><a href="?id=1399" id="link-1399">Seen</a></li>
+      <li><a href="?id=818" id="link-818">Hell</a></li>
+      <li><a href="?id=148" id="link-148">hello world</a></li>
+      <li><a href="?id=842" id="link-842">404</a></li>
+      <li><hr />
+          <small>more on <a href="https://000000book.com">000000book.com</a></small></li>
+    </ul>
+  </div>
+
+  <canvas id="canvas"></canvas>
+  <p>
+    Code available at <a href="https://github.com/jamiew/canvasplayer">github.com/jamiew/canvasplayer</a>
+    <p><strong>GML Webring:</strong> <a href="http://fffff.at/gml-week-graffiti-markup-language/">intro</a> / <a href="http://fffff.at/tag/gmlweek">recent projects</a> / <a href="http://fffff.at/gml">GML spec</a> / <a href="https://000000book.com">data (#000000book)</a</p>
+  </p>
+
+
+  <!-- Our Code! -->
+  <script id="sketch" type="text/javascript">
+
+  // big TODO: use the time data instead of just doing continuous time playback
+  function setup() {
+    // setup our canvas
+    size(800, 580);
+    fps = 60;
+    frameRate(fps);
+    background(0);
+    smooth();
+
+
+    // options
+    downsampling = false;
+
+    // read orientation/scaling headers from the GML
+    // DustTag's GML does not specify orientation/scaling, so we're explicitly fixing known iPhone apps
+    var app_name = gml.tag.header && gml.tag.header.client && gml.tag.header.client.name;
+    if(app_name == 'Graffiti Analysis 2.0: DustTag' || app_name == 'DustTag: Graffiti Analysis 2.0' || app_name == 'Fat Tag - Katsu Edition'){
+      rotation = 80;
+      translation = [0, 800]; // still gets cropped; should scale down all values
+      console.log('iPhone app detected, rotating ...');
+    } else {
+      rotation = 0;
+      translation = [0, 0];
+      // console.log("Unknown appplication source: "+app_name);
+      // console.log(gml.tag.header);
+    }
+    console.log("rotation="+rotation+" translation="+translation);
+
+    // read data from the GML (GSON), loaded via #000000book JSONp callback
+    // the <script> tag is finicky if not at the bottom of the page, after the Processing.js sketch
+    pts = [];
+    strokes = (gml.tag.drawing.stroke instanceof Array ? gml.tag.drawing.stroke : [gml.tag.drawing.stroke]);
+    for(i in strokes){
+      console.log("Reading stroke #"+i+" ...");
+      pts = pts.concat(strokes[i].pt);
+      pts.push(undefined); //blank obj to indicate new stroke
+    }
+    end_time = pts[pts.length-2].time*1000; // -1 is our end-of-stroke undefined
+
+    // Set initial path vector & draw settings
+    loopCount = 0;
+    restart();
+    strokeWeight(12); // "base width"
+    console.log(pts.length+" points");
+    console.log("time="+end_time+"ms");
+
+    // ghetto: downsample GML that is too complex to draw in realtime
+    // I think we should be pre-computing all of our drawable frames
+    // (or at least paths) which would avoid this entirely...
+    threshold = 5;
+    density = 100/(end_time/pts.length);
+    console.log("point density = "+density);
+    if(downsampling == true && density > threshold){
+      // totally arbitrary based on debugging some drawings
+      if(density > threshold + 4){
+        amount = 3;
+      } else if(density > threshold + 2){
+        amount = 2;
+      } else {
+        amount = 1.5;
+      }
+      console.log("downsampling GML, amount="+amount);
+
+      newpts = [];
+      for(let i = 0; i < pts.length; i++){
+        // skip a great deal of points, but
+        // always include undefined (stroke separators)
+        if(i % amount == 0 || pts[i] == undefined){
+          newpts.push(pts[i]);
+        }
+      }
+      oldpts = pts;
+      pts = newpts;
+    }
+  }
+
+  function restart(){
+    console.log("restarting!.....");
+    loopCount += 1;
+    frameCount = 0;
+    pt = pts[0];
+    nxt = pts[1];
+    prev = undefined;
+    queued_at = pt.time*1000;
+    drawnPoints = 0;
+
+    background(0);
+  }
+
+  function draw(){
+
+    // Dump debugging every once in a while
+    diff = (millis()%end_time)-queued_at;
+    if(frameCount % 50 == 0){
+      if(pt){
+        console.log("loop="+loopCount+" millis="+millis()+" frameCount="+frameCount+" x="+pt.x+" y="+pt.y+" drawnPoints="+drawnPoints+" diff="+diff);
+      }
+      else{
+        console.log("frameCount="+frameCount+"... no point?!?");
+      }
+    }
+
+    // update point if we've reached next one...
+    if( (millis()%end_time) > queued_at){
+      prev = pts[drawnPoints-1];
+      pt = pts[drawnPoints];
+      drawnPoints += 1;
+      if(pts[drawnPoints]){
+        nxt = pts[drawnPoints];
+        queued_at = nxt.time*1000;
+      }
+      // console.log("millis="+millis()+" drawnPoints="+drawnPoints+" pt.time="+pt.time*1000+" queued_at="+queued_at+" diff="+diff);
+    }
+
+    // drawing rules -- e.g. see if we're done or need to skip or point
+    if( (millis()/loopCount) >= end_time ){
+      console.log("millis>end_time, "+drawnPoints+" points drawn of "+pts.length+ "... "+Math.round(drawnPoints/pts.length*100)+"%");
+      // exit();
+      restart();
+    }
+    // if(nxt == undefined){ console.log("no next point, drawing complete."); exit(); }
+    if(pt == undefined || pt == []){ return; } // if missing current pt, we are skipping
+    if(prev == undefined || prev == []){ prev = pt; } // if missing the prev, we're at the beginning of a new stroke
+
+    // geometry 101
+    dimx = (prev.x -pt.x)*width;
+    dimy = (prev.y -pt.y)*height;
+    hyp = sqrt(pow(dimx,2),pow(dimy,2));
+    // TODO angle of inflection
+
+    // transform display space if specified
+    translate(translation[0], translation[1]);
+    rotate(rotation);
+
+    // finally, draw
+    // use speed-sensitive stroke widths
+    strokeWidth = (1 / (sqrt(pow(dimx,2),pow(dimy,2)) + 50))*1000;
+    strokeWeight(strokeWidth);
+    stroke(255);
+
+    x1 = parseInt(prev.x*width);
+    y1 = parseInt(prev.y*height);
+    x2 = parseInt(pt.x*width);
+    y2 = parseInt(pt.y*height);
+
+    // console.log("1=("+x1+","+y1+") 2=("+x2+","+y2+")");
+    line(x1, y1, x2, y2);
+  }
+  </script>
+  <script src="processing.min.js" type="text/javascript" charset="utf-8"></script>
+
+
+  <!-- our GML data loading callback -->
+  <script type="text/javascript" charset="utf-8">
+    // stub out console.log() in case there's no Firebug for debugging
+    if(!console || !console.log) {
+      var console = new Array();
+      console.log = function () {}
+    }
+
+    // our JSONp callback method
+    function load_gml(data){
+      gml = data.gml;
+      document.getElementById("loading").innerHTML = '';
+      // console.log("load_gml() called");
+      // console.log(gml);
+      var canvas = document.getElementById("canvas");
+      var sketch = document.getElementById("sketch").text;
+      var p = Processing(canvas, sketch, gml);
+    };
+
+  </script>
+
+  <!-- load our GML data via JSONp from 000000book.com, the GML database -->
+  <!-- we have two differnet techniques for this... -->
+
+  <!-- #1: normal, basic JSONp -->
+  <!-- <script src="https://000000book.com/data/2365.json?callback=load_gml" type="text/javascript" charset="utf-8"></script>   -->
+
+  <!-- #2: a more complex example which can handle our fancy user interface :) -->
+  <script type="text/javascript" charset="utf-8">
+    // parse query variables from the URL to decide which tag to load
+    // - ?id=154
+    // - ?latest
+    // - ?random
+    var tag_id = 161; // default = KATSU
+    var matches = document.location.href.match(/id=(\d+)/);
+    console.log(matches);
+    var matches2 = document.location.href.match(/folder=([\w-]+)/);
+    console.log(matches2);
+    if(matches && matches[1]){ tag_id = matches[1]; }
+    else if(matches2 && matches2[1]){ tag_id = matches2[1]; }
+    else if(/latest/.test(document.location.href)){ tag_id = 'latest'; }
+    else if(/random/.test(document.location.href)){ tag_id = 'random'; }
+
+    // update our navigation controls
+    document.getElementById("tag_id").innerHTML = tag_id;
+    if(document.getElementById("link-"+tag_id)){ document.getElementById("link-"+tag_id).className = 'selected'; }
+
+    // append the cust <script> tag
+    var s=document.createElement('script');
+    if (matches2) {
+      s.setAttribute('src','../runs/'+tag_id+'/output_example.js');
+    } else {
+      s.setAttribute('src','https://000000book.com/data/'+tag_id+'.json?callback=load_gml');
+    }
+    document.getElementsByTagName('body')[0].appendChild(s);
+  </script>
+
+
+</body>
+</html>
