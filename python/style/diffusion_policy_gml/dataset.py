@@ -19,6 +19,7 @@ import zarr
 from collections import defaultdict
 from typing import Optional
 from load_gml import Drawing
+from PIL import Image
 
 
 def create_sample_indices(episode_ends: np.ndarray,
@@ -448,7 +449,10 @@ class GmlDatasetNoSliding(GmlDataset):
                  smaller_normalization=False,
                  prescale_obs=None,
                  prescale_penlift=None,
-                 min_traj_length=None):
+                 min_traj_length=None,
+                 use_clip_embeddings=False,
+                 use_filenames=True,
+                 use_rendering_folder=None):
         """
         action_delta: if True, actions should be dx/dy (vs x/y)
         action_penlift: if True, add 5th column for penlift status (0 or 1)
@@ -469,6 +473,32 @@ class GmlDatasetNoSliding(GmlDataset):
             # (N, obs_dim)
             'obs': dataset_root['data']['state'][:].astype(np.float32)
         }
+
+        # Extract metadata as needed
+        def get_from_meta(key):
+            assert key in dataset_root['meta'], f'No {key} found in dataset'
+            return dataset_root['meta'][key]
+
+        self.filenames = get_from_meta('filenames') if use_filenames else None
+        if use_clip_embeddings == 'gml':
+            self.clip_embeddings = get_from_meta('clip')
+        elif use_clip_embeddings == 'rendering':
+            self.clip_embeddings = get_from_meta('rendering_clip')
+        elif use_clip_embeddings == False:
+            self.clip_embeddings = None
+        else:
+            raise ValueError(
+                f'Invalid value for use_clip_embeddings: {use_clip_embeddings}'
+            )
+        if use_rendering_folder is not None:
+            filenames = get_from_meta('filenames')
+            self.renderings = torch.stack([
+                Image.open(use_rendering_folder + '/' + filename)
+                for filename in filenames
+            ])
+        else:
+            self.renderings = None
+
         print('Dataset action/obs dims:', train_data['action'].shape,
               train_data['obs'].shape)
 
@@ -555,7 +585,10 @@ class GmlDatasetNoSliding(GmlDataset):
         ret = np.zeros((N, 4), dtype=np.int64)
         ret[0, 0] = 0
         ret[1:, 0] = episode_ends[:-1]
-        ret[:, 1] = np.minimum(episode_ends, ret[:, 0] + sequence_length)
+        if sequence_length == -1:
+            ret[:, 1] = episode_ends
+        else:
+            ret[:, 1] = np.minimum(episode_ends, ret[:, 0] + sequence_length)
         ret[:, 2] = 0
         ret[:, 3] = ret[:, 1] - ret[:, 0]
         if allow_sliding:
@@ -567,27 +600,41 @@ class GmlDatasetNoSliding(GmlDataset):
         buffer_start_idx, buffer_end_idx, \
             sample_start_idx, sample_end_idx = self.indices[idx]
 
-        # place data into ret object
-        try:
+        if self.sequence_length == -1:
             nsample = dict()
-            nsample['obs'] = np.zeros(
-                (self.sequence_length,
-                 self.normalized_train_data['obs'].shape[1]),
-                dtype=np.float32)
-            nsample['action'] = np.zeros(
-                (self.sequence_length,
-                 self.normalized_train_data['action'].shape[1]),
-                dtype=np.float32)
-            nsample['obs'][:sample_end_idx] = self.normalized_train_data[
-                'obs'][buffer_start_idx:buffer_end_idx]
-            nsample['action'][:sample_end_idx] = self.normalized_train_data[
-                'action'][buffer_start_idx:buffer_end_idx]
-        except:
-            print(buffer_start_idx, buffer_end_idx, sample_start_idx,
-                  sample_end_idx)
-            raise
+            nsample['obs'] = self.normalized_train_data['obs'][
+                buffer_start_idx:buffer_end_idx]
+            nsample['action'] = self.normalized_train_data['action'][
+                buffer_start_idx:buffer_end_idx]
+        else:
+            # place data into ret object
+            try:
+                nsample = dict()
+                nsample['obs'] = np.zeros(
+                    (self.sequence_length,
+                     self.normalized_train_data['obs'].shape[1]),
+                    dtype=np.float32)
+                nsample['action'] = np.zeros(
+                    (self.sequence_length,
+                     self.normalized_train_data['action'].shape[1]),
+                    dtype=np.float32)
+                nsample['obs'][:sample_end_idx] = self.normalized_train_data[
+                    'obs'][buffer_start_idx:buffer_end_idx]
+                nsample[
+                    'action'][:sample_end_idx] = self.normalized_train_data[
+                        'action'][buffer_start_idx:buffer_end_idx]
+            except:
+                print(buffer_start_idx, buffer_end_idx, sample_start_idx,
+                      sample_end_idx)
+                raise
 
-        # discard unused observations
-        # nsample['obs'] = nsample['obs'][:self.obs_horizon,:]
-        assert nsample['obs'].shape[0] == self.sequence_length
+            # discard unused observations
+            # nsample['obs'] = nsample['obs'][:self.obs_horizon,:]
+            assert nsample['obs'].shape[0] == self.sequence_length
+
+        if self.clip_embeddings is not None:
+            nsample['clip'] = self.clip_embeddings[idx]
+        if self.filenames is not None:
+            nsample['filename'] = self.filenames[idx]
+
         return nsample
