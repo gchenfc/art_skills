@@ -35,9 +35,10 @@ class Drawing:
         '''Reads a GML JSON file and stores it as a Drawing object.'''
         # TODO(gerry): check for multiple strokes etc?
         # TODO(gerry): add support for other optional GML fields (e.g. color, brush, etc.)
-        self.raw_dict = read_json(fname, verbosity=2, **read_json_kwargs)
+        self.raw_dict = read_json(fname, **read_json_kwargs)
         self.id = self.raw_dict['id']
         self.strokes = self.raw_dict['gml']['tag']['drawing']
+        self.fname = fname
 
     def __repr__(self):
         return f'Drawing(id={self.id}, num_strokes={len(self.strokes)})'
@@ -133,7 +134,8 @@ def json_decoder_hook(data, scale_behavior='GML_SCREEN'):
         else:
             w, h = 1, 1
         # Flatten the drawing list by 1 level
-        data['tag']['drawing'] = sum(data['tag']['drawing'], [])
+        if isinstance(data['tag']['drawing'][0], list):
+            data['tag']['drawing'] = sum(data['tag']['drawing'], [])
         for stroke in data['tag']['drawing']:
             if scale_behavior == 'GML_SCREEN':
                 stroke[:, 1] *= w
