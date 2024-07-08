@@ -451,7 +451,7 @@ class GmlDatasetNoSliding(GmlDataset):
                  prescale_penlift=None,
                  min_traj_length=None,
                  use_clip_embeddings=False,
-                 use_filenames=True,
+                 use_filenames=False,
                  use_rendering_folder=None):
         """
         action_delta: if True, actions should be dx/dy (vs x/y)
@@ -479,7 +479,20 @@ class GmlDatasetNoSliding(GmlDataset):
             assert key in dataset_root['meta'], f'No {key} found in dataset'
             return dataset_root['meta'][key]
 
-        self.filenames = get_from_meta('filenames') if use_filenames else None
+        if use_filenames or (use_rendering_folder is not None):
+            if 'filenames' in dataset_root['meta']:
+                self.filenames = get_from_meta('filenames')
+            elif 'gml_filenames' in dataset_root['meta']:
+                # replace .json with .jpg
+                self.filenames = [
+                    f.replace('.json', '.jpg')
+                    for f in get_from_meta('gml_filenames')
+                ]
+            else:
+                raise ValueError('No filenames found in dataset')
+        else:
+            self.filenames = None
+        # self.filenames = get_from_meta('filenames') if use_filenames else None
         if use_clip_embeddings == 'gml':
             self.clip_embeddings = get_from_meta('clip')
         elif use_clip_embeddings == 'rendering':
@@ -491,10 +504,9 @@ class GmlDatasetNoSliding(GmlDataset):
                 f'Invalid value for use_clip_embeddings: {use_clip_embeddings}'
             )
         if use_rendering_folder is not None:
-            filenames = get_from_meta('filenames')
             self.renderings = torch.stack([
                 Image.open(use_rendering_folder + '/' + filename)
-                for filename in filenames
+                for filename in self.filenames
             ])
         else:
             self.renderings = None
