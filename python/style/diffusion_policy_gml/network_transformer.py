@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from style.diffusion_policy_gml.transformer_for_diffusion import TransformerForDiffusion
 from diffusion_policy.model.diffusion.positional_embedding import SinusoidalPosEmb
+import json
 
 # class AugmentWithCnn(nn.Module):
 
@@ -103,6 +104,18 @@ class Transformer1d(TransformerForDiffusion):
             pass
         else:
             super()._init_weights(module)
+
+    @staticmethod
+    def FromJson(fname, augment_input_embedding=None):
+        """Construct from a json file.
+        Because augment_input_embedding gets serialized as a string, we need to get it passed in.
+        """
+        with open(fname) as f:
+            network_kwargs = json.load(f)
+        assert str(augment_input_embedding) == network_kwargs['augment_input_embedding'], \
+            f"{str(augment_input_embedding)} != {network_kwargs['augment_input_embedding']}"
+        network_kwargs['augment_input_embedding'] = augment_input_embedding
+        return Transformer1d(**network_kwargs), network_kwargs
 
     def forward(self,
                 sample: torch.Tensor,
