@@ -16,6 +16,8 @@ import time
 import datetime
 import struct
 from pathlib import Path
+import numpy as np
+import pickle
 
 PORTS = {
     'whiteboard_input': 5900,
@@ -24,18 +26,20 @@ PORTS = {
     'fit_output': 5903,
     'robot_input': 5904,
     'robot_output': 5905,
-    'whiteboard_passthrough': 5906
+    'whiteboard_passthrough': 5906,
+    'numpy_inout': 5909,
 }
 SAVE_FOLDER = None
 
 COLORS = {
-    '#000000': 0, # black
-    '#ff0000': 1, # red
-    '#ffff00': 2, # yellow
-    '#008000': 3, # green
-    '#0000ff': 4, # blue
+    '#000000': 0,  # black
+    '#ff0000': 1,  # red
+    '#ffff00': 2,  # yellow
+    '#008000': 3,  # green
+    '#0000ff': 4,  # blue
     '#800080': 5  # purple
 }
+
 
 def get_local_ip():
     # return socket.gethostbyname(socket.gethostname())
@@ -46,7 +50,13 @@ def get_local_ip():
 
 HOST = get_local_ip()
 
-clients = {'whiteboard': set(), 'fit': set(), 'robot_input': set(), 'whiteboard_passthrough': set()}
+clients = {
+    'whiteboard': set(),
+    'fit': set(),
+    'robot_input': set(),
+    'whiteboard_passthrough': set(),
+    'numpy_inout': set(),
+}
 frame_msg = ''
 
 
@@ -62,11 +72,53 @@ def create_log_file():
     now = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
     return SAVE_FOLDER / f'{now}.txt'
 
+
+class NumpyClient:
+    def __init__(self, websocket):
+        self.most_recent_stroke = []
+        self.websocket = websocket
+        asyncio.get_event_loop().create_task(self.handle_response())
+
+    async def add_point(self, c, t, x, y):
+        if c == 'M':
+            self.most_recent_stroke = []
+        elif c == 'L':
+            self.most_recent_stroke.append((t, x, y, 0))
+        elif c == 'U':
+            self.most_recent_stroke.append((t, x, y, 1))
+            arr = np.array(self.most_recent_stroke, dtype=np.float32)
+            await self.websocket.send(pickle.dumps(arr))
+        else:
+            raise ValueError(f'Invalid command: {c}')
+
+    async def handle_response(self):
+        while True:
+            data = await self.websocket.recv()
+            result = pickle.loads(data)
+            print("Received processed array:", result)
+            for client in clients['whiteboard']:
+                x, y, _ = result[0]
+                await client.send(f'M{x},{y}')
+                for x, y, _ in result:
+                    await client.send(f'L{x},{y}')
+                await client.send(f'U{x},{y}')
+
+
+async def numpy_client():
+    uri = f"ws://localhost:{PORTS['numpy_inout']}"
+    async with websockets.connect(uri) as websocket:
+        numpy_client = NumpyClient(websocket)
+        clients['numpy_inout'].add(numpy_client)
+        await asyncio.Future()
+    print('Closed numpy client')
+
+
 async def handle_whiteboard(websocket):
     # async with aiofiles.open(create_log_file(), 'w') as f:
     print('Whiteboard connection opened!')
     s = time.perf_counter()
     t = s
+    fname = create_log_file()
     try:
         clients['whiteboard'].add(websocket)
         print(frame_msg)
@@ -74,7 +126,8 @@ async def handle_whiteboard(websocket):
         # Not sure why opening as 'w' causes some weird bug with websocket
         #   https://stackoverflow.com/q/70811731/9151520
         # Open with 'a' instead, and the first connection will always fail, just wait for the second
-        with open(create_log_file(), 'a') as f:
+        with open(fname, 'a') as f:
+            # print(fname)
             while True:
                 msg = await websocket.recv()
                 prev_t, t = t, time.perf_counter()
@@ -82,7 +135,8 @@ async def handle_whiteboard(websocket):
                 if msg[0] == 'C':
                     t_ipad, curr_color, prev_color = msg[1:].split(',')
                     print(curr_color, COLORS[curr_color])
-                    c, *data = float(t_ipad), COLORS[curr_color], COLORS[prev_color]
+                    c, *data = float(
+                        t_ipad), COLORS[curr_color], COLORS[prev_color]
                 else:
                     c, *data = parse(msg)
                 f.write(','.join('{}'.format(n) for n in [t, c, *data]) + '\n')
@@ -91,7 +145,12 @@ async def handle_whiteboard(websocket):
                     # await writer.drain()
                 for sock in clients['whiteboard_passthrough']:
                     await sock.send(msg)
+                for numpy_client in clients['numpy_inout']:
+                    await numpy_client.add_point(c, *data)
     except websockets.exceptions.ConnectionClosed as e:
+        print()
+        print(fname.name)
+        print()
         print('Whiteboard connection closed!', e)
     finally:
         await websocket.close()
@@ -100,7 +159,8 @@ async def handle_whiteboard(websocket):
 
 async def whiteboard_server():
     print(f'Serving whiteboard at: {HOST}:{PORTS["whiteboard_input"]}')
-    async with websockets.serve(handle_whiteboard, HOST, PORTS['whiteboard_input']):
+    async with websockets.serve(handle_whiteboard, HOST,
+                                PORTS['whiteboard_input']):
         await asyncio.Future()
     print('Closed whiteboard server')
 
@@ -132,7 +192,8 @@ async def handle_fit(reader, writer):
 
 
 async def fit_server():
-    server = await asyncio.start_server(handle_fit, 'localhost', PORTS['fit_input'])
+    server = await asyncio.start_server(handle_fit, 'localhost',
+                                        PORTS['fit_input'])
 
     addrs = ', '.join(str(sock.getsockname()) for sock in server.sockets)
     print(f'Serving fit server at {addrs}')
@@ -171,6 +232,7 @@ async def robot_server(client_type):
 
 async def main():
     await asyncio.wait([
+        asyncio.create_task(numpy_client()),
         asyncio.create_task(whiteboard_server()),
         asyncio.create_task(fit_server()),
         asyncio.create_task(robot_server('robot_input')),

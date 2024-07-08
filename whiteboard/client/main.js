@@ -1,7 +1,8 @@
 // const HOST = '192.168.0.15'
 // const HOST = '143.215.91.93'
 // const HOST = '172.20.10.2'
-const HOST = '143.215.91.135'
+// const HOST = '143.215.88.70'
+const HOST = '192.168.1.21'
 const websocket = new WebSocket("ws://"+HOST+":5900/");
 
 const [W, H] = [2.9464, 2.26];
@@ -30,8 +31,16 @@ let scale = 1;
 // robot.send('xLd0.63')
 // robot.send('xLr2.5964')
 // robot.send('xLu1.91')
-const [xmin, xmax] = [0.9, 2.5964];
-const [ymin, ymax] = [0.63, 1.91];
+// const [xmin, xmax] = [0.9, 2.5964];
+// const [ymin, ymax] = [0.63, 1.91];
+
+// robot.send('xLl0.7')
+// robot.send('xLd0.55')
+// robot.send('xLr2.52')
+// robot.send('xLu1.8')
+const [xmin, xmax] = [0.7, 2.52];
+// const [ymin, ymax] = [0.55, 1.8];
+const [ymin, ymax] = [0.65, 1.71];
 
 const strokeHistory = []
 const colorHistory = []
@@ -48,22 +57,38 @@ function convert_xy_to_normalized(x, y) {
   // return [x / canvas.width, y / canvas.width];
 
   y = canvas.height - y;
-  return clamp(
-    [
-      (x - canvas.width / 2) / scale + (xmin + xmax) / 2,
-      (y - canvas.height / 2) / scale + (ymin + ymax) / 2,
-    ],
-    [xmin, xmax],
-    [ymin, ymax]
-  );
+
+  if (canvas.width > canvas.height) {
+    return [x / canvas.width, y / canvas.width + (canvas.width - canvas.height) / 2 / canvas.width];
+  } else {
+    return [x / canvas.height + (canvas.height - canvas.width) / 2 / canvas.height, y / canvas.height];
+  }
+
+  // y = canvas.height - y;
+  // return clamp(
+  //   [
+  //     (x - canvas.width / 2) / scale + (xmin + xmax) / 2,
+  //     (y - canvas.height / 2) / scale + (ymin + ymax) / 2,
+  //   ],
+  //   [xmin, xmax],
+  //   [ymin, ymax]
+  // );
 }
 function convert_xy_from_normalized(x, y) {
-  const ret = [
-    (x - (xmin + xmax) / 2) * scale + canvas.width / 2,
-    (y - (ymin + ymax) / 2) * scale + canvas.height / 2,
-  ];
-  ret[1] = canvas.height - ret[1];
-  return ret;
+  y = 1 - y;
+
+  if (canvas.width > canvas.height) {
+    return [x * canvas.width, (y - (canvas.width - canvas.height) / 2 / canvas.width) * canvas.width];
+  } else {
+    return [(x - (canvas.height - canvas.width) / 2 / canvas.height) * canvas.height, y * canvas.height];
+  }
+
+  // const ret = [
+  //   (x - (xmin + xmax) / 2) * scale + canvas.width / 2,
+  //   (y - (ymin + ymax) / 2) * scale + canvas.height / 2,
+  // ];
+  // ret[1] = canvas.height - ret[1];
+  // return ret;
 }
 // function convert_raw_to_xy(x_raw, y_raw) {
 //   return []
@@ -75,14 +100,15 @@ websocket.onmessage = function (event) {
   xy = event.data.slice(1).split(',')
   x_raw = parseFloat(xy[0])
   y_raw = parseFloat(xy[1])
-  x = x_raw * canvas.width
-  y = y_raw * canvas.width
+  // x = x_raw * canvas.width
+  // y = y_raw * canvas.width
+  const [x, y] = convert_xy_from_normalized(x_raw, y_raw);
   console.log(command, x, y)
-  context_fit.strokeStyle = 'green'
-  context_fit.fillStyle = 'green'
+  context_fit.strokeStyle = 'lime'
+  context_fit.fillStyle = 'lime'
   context_fit.lineCap = 'round'
   context_fit.lineJoin = 'round'
-  context_fit.lineWidth = 10
+  context_fit.lineWidth = 50
   if (command == 'M') {
     // context_fit.beginPath();
     // context_fit.ellipse(x, y, 10, 10, 0, 0, 2 * Math.PI);
@@ -121,7 +147,7 @@ websocket.onmessage = function (event) {
     context_fit.fillRect(0, 0, canvas.width, canvas.height);
     context_fit.stroke();
     context_fit.beginPath();
-    context_fit.strokeStyle = 'green';
+    context_fit.strokeStyle = 'lime';
     lr = convert_xy_from_normalized(xmin, ymin);
     tr = convert_xy_from_normalized(xmax, ymax);
     console.log(lr, tr);

@@ -90,7 +90,8 @@ def plot_result(dataset,
             (action_n.shape[0], 2), np.nan), action_n),
                                   axis=1)
     plot_traj(axes['A'],
-              dataset.unnormalize_action(action_n),
+              dataset.unnormalize_action(action_n)
+              if dataset is not None else action_n,
               obs=obs if use_obs else None,
               x0=obs[0],
               clean=clean,
