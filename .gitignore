@@ -17,3 +17,9 @@ python/src/trajectories/tmp.p
 python/style/data/gml
 **__pycache__
 **.ipynb_checkpoints
+
+python/style/data
+python/style/checkpoints
+python/style/results
+python/style/runs
+python/ArtSkills.egg-info
