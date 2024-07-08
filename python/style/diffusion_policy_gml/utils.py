@@ -29,6 +29,13 @@ def plot_traj(ax,
         line_ls ['.-']: linestyle for drawing strokes
         line_kwargs [{}]: keyword arguments for drawing strokes
     """
+    if len(action.shape) == 1:
+        # Pen-up column only
+        assert obs is not None, 'Expected obs to be provided when action is pen-up only.'
+        action = np.concatenate((np.full(
+            (action.shape[0], 2), np.nan), action[:, None]),
+                                axis=1)
+
     pen_up = action[:, 2] > 0.5
 
     if obs is None:

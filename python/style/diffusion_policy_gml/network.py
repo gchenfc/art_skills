@@ -63,6 +63,23 @@ def eval(network,
     return x
 
 
+def guidance_fn(loss_fn, weight=1e1, device='cuda'):
+
+    def guidance(x):
+        # Returns grad of loss function w.r.t. x
+        # copy x and require grad
+        x = x.clone().detach().to(device)
+        x.requires_grad = True
+        # compute loss
+        with torch.enable_grad():
+            loss = loss_fn(x) * weight
+        # compute grad
+        grad = torch.autograd.grad(loss, x)[0]
+        return grad
+
+    return guidance
+
+
 @torch.no_grad()
 def eval_partial(network,
                  noise_scheduler,
@@ -71,7 +88,8 @@ def eval_partial(network,
                  ending_t=0,
                  global_cond=None,
                  binarize_last=False,
-                 log_history=None):
+                 log_history=None,
+                 guidance=None):
     x = init
 
     if isinstance(log_history, list):
@@ -83,6 +101,10 @@ def eval_partial(network,
     ]:
         # predict noise
         pred = network(sample=x, timestep=k, global_cond=global_cond)
+
+        if guidance is not None:
+            alpha_bar = noise_scheduler.alphas_cumprod[k]
+            pred += guidance(x) * torch.sqrt(1 - alpha_bar)
 
         # inverse diffusion step (remove noise)
         x = noise_scheduler.step(model_output=pred, timestep=k,
