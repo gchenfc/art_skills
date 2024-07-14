@@ -94,14 +94,16 @@ class NumpyClient:
     async def handle_response(self):
         while True:
             data = await self.websocket.recv()
-            result = pickle.loads(data)
-            print("Received processed array:", result)
+            results = pickle.loads(data)
+            print("Received processed array:", results)
             for client in clients['whiteboard']:
-                x, y, _ = result[0]
-                await client.send(f'M{x},{y}')
-                for x, y, _ in result:
-                    await client.send(f'L{x},{y}')
-                await client.send(f'U{x},{y}')
+                # await client.send(f'R0,0')
+                for result in results:
+                    x, y, _ = result[0]
+                    await client.send(f'M{x},{y}')
+                    for x, y, _ in result:
+                        await client.send(f'L{x},{y}')
+                    await client.send(f'U{x},{y}')
 
 
 async def numpy_client():
