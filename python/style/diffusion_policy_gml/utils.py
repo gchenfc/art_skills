@@ -5,6 +5,22 @@ from cycler import cycler
 drawing_lims = dict(x=(0, 1), y=(0, 1))
 
 
+def integrate_action(action, obs=None, x0=[0, 0]):
+    if len(action.shape) == 1:
+        # Pen-up column only
+        assert obs is not None, 'Expected obs to be provided when action is pen-up only.'
+        action = np.concatenate((np.full(
+            (action.shape[0], 2), np.nan), action[:, None]),
+                                axis=1)
+
+    pen_up = action[:, 2] > 0.5
+
+    if obs is None:
+        obs = np.concatenate(([[0, 0]], np.cumsum(action[:, :2], axis=0))) + x0
+
+    return obs, action, pen_up
+
+
 def plot_traj(ax,
               action,
               obs=None,
@@ -29,17 +45,7 @@ def plot_traj(ax,
         line_ls ['.-']: linestyle for drawing strokes
         line_kwargs [{}]: keyword arguments for drawing strokes
     """
-    if len(action.shape) == 1:
-        # Pen-up column only
-        assert obs is not None, 'Expected obs to be provided when action is pen-up only.'
-        action = np.concatenate((np.full(
-            (action.shape[0], 2), np.nan), action[:, None]),
-                                axis=1)
-
-    pen_up = action[:, 2] > 0.5
-
-    if obs is None:
-        obs = np.concatenate(([[0, 0]], np.cumsum(action[:, :2], axis=0))) + x0
+    obs, action, pen_up = integrate_action(action, obs, x0)
 
     for i in np.argwhere(pen_up).flatten():
         travel = obs[i] + [[0, 0], action[i, :2].tolist()]
