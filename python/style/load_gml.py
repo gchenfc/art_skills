@@ -24,7 +24,7 @@ import json
 import traceback
 from pathlib import Path
 
-from . import gerry00_gml_downloader
+from style import gerry00_gml_downloader
 import numpy as np
 
 

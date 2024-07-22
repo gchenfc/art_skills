@@ -129,19 +129,20 @@ class Editor:
         guidance = network.guidance_fn(loss, weight=guidance_weight)
 
         torch.manual_seed(seed)
-        history = [x_new * 1]
+        # history = [x_new * 1]
         for _ in tqdm.trange(repeat):
             x_noisy = network.add_noise(x_new, t_start, self.noise_scheduler)
-            x_noisy[:, :, 2] = x[:, :, 2]
-            if len(history) == 1:
-                x_noisy_init = x_noisy * 1
+            # x_noisy[:, :, 2] = x[:, :, 2]
+            # if len(history) == 1:
+            #     x_noisy_init = x_noisy * 1
             x_new = network.eval_partial(self.ema_noise_pred_net,
                                          self.noise_scheduler,
                                          x_noisy,
                                          t_start,
                                          guidance=guidance)
-            history.append(x_new * 1)
-        history = torch.stack(history, dim=0)
+            # history.append(x_new * 1)
+            x_new[:, :, 2] = x[:, :, 2]
+        # history = torch.stack(history, dim=0)
 
         return Editor.batched_to_strokes(x_new)
 
