@@ -23,3 +23,5 @@ python/style/checkpoints
 python/style/results
 python/style/runs
 python/ArtSkills.egg-info
+python/src/data
+python/src/trajectories

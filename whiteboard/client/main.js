@@ -2,7 +2,7 @@
 // const HOST = '143.215.91.93'
 // const HOST = '172.20.10.2'
 // const HOST = '143.215.88.70'
-const HOST = '192.168.1.21'
+const HOST = '10.11.105.12'
 const websocket = new WebSocket("ws://"+HOST+":5900/");
 
 const [W, H] = [2.9464, 2.26];
@@ -94,6 +94,56 @@ function convert_xy_from_normalized(x, y) {
 //   return []
 // }
 
+const colors = [
+  "#32CD32", // Lime Green
+  "#FF69B4", // Hot Pink
+  "#1E90FF", // Neon Blue
+  "#0A0A0A", // Goth Black
+  "#BF00FF", // Electric Purple
+  "#FF4500", // Shocking Orange
+  "#BFFF00", // Acid Yellow
+  "#8A0707", // Blood Red
+  "#00CED1", // Cyber Blue
+  "#00FF00", // Toxic Green
+  "#FC74FD", // Flamingo Pink
+  "#76FF7A", // Radioactive Green
+  "#FF0000", // Vivid Red
+  "#00FFFF", // Flashy Cyan
+  "#800080"  // Punk Rock Purple
+];
+
+function getRandomColor() {
+  const randomIndex = Math.floor(Math.random() * colors.length);
+  return colors[randomIndex];
+}
+
+let fit_strokes = [];
+
+function drawFitStrokes() {
+  context_fit.lineCap = 'round'
+  context_fit.lineJoin = 'round'
+  context_fit.lineWidth = 75 * 2;
+  // context_fit.lineWidth = 75;
+  let i = 0;
+  // const inds = [0, 1, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7];
+  // const inds = [0, 0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 7, 7];
+  // const inds = [0, 1, 1, 2, 3, 3, 4];
+  for (const stroke of fit_strokes) {
+      // const color = getRandomColor();
+      // const color = colors[inds[i] % colors.length];
+      const color = colors[i % colors.length];
+      context_fit.strokeStyle = color;
+      context_fit.fillStyle = color;
+    context_fit.beginPath();
+    context_fit.moveTo(stroke[0].x, stroke[0].y);
+    for (let i = 1; i < stroke.length; i++) {
+      context_fit.lineTo(stroke[i].x, stroke[i].y);
+    }
+    context_fit.stroke();
+    i += 1;
+  }
+}
+
 websocket.onmessage = function (event) {
   console.log(event.data);
   let command = event.data[0];
@@ -104,21 +154,23 @@ websocket.onmessage = function (event) {
   // y = y_raw * canvas.width
   const [x, y] = convert_xy_from_normalized(x_raw, y_raw);
   console.log(command, x, y)
-  context_fit.strokeStyle = 'lime'
-  context_fit.fillStyle = 'lime'
-  context_fit.lineCap = 'round'
-  context_fit.lineJoin = 'round'
-  context_fit.lineWidth = 50
-  if (command == 'M') {
+  if (command == 'R') {
+    fit_strokes = [];
+    context_fit.clearRect(0, 0, canvas.width, canvas.height);
+  } else if (command == 'M') {
     // context_fit.beginPath();
     // context_fit.ellipse(x, y, 10, 10, 0, 0, 2 * Math.PI);
     // context_fit.fill();
     // context_fit.stroke();
-    context_fit.moveTo(x, y);
+    fit_strokes.push([{x, y}]);
+    // context_fit.moveTo(x, y);
   } else if (command == 'L') {
-    context_fit.lineTo(x, y);
-    context_fit.stroke();
+    fit_strokes[fit_strokes.length - 1].push({x, y});
+    // context_fit.lineTo(x, y);
+    // context_fit.stroke();
   } else if (command == 'U') {
+    fit_strokes[fit_strokes.length - 1].push({x, y});
+    drawFitStrokes();
   } else if (command == 'F') {
     // Draw CDPR bounds
     context_fit.beginPath();
@@ -163,7 +215,7 @@ websocket.onmessage = function (event) {
  * @param {String} color string which will only temporarily set the color for a stroke
  * @return {void}
  */
-function drawOnCanvas(stroke, color='') {
+function drawOnCanvas(stroke, color='#c0c0c0') {
   if (color.length > 0) {
     var previousColor = context.strokeStyle; 
     context.strokeStyle = color;
