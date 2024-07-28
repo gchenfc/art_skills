@@ -186,8 +186,9 @@ class Editor:
         s = -1
         for i in np.argwhere(pen_up).flatten().tolist() + [len(pen_up)]:
             stroke = obs[s + 1:i + 1]
-            # stroke -= np.mean(stroke, axis=0) - np.mean(obs_orig[s + 1:i + 1],
-            #                                             axis=0)
+            if True:  # re-center stroke to original stroke's position
+                stroke -= np.mean(stroke, axis=0) - np.mean(
+                    obs_orig[s + 1:i + 1], axis=0)
             # print(np.mean(stroke, axis=0),
             #       np.mean(obs_orig[s + 1:i + 1], axis=0))
             strokes.append(stroke)
