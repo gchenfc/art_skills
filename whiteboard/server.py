@@ -19,14 +19,17 @@ from pathlib import Path
 import numpy as np
 import pickle
 
+CANVAS_BOUNDS = dict(x=(0.7, 2.52), y=(0.65, 1.71))
+OUTPUT_TO_ROBOT = 'NUMPY'  # one of 'IPAD' or 'NUMPY'
+
 PORTS = {
     'whiteboard_input': 5900,
     'whiteboard_fit': 5901,
     'fit_input': 5902,
     'fit_output': 5903,
-    'robot_input': 5904,
+    'robot_input': 5904,  # This is now unused
     'robot_output': 5905,
-    'whiteboard_passthrough': 5906,
+    'whiteboard_passthrough': 5906,  # This now goes to the robot
     'numpy_inout': 5909,
 }
 SAVE_FOLDER = None
@@ -101,10 +104,41 @@ class NumpyClient:
                 # await client.send(f'R0,0')
                 for result in results:
                     x, y, _ = result[0]
+                    x, y = NumpyClient.normalize(
+                        *NumpyClient.unnormalize(x, y))
                     await client.send(f'M{x},{y}')
                     for x, y, _ in result:
+                        x, y = NumpyClient.normalize(
+                            *NumpyClient.unnormalize(x, y))
                         await client.send(f'L{x},{y}')
                     await client.send(f'U{x},{y}')
+            if OUTPUT_TO_ROBOT == 'NUMPY':
+                for client in clients['whiteboard_passthrough']:
+                    for result in results:
+                        x, y, _ = result[0]
+                        x, y = NumpyClient.unnormalize(x, y)
+                        await client.send(f'M0,{x},{y}')
+                        for x, y, _ in result:
+                            x, y = NumpyClient.unnormalize(x, y)
+                            print(f'   {x:.3f},{y:.3f}')
+                            await client.send(f'L0,{x},{y}')
+                        await client.send(f'U0,{x},{y}')
+
+    def clip(x, xmin, xmax):
+        return min(max(x, xmin), xmax)
+
+    def normalize(x, y):
+        xmin, xmax, ymin, ymax = CANVAS_BOUNDS['x'] + CANVAS_BOUNDS['y']
+        xmid, ymid = (xmin + xmax) / 2, (ymin + ymax) / 2
+        scale = max(xmax - xmin, ymax - ymin)
+        return ((x - xmid) / scale + 0.5, (y - ymid) / scale + 0.5)
+
+    def unnormalize(x, y):
+        xmin, xmax, ymin, ymax = CANVAS_BOUNDS['x'] + CANVAS_BOUNDS['y']
+        xmid, ymid = (xmin + xmax) / 2, (ymin + ymax) / 2
+        scale = max(xmax - xmin, ymax - ymin)
+        return (NumpyClient.clip((x - 0.5) * scale + xmid, xmin, xmax),
+                NumpyClient.clip((y - 0.5) * scale + ymid, ymin, ymax))
 
 
 async def numpy_client():
@@ -146,8 +180,16 @@ async def handle_whiteboard(websocket):
                 for writer in clients['fit']:
                     writer.write(c.encode() + struct.pack('fff', *data))
                     # await writer.drain()
-                for sock in clients['whiteboard_passthrough']:
-                    await sock.send(msg)
+                if OUTPUT_TO_ROBOT == 'IPAD':
+                    for sock in clients['whiteboard_passthrough']:
+                        if msg[0] == 'C':
+                            await sock.send(msg)
+                        else:
+                            code, t, x, y = parse(msg)
+                            x, y = NumpyClient.unnormalize(x, y)
+                            await sock.send(code +
+                                            ','.join('{}'.format(n)
+                                                     for n in [t, x, y]))
                 for numpy_client in clients['numpy_inout']:
                     await numpy_client.add_point(c, *data)
     except websockets.exceptions.ConnectionClosed as e:

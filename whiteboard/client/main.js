@@ -3,11 +3,15 @@
 // const HOST = '172.20.10.2'
 // const HOST = '143.215.88.70'
 // const HOST = '10.11.105.12'
-// const websocket = new WebSocket("ws://"+HOST+":5900/");
 const HOST = window.location.hostname;
-const websocket = new WebSocket("wss://" + HOST + "/diffusion/ws");
+const websocket = new WebSocket("ws://" + HOST + ":5900/");
+// const websocket = new WebSocket("wss://" + HOST + "/diffusion/ws");
 
 const [W, H] = [2.9464, 2.26];
+
+const DISPLAY_MODE = 'CANVAS_ONLY';
+// const DISPLAY_MODE = 'ROBOT_AND_CANVAS';
+// const DISPLAY_MODE = 'ALL';
 
 // Reference source: https://github.com/shuding/apple-pencil-safari-api-test
 const $force = document.querySelectorAll('#force')[0]
@@ -146,6 +150,25 @@ function drawFitStrokes() {
   }
 }
 
+let NormalizedFromRobot, NormalizedToRobot;
+function update_unit_bounds(xmin, xmax, ymin, ymax) {
+  const xmid = (xmin + xmax) / 2, ymid = (ymin + ymax) / 2;
+  const width = xmax - xmin, height = ymax - ymin;
+  let SCALE = -1;
+  if (width / canvas.width > height / canvas.height) {
+    SCALE = convert_xy_to_normalized(canvas.width, 0)[0] / width;
+  } else {
+    SCALE = (convert_xy_to_normalized(canvas.width, 0)[1] - 0.5) * 2 / height;
+  }
+  console.log('scale is', SCALE);
+  NormalizedFromRobot = function(x, y) {
+    return [(x - xmid) * SCALE + 0.5, (y - ymid) * SCALE + 0.5];
+  }
+  NormalizedToRobot = function(x, y) {
+    return [(x - 0.5) / SCALE + xmid, (y - 0.5) / SCALE + ymid];
+  }
+}
+
 websocket.onmessage = function (event) {
   console.log(event.data);
   let command = event.data[0];
@@ -175,38 +198,41 @@ websocket.onmessage = function (event) {
     drawFitStrokes();
   } else if (command == 'F') {
     // Draw CDPR bounds
-    context_fit.beginPath();
-    context_fit.strokeStyle = 'black'
-    context_fit.fillStyle = 'black'
-    // aspect_ratio = x_raw / y_raw;
-    // console.log(aspect_ratio, canvas.width, canvas.height);
-    // if (canvas.width < canvas.height * aspect_ratio) {
-    //   // context_fit.fillRect(0, canvas.width / aspect_ratio, canvas.width, canvas.height);
-    // } else {
-    //   // context_fit.fillRect(canvas.height * aspect_ratio, 0, canvas.width, canvas.height);
-    // }
-    // context_fit.stroke();
-
-    const aspect_ratio = (xmax - xmin) / (ymax - ymin);
-    const canvas_aspect_ratio = canvas.width / canvas.height;
-    if (canvas_aspect_ratio < aspect_ratio) {  // ipad is too narrow
-      scale = canvas.width / (xmax - xmin);
-    } else {
-      scale = canvas.height / (ymax - ymin);
+    
+    // First do calculations on the robot boundaries
+    const [RobotWidth, RobotHeight] = [x_raw, y_raw];
+    if (DISPLAY_MODE === 'ROBOT_AND_CANVAS') {
+      update_unit_bounds(0, RobotWidth, 0, RobotHeight);
+      console.log(NormalizedFromRobot(xmax, ymax), NormalizedFromRobot(RobotWidth, RobotHeight));
+    } else if (DISPLAY_MODE === 'CANVAS_ONLY') {
+      update_unit_bounds(xmin, xmax, ymin, ymax);
+      console.log(NormalizedFromRobot(xmax, ymax), NormalizedFromRobot(RobotWidth, RobotHeight));
+    }
+    RectFromRobot = function(xmin, ymin, xmax, ymax) {
+      const [bl_norm, tr_norm] = [NormalizedFromRobot(xmin, ymin), NormalizedFromRobot(xmax, ymax)];
+      const [bl, tr] = [convert_xy_from_normalized(...bl_norm), convert_xy_from_normalized(...tr_norm)];
+      context_fit.clearRect(bl[0], bl[1], tr[0] - bl[0], tr[1] - bl[1]);
+      return [bl[0], bl[1], tr[0] - bl[0], tr[1] - bl[1]];
     }
 
+    // First black out everything
     context_fit.beginPath();
     context_fit.strokeStyle = 'black';
-    context_fit.fillStyle = 'black';
+    context_fit.fillStyle = 'rgba(0, 0, 0, 0.5)';
     context_fit.fillRect(0, 0, canvas.width, canvas.height);
     context_fit.stroke();
+
+    // Now make a gray space for the actual robot itself
     context_fit.beginPath();
-    context_fit.strokeStyle = 'lime';
-    lr = convert_xy_from_normalized(xmin, ymin);
-    tr = convert_xy_from_normalized(xmax, ymax);
-    console.log(lr, tr);
-    context_fit.clearRect(lr[0], lr[1], (tr[0] - lr[0]), (tr[1] - lr[1]));
-    context_fit.rect(lr[0], lr[1], (tr[0] - lr[0]), (tr[1] - lr[1]));
+    // context_fit.strokeStyle = 'brown';
+    context_fit.fillStyle = 'rgba(210,180,140, 0.5)';
+    context_fit.fillRect(...RectFromRobot(0, 0, RobotWidth, RobotHeight));
+    context_fit.stroke();
+
+    // Finally, make a white space for the canvas bounds
+    context_fit.beginPath();
+    context_fit.strokeStyle = 'brown';
+    context_fit.rect(...RectFromRobot(xmin, ymin, xmax, ymax));
     context_fit.stroke();
   }
 };
