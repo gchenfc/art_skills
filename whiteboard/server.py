@@ -49,6 +49,7 @@ def get_local_ip():
 
 
 HOST = get_local_ip()
+HOST = '0.0.0.0'
 
 clients = {
     'whiteboard': set(),

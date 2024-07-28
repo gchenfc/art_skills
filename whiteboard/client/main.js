@@ -2,8 +2,10 @@
 // const HOST = '143.215.91.93'
 // const HOST = '172.20.10.2'
 // const HOST = '143.215.88.70'
-const HOST = '10.11.105.12'
-const websocket = new WebSocket("ws://"+HOST+":5900/");
+// const HOST = '10.11.105.12'
+// const websocket = new WebSocket("ws://"+HOST+":5900/");
+const HOST = window.location.hostname;
+const websocket = new WebSocket("wss://" + HOST + "/diffusion/ws");
 
 const [W, H] = [2.9464, 2.26];
 
@@ -334,7 +336,7 @@ for (const ev of ["touchstart", "mousedown"]) {
     isMousedown = true
 
     // lineWidth = Math.log(pressure + 1) * 40
-    linewidth = 1;
+    linewidth = 15;
     context.lineWidth = lineWidth// pressure * 50;
 
     points.push({ x, y, lineWidth })
@@ -366,7 +368,7 @@ for (const ev of ['touchmove', 'mousemove']) {
 
     // smoothen line width
     // lineWidth = (Math.log(pressure + 1) * 40 * 0.2 + lineWidth * 0.8)
-    lineWidth = 1;
+    lineWidth = 15;
     points.push({ x, y, lineWidth })
     const xy = convert_xy_to_normalized(x, y)
     websocket.send("L" + t() + "," + xy[0] + "," + xy[1])
@@ -391,6 +393,10 @@ for (const ev of ['touchmove', 'mousemove']) {
   })
 }
 
+function isNumber(n){
+  return typeof n == 'number' && !isNaN(n - n);
+}
+
 for (const ev of ['touchend', 'touchleave', 'mouseup']) {
   canvas_touch.addEventListener(ev, function (e) {
     let pressure = 0.1;
@@ -406,6 +412,12 @@ for (const ev of ['touchend', 'touchleave', 'mouseup']) {
       pressure = 1.0
       x = e.pageX * 2
       y = e.pageY * 2
+      if (!isNumber(x) || !isNumber(y)) {
+        if (points.length > 0) {
+          x = points[points.length - 1].x;
+          y = points[points.length - 1].y;
+        }
+      }
     }
 
     isMousedown = false
