@@ -4,8 +4,8 @@
 // const HOST = '143.215.88.70'
 // const HOST = '10.11.105.12'
 const HOST = window.location.hostname;
-const websocket = new WebSocket("ws://" + HOST + ":5900/");
-// const websocket = new WebSocket("wss://" + HOST + "/diffusion/ws");
+// const websocket = new WebSocket("ws://" + HOST + ":5900/" + window.location.search);
+const websocket = new WebSocket("wss://" + HOST + "/diffusion/ws" + window.location.search);
 
 const [W, H] = [2.9464, 2.26];
 

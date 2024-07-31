@@ -1,0 +1,14 @@
+:8001 {
+    root * /home/gchen328/GIT_REPOS/art_skills/whiteboard/client
+    file_server
+
+    reverse_proxy /diffusion/ws http://localhost:5900 {
+        header_up Host {host}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    log {
+
+    }
+}
+

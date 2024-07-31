@@ -12,12 +12,16 @@ import asyncio
 import aiofiles
 import socket
 import websockets
+import ssl
 import time
 import datetime
 import struct
 from pathlib import Path
 import numpy as np
 import pickle
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 CANVAS_BOUNDS = dict(x=(0.7, 2.52), y=(0.65, 1.71))
 OUTPUT_TO_ROBOT = 'NUMPY'  # one of 'IPAD' or 'NUMPY'
@@ -70,37 +74,57 @@ def parse(msg):
     return msg[0], t, x, y
 
 
-def create_log_file():
+def create_log_file(prefix=None):
     if SAVE_FOLDER is None:
         return '/dev/null'
     now = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    return SAVE_FOLDER / f'{now}.txt'
+    return SAVE_FOLDER / f'{"" if prefix is None else prefix + "_"}{now}.txt'
 
 
 class NumpyClient:
+
     def __init__(self, websocket):
-        self.most_recent_stroke = []
+        self.most_recent_stroke = {}
         self.websocket = websocket
+        self.lock = asyncio.Lock()
+        self.response_event = asyncio.Event()
+        self.receiving_websocket = None
         asyncio.get_event_loop().create_task(self.handle_response())
 
-    async def add_point(self, c, t, x, y):
+    async def add_point(self, ipad_websocket, c, t, x, y):
+        if ipad_websocket not in self.most_recent_stroke:
+            self.most_recent_stroke[ipad_websocket] = []
+
         if c == 'M':
-            self.most_recent_stroke = []
+            self.most_recent_stroke[ipad_websocket] = []
         elif c == 'L':
-            self.most_recent_stroke.append((t, x, y, 0))
+            self.most_recent_stroke[ipad_websocket].append((t, x, y, 0))
         elif c == 'U':
-            self.most_recent_stroke.append((t, x, y, 1))
-            arr = np.array(self.most_recent_stroke, dtype=np.float32)
-            await self.websocket.send(pickle.dumps(arr))
+            self.most_recent_stroke[ipad_websocket].append((t, x, y, 1))
+            arr = np.array(self.most_recent_stroke[ipad_websocket],
+                           dtype=np.float32)
+            await self.send_with_lock(ipad_websocket, pickle.dumps(arr))
         else:
             raise ValueError(f'Invalid command: {c}')
+
+    async def send_with_lock(self, receiving_websocket, data, timeout=10):
+        async with self.lock:
+            self.receiving_websocket = receiving_websocket
+            await self.websocket.send(data)
+            await asyncio.wait_for(self.response_event.wait(), timeout)
+            self.receiving_websocket = None
+            self.response_event.clear()  # Reset the event for future use
 
     async def handle_response(self):
         while True:
             data = await self.websocket.recv()
             results = pickle.loads(data)
             print("Received processed array:", results)
-            for client in clients['whiteboard']:
+            self.response_event.set()
+
+            # for client in clients['whiteboard']:
+            if self.receiving_websocket is not None:
+                client = self.receiving_websocket
                 # await client.send(f'R0,0')
                 for result in results:
                     x, y, _ = result[0]
@@ -112,6 +136,10 @@ class NumpyClient:
                             *NumpyClient.unnormalize(x, y))
                         await client.send(f'L{x},{y}')
                     await client.send(f'U{x},{y}')
+            if self.receiving_websocket is None:
+                continue
+            if 'robot=true' not in self.receiving_websocket.path:
+                continue
             if OUTPUT_TO_ROBOT == 'NUMPY':
                 for client in clients['whiteboard_passthrough']:
                     for result in results:
@@ -153,9 +181,20 @@ async def numpy_client():
 async def handle_whiteboard(websocket):
     # async with aiofiles.open(create_log_file(), 'w') as f:
     print('Whiteboard connection opened!')
+    prefix = None
+    if '?' in websocket.path:
+        # Parse query string
+        query = websocket.path.split('?')[1]
+        query_dict = {
+            k: v
+            for k, v in (pair.split('=') for pair in query.split('&'))
+        }
+        if 'user' in query_dict:
+            prefix = query_dict['user']
     s = time.perf_counter()
     t = s
-    fname = create_log_file()
+    fname = create_log_file(prefix)
+    print('\tLogging to:', fname)
     try:
         clients['whiteboard'].add(websocket)
         print(frame_msg)
@@ -191,7 +230,7 @@ async def handle_whiteboard(websocket):
                                             ','.join('{}'.format(n)
                                                      for n in [t, x, y]))
                 for numpy_client in clients['numpy_inout']:
-                    await numpy_client.add_point(c, *data)
+                    await numpy_client.add_point(websocket, c, *data)
     except websockets.exceptions.ConnectionClosed as e:
         print()
         print(fname.name)

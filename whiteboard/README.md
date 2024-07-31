@@ -22,3 +22,15 @@
       So, for example,  
           `143.215.82.42:5501/whiteboard/client/`  
       Note: although "localhost" or "127.0.0.1" will work on the same computer that started live-server, it will *not* work on any other device, so you need to use the IP address copied in step 1.
+
+
+
+
+
+
+
+# diffusion
+* caddy:  `caddy run --config Caddyfile`
+* ngrok:  `ngrok start --all`  (config file is in ~/.ngrok2/ngrok.yml)
+* diffusion server:  `python gerry13y_edit_server.py`  (from the python/style directory)
+* python server:  `python server.py` (from this directory)
