@@ -21,9 +21,136 @@ from style.diffusion_policy_gml.dataset import GmlDataset
 from style.diffusion_policy_gml.network import ConditionalUnet1D
 import style.diffusion_policy_gml.network as network
 import style.diffusion_policy_gml.utils as utils
+from gerry11_all_networks import Network, NOISE_SCHEDULER, ClassifierFree1, DEVICE
+
+
+class DefaultGuidanceLoss(nn.Module):
+
+    def __init__(self, x, eta=100, eta_delta=0.25, eta_penup=1, W=1):
+        super().__init__()
+
+        assert x.shape[-1] == 5, "x should have shape (B, T, 5)"
+        self.x = x
+        self.T = x.shape[1]
+        self.mse = torch.nn.MSELoss(reduction='none')
+        self.eta = eta
+        self.eta_delta = eta_delta
+        self.eta_penup = eta_penup
+        self.channel_weights = torch.Tensor([
+            1, 1, eta_delta, eta_delta, eta_penup
+        ]).to(x).reshape(1, 1, 5) * eta
+        if isinstance(W, (int, float)):
+            W = torch.ones((1, self.T, 1), device=x.device) * W
+        elif len(W.shape) == 1:
+            W = W[None, :, None]
+        assert W.shape == (
+            1, self.T,
+            1), f"W should have shape (1, T={self.T}, 1), " + str(W.shape)
+        self.W = W
+
+    def forward(self, y):
+        y = y[:, :self.T, :]
+        l = torch.sum(self.mse(y, self.x) * self.W * self.channel_weights,
+                      dim=(1, 2))
+        return l
+
+    def guidance_fn(self):
+
+        def guidance(x):
+            # Returns grad of loss function w.r.t. x
+            # copy x and require grad
+            x = x.clone().detach().to(x.device)
+            x.requires_grad = True
+            # compute loss
+            with torch.enable_grad():
+                loss = self(x)
+            # compute grad
+            grad = torch.autograd.grad(loss, x)[0]
+            return grad
+
+        return guidance
+
+
+class EditorCnn:
+
+    def __init__(self, model: Network):
+        self.model = model
+        self.device = torch.device('cuda')
+
+    def edit(self,
+             strokes,
+             t_start=3,
+             repeat=20,
+             seed=8675309,
+             guidance=None,
+             guidance_loss_kwargs=dict(),
+             loss=None,
+             history=None,
+             global_cond=None,
+             global_cond_weight=1.3,
+             print_progress=True):
+        if global_cond is None and isinstance(self.model, ClassifierFree1):
+            B = 1
+            global_cond = torch.ones(
+                (B, 1), device=DEVICE) * global_cond_weight
+
+        # Create x
+        x = self.model.network_input_from_strokes(strokes)
+        T = x.shape[1]
+        x_orig_pad = Editor.pad_to_8(x)
+        obs_orig, act_orig = self.model.obs_act_from_network_output(x)
+        if guidance is None:
+            guidance = DefaultGuidanceLoss(
+                x, **guidance_loss_kwargs).guidance_fn()
+
+        x_new = x * 1
+        for _ in tqdm.trange(repeat) if print_progress else range(repeat):
+            x_new = Editor.pad_to_8(x_new)
+            x_noisy = network.add_noise(x_new, t_start, NOISE_SCHEDULER)
+            x_noisy[:, :, -1] = x_orig_pad[:, :, -1]
+            x_new = network.eval_partial(self.model.ema_noise_pred_net,
+                                         NOISE_SCHEDULER,
+                                         x_noisy,
+                                         t_start,
+                                         guidance=guidance,
+                                         global_cond=global_cond)
+            x_new = x_new[:, :T, :]
+            if history is not None:
+                history.append(x_new * 1)
+            x_new[:, :, -1] = x[:, :, -1]
+
+        obs, act = self.model.obs_act_from_network_output(x_new)
+        return obs, act
+
+    @staticmethod
+    def obs_act_to_strokes(obs, act, obs_orig):
+        pen_up = act[:, 2] > 0.5
+
+        x0 = obs[0]
+        obs = np.concatenate(([[0, 0]], np.cumsum(action[:, :2], axis=0))) + x0
+
+        strokes = []
+        s = -1
+        for i in np.argwhere(pen_up).flatten().tolist() + [len(pen_up)]:
+            stroke = obs[s + 1:i + 1]
+            if True:  # re-center stroke to original stroke's position
+                stroke -= np.mean(stroke, axis=0) - np.mean(
+                    obs_orig[s + 1:i + 1], axis=0)
+            # print(np.mean(stroke, axis=0),
+            #       np.mean(obs_orig[s + 1:i + 1], axis=0))
+            strokes.append(stroke)
+            s = i
+
+        strokes = [
+            np.concatenate([stroke, np.zeros((stroke.shape[0], 1))], axis=1)
+            for stroke in strokes
+        ]
+
+        return strokes
 
 
 class Editor:
+    """OLD! do not use!"""
 
     def __init__(
         self,

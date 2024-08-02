@@ -1,13 +1,14 @@
 #%% Imports
 
 import dataclasses
-from typing import Optional, Callable
+from typing import Optional, Callable, Iterable
 from pathlib import Path
 from functools import lru_cache
 
 import torch
 import numpy as np
 import cv2
+import tqdm.auto as tqdm
 import toppra as ta
 import toppra.constraint as constraint
 import toppra.algorithm as algo
@@ -128,17 +129,21 @@ class Network:
 
         return self.ema_noise_pred_net
 
+    def create_rand_x(self, B: int, horizon: int):
+        return torch.randn((B, horizon, self.args.action_dim), device=DEVICE)
+
     def eval_network(self,
                      B: int,
                      horizon: int,
                      history=None,
-                     global_cond=None):
-        action_n_init = torch.randn((B, horizon, self.args.action_dim),
-                                    device=DEVICE)
+                     global_cond=None,
+                     x_init=None):
+        if x_init is None:
+            x_init = self.create_rand_x(B, horizon)
 
         action_n = network.eval(self.ema_noise_pred_net,
                                 NOISE_SCHEDULER,
-                                action_n_init,
+                                x_init,
                                 global_cond=global_cond if global_cond
                                 is not None else self.args.global_cond,
                                 guidance=self.args.guidance,
@@ -153,6 +158,20 @@ class Network:
         obs_n, act_n = torch.split(action_n, [2, 3], dim=-1)
         return (self.dataset.unnormalize_obs(obs_n),
                 self.dataset.unnormalize_action(act_n))
+
+    def network_input_from_strokes(self, strokes: Iterable[torch.Tensor]):
+        """Creates a normalized network input from an input drawing "strokes" """
+        for stroke in strokes:
+            assert stroke.shape[1] == 2, 'Each stroke should have shape [N, 2]'
+        if self.args.action_dim != 5:
+            raise NotImplementedError(
+                'Only implemented for action_dim=5.  Please implement ')
+
+        act = torch.concatenate(create_dxdypenup(strokes), dim=0)
+        obs = torch.concatenate(strokes, dim=0)
+        return torch.concatenate((self.dataset.normalize_obs(obs),
+                                  self.dataset.normalize_action(act)),
+                                 dim=1)[None, ...]
 
     def generate(self, B: int, horizon: int, global_cond=None):
         action_n = self.eval_network(B, horizon, global_cond=global_cond)
@@ -216,11 +235,12 @@ class ClassifierFree1(Network):
     def __init__(self):
         super().__init__(NET_ARGS['classifier_free'])
 
-    def eval_network(self, B: int, horizon: int):
+    def eval_network(self, B: int, horizon: int, x_init=None):
         return super().eval_network(B,
                                     horizon,
                                     global_cond=torch.ones(
-                                        (B, 1), device=DEVICE) * 1.3)
+                                        (B, 1), device=DEVICE) * 1.3,
+                                    x_init=x_init)
 
 
 class Guidance(Network):
@@ -240,21 +260,14 @@ class Control(Network):
             torch.tensor([1., 1., 0.], device=DEVICE, dtype=torch.float32))
         self.parameterize = ControlParameterization(act_scale)
 
-    def eval_network(self, B: int, horizon: int):
-        action_n_init = torch.randn((B, horizon, self.args.action_dim),
-                                    device=DEVICE)
+    def create_rand_x(self, B: int, horizon: int):
+        x = torch.randn((B, horizon, self.args.action_dim), device=DEVICE)
+        ret = self.parameterize.action_n2acc_activations(x)
+        return ret
 
-        activations_init = self.parameterize.action_n2acc_activations(
-            action_n_init)
-        activations = network.eval(self.ema_noise_pred_net,
-                                   NOISE_SCHEDULER,
-                                   action_n_init,
-                                   global_cond=None)
+    def obs_act_from_network_output(self, activations):
         action_n = self.parameterize.acc_activations2action_n(activations)
 
-        return action_n
-
-    def obs_act_from_network_output(self, action_n):
         act = self.dataset.unnormalize_action(action_n)
         act = utils.batchify(ControlParameterization.correct_actions)(act)
 
@@ -267,8 +280,20 @@ class Control(Network):
 
         return obs, act
 
+    def network_input_from_strokes(self, strokes: Iterable[torch.Tensor]):
+        """Creates a normalized network input from an input drawing "strokes" """
+        for stroke in strokes:
+            assert stroke.shape[1] == 2, 'Each stroke should have shape [N, 2]'
+
+        act = torch.concatenate(create_dxdypenup(strokes), dim=0)
+        action_n = self.dataset.normalize_action(act)[None, ...]
+
+        activations = self.parameterize.action_n2acc_activations(action_n)
+        return activations
+
 
 #%% Util classes/functions
+##################################### UTIL CLASSES / FUNCTIONS #####################################
 class GuidanceFunction:
 
     def __init__(self, dataset):
@@ -390,7 +415,7 @@ class ControlParameterization:
         return torch.tanh(output) * 0.4
 
     def deactivate(acc):
-        return torch.atanh(torch.clip(acc / 0.4, -1, 1))
+        return torch.atanh(torch.clip(acc / 0.4, -0.99, 0.99))
 
     def action_n2acc_activations(self, action):
         # action is [B, T, 3]
@@ -412,35 +437,142 @@ class ControlParameterization:
         return torch.concatenate((normed, output[:, :, 2:]), dim=-1)
 
 
-#%% main
-def main():
-    with Stopwatch('Testing Constructors', print_start_and_end=True):
-        with Stopwatch('\tDecoupled'):
-            decoupled = Decoupled()
-        with Stopwatch('\tFinetuned'):
-            finetuned = Finetuned()
-        with Stopwatch('\tClassifierFree1'):
-            classifier_free = ClassifierFree1()
-        with Stopwatch('\tGuidance'):
-            guidance = Guidance()
-        with Stopwatch('\tControl'):
-            control = Control()
+def create_dxdypenup(strokes: Iterable[torch.Tensor]) -> list[torch.Tensor]:
+    """Computes an Nx3 vector of dx, dy, penup for each stroke in a list of strokes"""
+    for stroke in strokes:
+        assert stroke.shape[1] == 2, 'Each stroke should have shape [N, 2]'
 
+    def create_dxdypenup_one(stroke, i):
+        N = stroke.shape[0]
+        dx = torch.diff(stroke, axis=0, append=stroke[-1:])
+        dx = torch.cat([dx, torch.zeros((N, 1), device=DEVICE)], dim=1)
+        if i < len(strokes) - 1:
+            dx[-1, :2] = strokes[i + 1][0] - stroke[-1]
+            dx[-1, 2] = 1
+        return dx
+
+    return [
+        create_dxdypenup_one(stroke, i) for i, stroke in enumerate(strokes)
+    ]
+
+
+#%%
+###################################### UNIT TESTS AND SCRIPTS ######################################
+
+
+@lru_cache
+def construct(Cls) -> Network:
+    return Cls()
+
+
+CLASSES = [Base, Decoupled, Finetuned, ClassifierFree1, Guidance, Control]
+
+
+def test_constructors():
+    with Stopwatch('Testing Constructors', print_start_and_end=True):
+        for Cls in CLASSES:
+            with Stopwatch(f'\t{Cls.__name__}'):
+                construct(Cls)
+
+
+def test_evaluations(B=2):
+    with Stopwatch(f"Testing evaluations by generating {B} images",
+                   print_start_and_end=True):
+        for Cls in CLASSES:
+            name = Cls.__name__
+            path = Path(f'results/gerry11_all_networks/test/')
+            path.mkdir(parents=True, exist_ok=True)
+            with Stopwatch(f'\t{name}'):
+                model = construct(Cls)
+
+                torch.manual_seed(8675309)
+                action_n = model.eval_network(B, 128)
+                obs, act = model.obs_act_from_network_output(action_n)
+                imgs = model.render_img(obs)
+                for i, img in enumerate(imgs):
+                    cv2.imwrite((path / f'{name}_{i:02d}.png').as_posix(), img)
+
+
+def test_network_input_output_conversions():
+    test_strokes = [torch.randn(10, 2, device=DEVICE) for _ in range(4)]
+    with Stopwatch("Testing network input/output conversions",
+                   print_start_and_end=True):
+        for Cls in CLASSES:
+            name = Cls.__name__
+            with Stopwatch(f'\t{name}'):
+                model = construct(Cls)
+
+                torch.manual_seed(8675309)
+                x = model.network_input_from_strokes(test_strokes)
+                x = model.eval_network(1, 40, x_init=x)
+                obs, act = model.obs_act_from_network_output(x)
+
+
+def test_generate_images(B=2):
+    with Stopwatch(f"Testing generation by generating {B} images",
+                   print_start_and_end=True):
+        for Cls in CLASSES:
+            name = Cls.__name__
+            path = Path(f'results/gerry11_all_networks/test/')
+            path.mkdir(parents=True, exist_ok=True)
+            with Stopwatch(f'\t{name}'):
+                construct(Cls).generate_img(B, 128)
+
+
+def generate_all_images(N=100):
     B = 10
-    with Stopwatch("Testing evaluations", print_start_and_end=True):
-        for model in [
-                decoupled, finetuned, classifier_free, guidance, control
-        ]:
-            with Stopwatch(f'\t{model.__class__.__name__}'):
-                import tqdm.auto as tqdm
-                for iter in tqdm.trange(10):
+    It = N // B
+    N = It * B
+    with Stopwatch(
+            f"Generating {N} images by running {It} batches of {B} evals",
+            print_start_and_end=True):
+        for Cls in CLASSES:
+            name = Cls.__name__
+            path = Path(f'results/gerry11_all_networks/{name}')
+            path.mkdir(parents=True, exist_ok=True)
+            with Stopwatch(f'\t{name}'):
+                model = construct(Cls)
+
+                for it in tqdm.trange(It):
+                    torch.manual_seed(8675309)
                     action_n = model.eval_network(B, 128)
                     obs, act = model.obs_act_from_network_output(action_n)
                     imgs = model.render_img(obs)
                     for i, img in enumerate(imgs):
                         cv2.imwrite(
-                            f'results/gerry11_all_networks/{model.__class__.__name__}/{model.__class__.__name__}_{i + iter * 10:02d}.png',
+                            (path / f'{name}_{it * B + i:02d}.png').as_posix(),
                             img)
+
+
+#%% main
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--run-all-tests', action='store_true')
+    parser.add_argument('-tc', '--test-costructors', action='store_true')
+    parser.add_argument('-te', '--test-evaluations', action='store_true')
+    parser.add_argument('-tio',
+                        '--network-input-output-conversions',
+                        action='store_true')
+    parser.add_argument('-tg', '--test-generate-images', action='store_true')
+    parser.add_argument('-g', '--generate-images', action='store_true')
+    parser.add_argument('-n',
+                        '--number-of-images',
+                        help='Number of images to generate',
+                        type=int,
+                        default=100)
+    args = parser.parse_args()
+
+    if args.run_all_tests or args.test_costructors:
+        test_constructors()
+    if args.run_all_tests or args.test_evaluations:
+        test_evaluations()
+    if args.run_all_tests or args.network_input_output_conversions:
+        test_network_input_output_conversions()
+    if args.run_all_tests or args.test_generate_images:
+        test_generate_images()
+    if args.generate_images:
+        generate_all_images(parser.number_of_images)
 
 
 if __name__ == '__main__':

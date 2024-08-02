@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 from cycler import cycler
 
 drawing_lims = dict(x=(0, 1), y=(0, 1))
@@ -133,3 +134,86 @@ def kill_after_penlift(x, penlift_index):
         x[index + 1:] = np.nan
 
     return x
+
+
+def batchify(func, in_args=[0], out_args=[0]):
+
+    def process_args(args, index):
+        return ((arg[index] if argi in in_args else arg)
+                for argi, arg in enumerate(args))
+
+    def wrapper(*args):
+        B = args[in_args[0]].shape[0]
+        NARGS = len(args)
+        outs_by_batch = [func(*process_args(args, b)) for b in range(B)]
+        # Transpose
+        if isinstance(outs_by_batch[0], tuple):
+            outs = tuple([out[argi] for out in outs_by_batch]
+                         for argi in range(NARGS))
+            # Torch-ify out_args
+            outs = tuple(
+                (torch.stack(arg, axis=0) if argi in out_args else arg)
+                for argi, arg in enumerate(outs))
+            return outs if len(outs) > 1 else outs[0]
+        else:
+            return torch.stack(outs_by_batch, axis=0)
+
+    return wrapper
+
+
+def wrap_numpy_fn(func):
+
+    def wrapped(*obs):
+        out = func(*[obs_.detach().cpu().numpy() for obs_ in obs])
+        if isinstance(out, tuple):
+            return tuple(
+                torch.tensor(out_, device=obs[0].device) for out_ in out)
+        else:
+            return torch.tensor(out, device=obs[0].device)
+
+    return wrapped
+
+
+def test_batchify():
+    a = torch.tensor([[1, 2], [3, 4], [5, 6]])
+    b = torch.tensor([[7, 8], [9, 10], [11, 12]])
+    assert_ = lambda act, exp, msg: torch.testing.assert_close(
+        act, exp, rtol=0, atol=0, msg=msg)
+
+    # Test single input and single output
+    func = lambda a: a + 1
+    actual = batchify(func)(a)
+    expected = a + 1
+    assert_(actual, expected, msg="output doesn't match")
+
+    # Test double input and double output
+    func = lambda a, b: (a + b, a - b)
+    actual = batchify(func, in_args=[0, 1], out_args=[0, 1])(a, b)
+    expected = (a + b, a - b)
+    assert_(actual[0], expected[0], msg="output 0 doesn't match")
+    assert_(actual[1], expected[1], msg="output 1 doesn't match")
+
+    # Test single input and double output
+    actual = batchify(func, in_args=[0], out_args=[0, 1])(a, b[0])
+    expected = (a + b[0], a - b[0])
+    assert_(actual[0], expected[0], msg="output 0 doesn't match")
+    assert_(actual[1], expected[1], msg="output 1 doesn't match")
+
+
+def test_wrap_numpy_fn():
+    assert_ = lambda act, exp, msg: torch.testing.assert_close(
+        act, exp, rtol=0, atol=0, msg=msg)
+
+    func = lambda a, b: (a + b, a - b)
+    wrapped = wrap_numpy_fn(func)
+    a = torch.tensor([1, 2])
+    b = torch.tensor([3, 4])
+    actual = wrapped(a, b)
+    expected = (a + b, a - b)
+    assert_(actual[0], expected[0], msg="output 0 doesn't match")
+    assert_(actual[1], expected[1], msg="output 1 doesn't match")
+
+
+if __name__ == '__main__':
+    test_batchify()
+    test_wrap_numpy_fn()
