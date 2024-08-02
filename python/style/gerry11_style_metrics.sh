@@ -1,4 +1,5 @@
 # Base  ClassifierFree1  Control  Decoupled  Finetuned  Guidance
+fidelity --gpu 0 --fid --prc --input1 ./results/gerry11_all_networks/GmlBaseline/ --input2 ./data/gml_images_2 > ./results/gerry11_all_networks/gml_baseline_metrics.txt
 fidelity --gpu 0 --fid --prc --input1 ./results/gerry11_all_networks/Base/ --input2 ./data/gml_images_2 > ./results/gerry11_all_networks/base_metrics.txt
 fidelity --gpu 0 --fid --prc --input1 ./results/gerry11_all_networks/ClassifierFree1/ --input2 ./data/gml_images_2 > ./results/gerry11_all_networks/ClassifierFree1_metrics.txt
 fidelity --gpu 0 --fid --prc --input1 ./results/gerry11_all_networks/Control/ --input2 ./data/gml_images_2 > ./results/gerry11_all_networks/Control_metrics.txt
