@@ -34,6 +34,7 @@ PORTS = {
     'robot_input': 5904,  # This is now unused
     'robot_output': 5905,
     'whiteboard_passthrough': 5906,  # This now goes to the robot
+    'diffusion_output': 5908,  # This now goes to the robot
     'numpy_inout': 5909,
 }
 SAVE_FOLDER = None
@@ -63,6 +64,7 @@ clients = {
     'fit': set(),
     'robot_input': set(),
     'whiteboard_passthrough': set(),
+    'diffusion_output': set(),
     'numpy_inout': set(),
 }
 frame_msg = ''
@@ -140,17 +142,16 @@ class NumpyClient:
                 continue
             if 'robot=true' not in self.receiving_websocket.path:
                 continue
-            if OUTPUT_TO_ROBOT == 'NUMPY':
-                for client in clients['whiteboard_passthrough']:
-                    for result in results:
-                        x, y, _ = result[0]
+            for client in clients['diffusion_output']:
+                for result in results:
+                    x, y, _ = result[0]
+                    x, y = NumpyClient.unnormalize(x, y)
+                    await client.send(f'M0,{x},{y}')
+                    for x, y, _ in result:
                         x, y = NumpyClient.unnormalize(x, y)
-                        await client.send(f'M0,{x},{y}')
-                        for x, y, _ in result:
-                            x, y = NumpyClient.unnormalize(x, y)
-                            print(f'   {x:.3f},{y:.3f}')
-                            await client.send(f'L0,{x},{y}')
-                        await client.send(f'U0,{x},{y}')
+                        print(f'   {x:.3f},{y:.3f}')
+                        await client.send(f'L0,{x},{y}')
+                    await client.send(f'U0,{x},{y}')
 
     def clip(x, xmin, xmax):
         return min(max(x, xmin), xmax)
@@ -219,7 +220,7 @@ async def handle_whiteboard(websocket):
                 for writer in clients['fit']:
                     writer.write(c.encode() + struct.pack('fff', *data))
                     # await writer.drain()
-                if OUTPUT_TO_ROBOT == 'IPAD':
+                if 'robot' in query_dict and query_dict['robot'] == 'true':
                     for sock in clients['whiteboard_passthrough']:
                         if msg[0] == 'C':
                             await sock.send(msg)
@@ -321,6 +322,7 @@ async def main():
         asyncio.create_task(fit_server()),
         asyncio.create_task(robot_server('robot_input')),
         asyncio.create_task(robot_server('whiteboard_passthrough')),
+        asyncio.create_task(robot_server('diffusion_output')),
     ])
 
 

@@ -7,6 +7,17 @@
         header_up X-Forwarded-For {remote}
         header_up X-Forwarded-Proto {scheme}
     }
+    reverse_proxy /whiteboard_passthrough/ws http://localhost:5906 {
+        header_up Host {host}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    reverse_proxy /diffusion_output/ws http://localhost:5908 {
+        header_up Host {host}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
     log {
 
     }
