@@ -16,12 +16,16 @@ from scipy.interpolate import CubicSpline
 from collections import defaultdict
 from load_gml import Drawing
 
-# %% Set up editing model
-model = ClassifierFree1()
-editor = EditorCnn(model)
-results_folder = Path('results') / 'gerry14_more_results'
-results_folder.mkdir(exist_ok=True)
-DT = 0.02
+
+def load_setup():
+    # %% Set up editing model
+    global model, editor, results_folder, DT
+    model = ClassifierFree1()
+    editor = EditorCnn(model)
+    results_folder = Path('results') / 'gerry14_more_results'
+    results_folder.mkdir(exist_ok=True)
+    DT = 0.02
+
 
 # %% [markdown]
 # What are the results/figures we want to generate?
@@ -186,7 +190,7 @@ def format_axes(ax):
 
 # Random other utils
 def preprocess_gml(file: Path) -> list[torch.Tensor]:
-    drawing = Drawing(f)
+    drawing = Drawing(file)
     strokes = [stroke[:, 1:3] for stroke in drawing.strokes]
     return [
         torch.from_numpy(stroke).to(DEVICE, dtype=torch.float32)
@@ -440,6 +444,7 @@ def run_for_all_log_files():
         # Plot orig
         render(axes[0], strokes, color_index='k')
         axes[0].set_title('Human Input', fontsize=36, pad=20)
+        axes[1].set_title('Retargeting Output', fontsize=36, pad=20)
 
         # Plot retargeted
         torch.manual_seed(8675309)
@@ -463,8 +468,11 @@ def run_for_all_log_files():
     for f in tqdm.tqdm(sorted(logs_folder.glob('*.json'))):
         if (out_folder / f'{f.stem}.svg').exists():
             continue
-        strokes = preprocess_gml(f)
-        orig_and_retargeted(f, strokes)
+        try:
+            strokes = preprocess_gml(f)
+            orig_and_retargeted(f, strokes)
+        except IndexError:
+            print(f'Error with {f.stem}, skipping')
 
     # %%
     template = (out_folder / '_gallery_template.html').read_text()
@@ -473,6 +481,25 @@ def run_for_all_log_files():
     s = '\n'.join([div(file) for file in sorted(out_folder.glob('*.svg'))])
     with open(out_folder / '_gallery.html', 'w') as f:
         f.write(template.replace('#####SVGs#####', s))
+
+    # Alternative, minimal gallery
+    div = lambda file: f'<div class="svg-item"><img src="{file.name}" alt="{file.stem}"></div>'
+    files = list(sorted(out_folder.glob('*.svg')))
+    if True:  # shuffle
+        import random
+        random.shuffle(files)
+    s = '\n'.join([div(file) for file in files])
+    STYLE_ADD = '''
+        .svg-item {
+            overflow: hidden;
+        }
+        .svg-item img {
+            margin-top: -12%;
+        }'''
+    with open(out_folder / '_gallery_minimal.html', 'w') as f:
+        f.write(
+            template.replace('<style>', f'<style>{STYLE_ADD}').replace(
+                '#####SVGs#####', s))
 
 
 # %% [markdown]
@@ -641,14 +668,14 @@ def run_weight_matrices():
 # # main
 def main():
     parser = argparse.ArgumentParser(description='Convert logs to GML')
-    parser.add_argument('--infolder',
-                        type=Path,
-                        default=DEFAULT_INFOLDER,
-                        help=f'Default: {DEFAULT_INFOLDER}')
-    parser.add_argument('--outfolder',
-                        type=Path,
-                        default=DEFAULT_OUTFOLDER,
-                        help=f'Default: {DEFAULT_OUTFOLDER}')
+    # parser.add_argument('--infolder',
+    #                     type=Path,
+    #                     default=DEFAULT_INFOLDER,
+    #                     help=f'Default: {DEFAULT_INFOLDER}')
+    # parser.add_argument('--outfolder',
+    #                     type=Path,
+    #                     default=DEFAULT_OUTFOLDER,
+    #                     help=f'Default: {DEFAULT_OUTFOLDER}')
     parser.add_argument('-m', '--max_and_jules', action='store_true')
     parser.add_argument('-q',
                         '--compute_similarity_dynamics',
@@ -657,6 +684,13 @@ def main():
     parser.add_argument('-a', '--all_logs', action='store_true')
     parser.add_argument('-w', '--weight_matrices', action='store_true')
     args = parser.parse_args()
+
+    # If correctly parsed, run load_setup, else, print help
+    if args.max_and_jules or args.compute_similarity_dynamics or args.random_seeds or args.all_logs or args.weight_matrices:
+        load_setup()
+    else:
+        parser.print_help()
+        return
 
     if args.max_and_jules:
         max_and_jules()
@@ -671,3 +705,5 @@ def main():
 
 
 # %%
+if __name__ == '__main__':
+    main()
